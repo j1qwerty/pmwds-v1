@@ -293,15 +293,15 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     };
 
     const stopListening = onDataChanged((notification) => {
-      if (notification.scope === "projects" || notification.scope === "roles") {
+      if (notification.scope === REALTIME_SCOPES.projects || notification.scope === REALTIME_SCOPES.roles) {
         scheduleRefresh(REALTIME_DEBOUNCE_MS);
         return;
       }
 
       if (
-        notification.scope === "organizations" ||
-        notification.scope === "departments" ||
-        notification.scope === "users"
+        notification.scope === REALTIME_SCOPES.organizations ||
+        notification.scope === REALTIME_SCOPES.departments ||
+        notification.scope === REALTIME_SCOPES.users
       ) {
         void refreshReferenceData(notification.scope);
       }
