@@ -60,24 +60,11 @@ internal static class MiscSeeder
 
         foreach (var task in tasks)
         {
-            await SeedTimeEntriesAsync(context, task, users, ct);
             await SeedCommentsAsync(context, task, users, ct);
         }
 
         await SeedDependenciesAsync(context, tasks, ct);
         await context.SaveChangesAsync(ct);
-    }
-
-    private static async Task SeedTimeEntriesAsync(ApplicationDbContext context, ProjectTask task, List<ApplicationUser> users, CancellationToken ct)
-    {
-        if (await context.TimeEntries.AnyAsync(t => t.TaskId == task.Id, ct))
-            return;
-
-        foreach (var user in users.Take(2))
-        {
-            var entry = TimeEntry.ManualEntry(task.Id, user.Id, DateTime.UtcNow.AddHours(-3), DateTime.UtcNow.AddHours(-1), $"Focused delivery work on {task.Title}", true);
-            await context.TimeEntries.AddAsync(entry, ct);
-        }
     }
 
     private static async Task SeedCommentsAsync(ApplicationDbContext context, ProjectTask task, List<ApplicationUser> users, CancellationToken ct)
