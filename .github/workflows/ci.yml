@@ -1,5 +1,4 @@
 name: CI
-# Stacked PR validation
 
 on:
   pull_request:
@@ -47,6 +46,3 @@ jobs:
       - run: dotnet build PMWDS.slnx --configuration Release --no-restore
       - run: dotnet test PMWDS.slnx --configuration Release --no-build
 
-# validation refresh 2026-10-05T16:41:21.506Z
-
-# validation refresh 1791218716
