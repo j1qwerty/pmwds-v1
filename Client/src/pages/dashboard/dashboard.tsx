@@ -182,6 +182,10 @@ export function DashboardPage() {
       if (timer !== undefined) window.clearTimeout(timer);
       stopListening();
     };
+  // loadTaskPerformance is declared below. The callback is invoked after render, so the
+  // lexical binding is initialized when the effect runs. Keep the dependency list focused
+  // on values that control which realtime scopes we subscribe to.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth, loadDashboard, loadProjects, loadMyTasks, loadEscalations, loadNotifications, lastTaskPerformanceQuery]);
 
   const loadTaskPerformance = useCallback(async (query: TaskPerformanceQuery) => {
