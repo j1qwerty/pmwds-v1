@@ -132,13 +132,23 @@ export function DashboardPage() {
       setLoading(true);
       setError("");
 
-      const critical = await Promise.allSettled([loadDashboard(), loadProjects(), loadMyTasks()]);
-      if (disposed) return;
+      const criticalLoads = [
+        ["dashboard", loadDashboard],
+        ["projects", loadProjects],
+        ["tasks", loadMyTasks],
+      ] as const;
 
-      const dashboardFailure = critical[0];
-      if (dashboardFailure.status === "rejected") {
-        setError(dashboardFailure.reason instanceof Error ? dashboardFailure.reason.message : "Dashboard unavailable");
+      for (const [name, load] of criticalLoads) {
+        try {
+          await load();
+        } catch (cause) {
+          if (name === "dashboard") {
+            setError(cause instanceof Error ? cause.message : "Dashboard unavailable");
+          }
+        }
+        if (disposed) return;
       }
+
       setLoading(false);
 
       await Promise.allSettled([loadNotifications(), loadEscalations(), loadActivity()]);
