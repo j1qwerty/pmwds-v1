@@ -16,7 +16,7 @@ import {
   onDataChanged,
   startRealtime,
 } from "./realtime";
-import { GLOBAL_SCOPES } from "./realtimeScopes";
+import { REALTIME_SCOPES } from "./realtimeScopes";
 import type {
   ActivityLogRecord,
   AlertRuleRecord,
@@ -293,12 +293,16 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     };
 
     const stopListening = onDataChanged((notification) => {
-      if (notification.scope === "projects" || GLOBAL_SCOPES.includes(notification.scope) && notification.scope === "permissions") {
+      if (notification.scope === "projects" || notification.scope === "roles") {
         scheduleRefresh(REALTIME_DEBOUNCE_MS);
         return;
       }
 
-      if (notification.scope === "organizations" || notification.scope === "departments" || notification.scope === "users") {
+      if (
+        notification.scope === "organizations" ||
+        notification.scope === "departments" ||
+        notification.scope === "users"
+      ) {
         void refreshReferenceData(notification.scope);
       }
     });
