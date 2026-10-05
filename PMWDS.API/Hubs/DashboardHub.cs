@@ -10,10 +10,14 @@ public class DashboardHub : Hub
     {
         var deptId = Context.User?
         .FindFirstValue("DepartmentId");
+        await Groups.AddToGroupAsync(
+            Context.ConnectionId,
+            "dashboard-global");
+
         if (!string.IsNullOrEmpty(deptId))
             await Groups.AddToGroupAsync(
-            Context.ConnectionId,
-            $"dashboard-dept-{deptId}");
+                Context.ConnectionId,
+                $"dashboard-dept-{deptId}");
         await base.OnConnectedAsync();
     }
     /// <summary>
