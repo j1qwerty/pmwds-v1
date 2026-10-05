@@ -584,35 +584,6 @@ public partial class InitialCreate : Migration
       m.CreateIndex("IX_TaskDependencies_SuccessorTaskId", "TaskDependencies", "SuccessorTaskId");
       m.CreateIndex("IX_TaskDependencies_PredecessorTaskId_SuccessorTaskId", "TaskDependencies", new[] { "PredecessorTaskId", "SuccessorTaskId" }, unique: true);
 
-      // TimeEntries
-      m.CreateTable("TimeEntries", t => new
-      {
-         Id = t.Column<Guid>(nullable: false),
-         TaskId = t.Column<Guid>(nullable: false),
-         UserId = t.Column<Guid>(nullable: false),
-         StartTime = t.Column<DateTime>(nullable: false),
-         EndTime = t.Column<DateTime>(nullable: true),
-         Description = t.Column<string>(maxLength: 2000, nullable: false),
-         IsBillable = t.Column<bool>(nullable: false),
-         IsManualEntry = t.Column<bool>(nullable: false),
-         CreatedDate = t.Column<DateTime>(nullable: false),
-         CreatedBy = t.Column<string>(nullable: false),
-         ModifiedDate = t.Column<DateTime>(nullable: true),
-         ModifiedBy = t.Column<string>(nullable: true),
-         IsDeleted = t.Column<bool>(nullable: false),
-         RowVersion = t.Column<int>(nullable: false)
-      }, constraints: t =>
-      {
-         t.PrimaryKey("PK_TimeEntries", x => x.Id);
-         t.ForeignKey("FK_TimeEntries_Tasks_TaskId", x => x.TaskId, "Tasks", "Id", onDelete: ReferentialAction.Cascade);
-         t.ForeignKey("FK_TimeEntries_Users_UserId", x => x.UserId, "Users", "Id");
-      });
-      m.CreateIndex("IX_TimeEntries_StartTime", "TimeEntries", "StartTime");
-      m.CreateIndex("IX_TimeEntries_TaskId", "TimeEntries", "TaskId");
-      m.CreateIndex("IX_TimeEntries_UserId", "TimeEntries", "UserId");
-      m.CreateIndex("IX_TimeEntries_IsDeleted", "TimeEntries", "IsDeleted");
-      m.CreateIndex("IX_TimeEntries_IsDeleted_TaskId_UserId_StartTime", "TimeEntries", new[] { "IsDeleted", "TaskId", "UserId", "StartTime" });
-
       // ProjectDocuments
       m.CreateTable("ProjectDocuments", t => new
       {
@@ -1010,7 +981,6 @@ public partial class InitialCreate : Migration
          Enabled = t.Column<bool>(nullable: false),
          UseEnvironmentDefault = t.Column<bool>(nullable: false),
          BaseUrl = t.Column<string>(maxLength: 500, nullable: false),
-         ApiKey = t.Column<string>(maxLength: 2000, nullable: true),
          DefaultModel = t.Column<string>(maxLength: 200, nullable: false),
          CreatedDate = t.Column<DateTime>(nullable: false),
          CreatedBy = t.Column<string>(nullable: false),
@@ -1039,10 +1009,7 @@ public partial class InitialCreate : Migration
          ModifiedDate = t.Column<DateTime>(nullable: true),
          ModifiedBy = t.Column<string>(nullable: true),
          IsDeleted = t.Column<bool>(nullable: false),
-         RowVersion = t.Column<int>(nullable: false),
-         Notes = t.Column<string>(nullable: true),
-         Tags = t.Column<string>(nullable: true),
-         IsActive = t.Column<bool>(nullable: false)
+         RowVersion = t.Column<int>(nullable: false)
       }, constraints: t => t.PrimaryKey("PK_AIGlobalSettings", x => x.Id));
       m.CreateIndex("IX_AIGlobalSettings_DefaultProvider", "AIGlobalSettings", "DefaultProvider");
 
@@ -1184,7 +1151,6 @@ public partial class InitialCreate : Migration
       m.DropTable("AuditLogs");
       m.DropTable("Notifications");
       m.DropTable("ProjectDocuments");
-      m.DropTable("TimeEntries");
       m.DropTable("TaskDependencies");
       m.DropTable("TaskComments");
       m.DropTable("TaskAttachments");

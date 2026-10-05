@@ -1,41 +1,36 @@
-# Database migration squash
+# Database migration history
 
-The repository now keeps three migration steps:
+The repository keeps two migration steps and nothing else:
 
-1. `20260630000000_InitialCreate`
-2. `20261005000000_SchemaCleanup`
-3. `20261005010000_AddUtilizationCertificateAndDocumentCategory`
+1. `20260630000000_InitialCreate` — the full current schema, written so it applies cleanly to both SQL Server and SQLite.
+2. `20261005010000_AddUtilizationCertificateAndDocumentCategory` — adds `ProjectDocuments.Category` and the `UtilizationCertificates` table.
 
-The cleanup migration removes the retired `TimeEntries` table, removes persisted AI provider API keys, and removes the obsolete `AIGlobalSettings.IsActive` column.
+Retired objects are no longer part of the baseline at all. `TimeEntries`, `AIProviderCredentials.ApiKey` and `AIGlobalSettings.IsActive` are absent from `InitialCreate`, because the entity model no longer contains them. The previous `SchemaCleanup` migration, which dropped those objects after creating them, has been removed: SQLite cannot execute `DropColumnOperation`, so the cleanup could never run on a SQLite database.
 
-The final migration adds `ProjectDocuments.Category` and `UtilizationCertificates`.
+`ApplicationDbContextModelSnapshot` matches the current model. `dotnet ef migrations has-pending-model-changes` reports no drift.
 
 ## Fresh database
 
-Run the normal application migration flow. The three migrations build the current schema.
+Run the normal application migration flow. The two migrations build the current schema on either provider.
 
 ## Existing database
 
-Do not run this squash against a production database without a backup.
+Do not run this history against a database that was migrated with the old, unsquashed migration files. Its `__EFMigrationsHistory` contains migration IDs that no longer exist in the repository, so EF cannot reason about its state.
 
-Existing databases contain the old migration IDs in `__EFMigrationsHistory`. The old migration source files were intentionally removed from the repository, so an already-migrated database must be baselined before the normal application startup can use the new history.
+Back up first, then baseline:
 
-For an existing database that already has the current utilization-certificate schema, the baseline process is:
-
-1. Take a full database backup.
-2. Confirm the current database contains the expected application tables.
-3. Apply the schema cleanup equivalent if the old columns/timer table still exist:
+1. Take a full database backup and test the procedure on a copy.
+2. Confirm the application tables are present.
+3. Remove anything the retired model dropped, if it still exists:
+   - `DROP TABLE TimeEntries` (SQLite) / the equivalent on SQL Server
    - drop `AIProviderCredentials.ApiKey`
    - drop `AIGlobalSettings.IsActive`
-   - drop `TimeEntries`
-4. Verify `ProjectDocuments.Category` and `UtilizationCertificates` exist. Add them using the final migration SQL when they do not.
-5. Replace the rows in `__EFMigrationsHistory` with the three migration IDs above.
-6. Start the application and confirm startup migration checks complete without pending migrations.
+4. Verify `ProjectDocuments.Category` and `UtilizationCertificates` exist. Add them with the SQL from the second migration when they do not.
+5. Replace the rows in `__EFMigrationsHistory` with the two IDs above.
+6. Start the application and confirm the startup migration check reports nothing pending.
 
-Use the database's normal backup/restore process and test the baseline on a copy first.
+The API also runs a small SQLite compatibility pass (`EnsureSqliteCompatibilityColumnsAsync`) after migrations. It adds columns that older SQLite databases are missing, such as the `Users` token columns, and drops `AIGlobalSettings.IsActive` if a legacy database still carries it.
 
-## Why this is separate
+## Provider secrets
 
-The code refactor removes timer features and persisted provider secrets. Keeping the migration history aligned with that model prevents future EF migration generation from carrying those retired tables and fields forward.
-
-The client/API never receives provider API keys. Provider credentials come from environment configuration.
+AI provider API keys are never stored in the database and are never sent to the client. Credentials come from environment-backed configuration (`AI__OpenAI__ApiKey`, `AI__OpenRouter__ApiKey`).

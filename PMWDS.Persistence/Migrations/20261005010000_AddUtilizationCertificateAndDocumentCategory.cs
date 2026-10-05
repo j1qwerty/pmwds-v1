@@ -1,10 +1,14 @@
 using System;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using PMWDS.Persistence.Context;
 
 #nullable disable
 
 namespace PMWDS.Persistence.Migrations;
 
+[DbContext(typeof(ApplicationDbContext))]
+[Migration("20261005010000_AddUtilizationCertificateAndDocumentCategory")]
 public partial class AddUtilizationCertificateAndDocumentCategory : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
