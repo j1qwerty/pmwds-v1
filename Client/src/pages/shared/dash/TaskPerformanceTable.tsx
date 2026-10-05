@@ -273,9 +273,7 @@ export default function TaskPerformanceTable({
     ? tasks
     : filteredAndSortedTasks.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  const handleDeleteTask = (id: string) => {
-    console.log("Delete task:", id);
-  };
+
 
   const getSortIcon = (field: SortField) => {
     if (sortField !== field) {
@@ -489,6 +487,7 @@ export default function TaskPerformanceTable({
                     <button className="text-left" onClick={() => onViewTask?.(task)}>
                       <div className="font-medium text-slate-700">{task.title}</div>
                       <div className="text-xs text-slate-400">{task.projectName ?? "General"}</div>
+                      <div className="text-[10px] text-slate-300">{task.milestoneName ?? "No milestone"}</div>
                     </button>
                   </td>
                   <td className="py-4 px-2">
