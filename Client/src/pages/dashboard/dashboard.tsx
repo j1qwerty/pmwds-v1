@@ -309,7 +309,7 @@ export function DashboardPage() {
 
   return (
     <div>
-      <DashboardStats projects={projects} />
+      <DashboardStats projects={projects} dashboard={dashboard} />
 
       <section className="my-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
