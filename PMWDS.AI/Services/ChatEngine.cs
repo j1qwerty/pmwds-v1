@@ -8,6 +8,7 @@ using Microsoft.Extensions.Options;
 using PMWDS.Application.DTOs.AI;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Application.Security;
+using PMWDS.Application.Security;
 using PMWDS.Infrastructure.Settings;
 using PMWDS.Persistence.Context;
 
@@ -92,7 +93,8 @@ public class OpenAICompatibleChatEngine : IChatEngine
     {
         try
         {
-            // Provider selection can be stored in the database, but secrets always come from environment configuration.
+            // Resolve through the database so credentials saved from the Settings
+            // page are honoured, not just environment configuration.
             return IsUsableProvider(await ResolveProviderAsync(provider, ct));
         }
         catch
@@ -404,8 +406,8 @@ public class OpenAICompatibleChatEngine : IChatEngine
             return environmentProvider;
         }
 
-        // Provider enablement, URL and model selection may be stored as ordinary settings.
-        // The API key always comes from environment-backed configuration and is never read from the database.
+        // Provider selection and model overrides may be stored as ordinary settings.
+        // Provider secrets always come from environment-backed configuration.
         var resolved = environmentProvider with
         {
             Enabled = stored.Enabled,
@@ -429,7 +431,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
             return new ResolvedProviderConfig(
                 ProviderId: "OpenAI",
                 Enabled: options.Enabled,
-                ApiKey: options.ApiKey,
+                ApiKey: string.IsNullOrWhiteSpace(options.ApiKey) ? _settings.OpenAIApiKey : options.ApiKey,
                 BaseUrl: string.IsNullOrWhiteSpace(options.BaseUrl) ? "https://api.openai.com/v1" : options.BaseUrl,
                 DefaultModel: string.IsNullOrWhiteSpace(options.DefaultModel) ? _settings.OpenAIModel : options.DefaultModel,
                 ModelsPath: string.IsNullOrWhiteSpace(options.ModelsPath) ? "/models" : options.ModelsPath,

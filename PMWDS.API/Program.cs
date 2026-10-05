@@ -444,9 +444,6 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     await DatabaseConnectionService.PrepareDatabaseAsync(db, databaseStatus, builder.Environment);
 
-    // The .env key is the final key for AI providers; pass it to seeding so the
-    // provider credentials and default provider reflect real configuration.
-    var aiSettings = scope.ServiceProvider.GetRequiredService<IOptions<AISettings>>().Value;
     await SeedData.SeedAsync(db, storageBasePath: storageRoot);
     await SensitiveDataMigrationService.ProtectExistingAsync(
         db,
