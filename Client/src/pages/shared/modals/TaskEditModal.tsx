@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FiAlertTriangle, FiClock, FiCalendar, FiFlag, FiNavigation, FiTrash2, FiSave } from "react-icons/fi";
+import { FiAlertTriangle, FiCalendar, FiFlag, FiNavigation, FiTrash2, FiSave } from "react-icons/fi";
 import type { Milestone, Project, Task, User } from "../../../types";
 import { ModalOverlay, useToast, AvatarStack, PriorityBadge } from "..";
 import { StatusBadgeMinimal } from "../../shared/StatusBadgeMinimal";
@@ -19,7 +19,6 @@ interface TaskEditModalProps {
   onAddComment: (taskId: string, text: string) => Promise<void>;
   onDelete: (taskId: string) => Promise<void>;
   onEscalate?: () => void;
-  onStartTimer: (taskId: string, description: string) => Promise<void>;
   onRefresh: () => void;
 }
 
@@ -34,7 +33,6 @@ export function TaskEditModal({
   onAddComment,
   onDelete,
   onEscalate,
-  onStartTimer,
   onRefresh,
 }: TaskEditModalProps) {
   const { addToast } = useToast();
@@ -44,7 +42,6 @@ export function TaskEditModal({
   const [editStatus, setEditStatus] = useState(task.status);
   const [editPriority, setEditPriority] = useState(task.priority || "Medium");
   const [commentText, setCommentText] = useState("");
-  const [timerDescription, setTimerDescription] = useState("Focused execution block");
 
   const subtaskCount = task.subTasks?.length ?? 0;
   const entityType = task.parentTaskId ? "subtask" : "task";
@@ -101,11 +98,6 @@ export function TaskEditModal({
       setIsDeleting(false);
       addToast("Failed to delete task.");
     }
-  };
-
-  const handleStartTimer = () => {
-    onStartTimer(task.id, timerDescription);
-    addToast("Timer started.");
   };
 
   const hasChanges =
@@ -238,40 +230,19 @@ export function TaskEditModal({
           )}
 
           {mayEdit && (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide block mb-2">
-                  Priority
-                </label>
-                <select
-                  value={editPriority}
-                  onChange={(e) => setEditPriority(e.target.value)}
-                  className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 outline-none focus:border-indigo-300 bg-white"
-                >
-                  {priorities.map((p) => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5 mb-2">
-                  <FiClock className="w-3.5 h-3.5" /> Timer
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    value={timerDescription}
-                    onChange={(e) => setTimerDescription(e.target.value)}
-                    placeholder="What are you working on?"
-                    className="flex-1 min-w-0 px-3 py-1.5 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-300"
-                  />
-                  <button
-                    onClick={handleStartTimer}
-                    className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors flex items-center gap-1 shrink-0"
-                  >
-                    <FiClock className="w-3.5 h-3.5" /> Start
-                  </button>
-                </div>
-              </div>
+            <div>
+              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide block mb-2">
+                Priority
+              </label>
+              <select
+                value={editPriority}
+                onChange={(e) => setEditPriority(e.target.value)}
+                className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 outline-none focus:border-indigo-300 bg-white"
+              >
+                {priorities.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
             </div>
           )}
 
