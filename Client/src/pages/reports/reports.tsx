@@ -243,9 +243,9 @@ export function ReportsPage() {
               <OrganizationDepartmentFilter
                 variant="fields"
                 searchPlaceholder="Search departments..."
-                organizations={organizations}
+                organizations={canViewOrganizations ? organizations : []}
                 departments={departments}
-                users={[]}
+                users={appData.users}
                 selectedOrganizationId={filters.organizationId}
                 selectedDepartmentId={filters.departmentId}
                 onOrganizationChange={(organizationId) => setFilters((current) => ({
@@ -267,6 +267,7 @@ export function ReportsPage() {
             filters={filters}
             generatingReportType={pendingReportType}
             isGeneratingType={isGeneratingType}
+            generationError={generationError}
             onGenerateProjectStatus={handleGenerateProjectStatus}
             onGenerateBudgetVariance={handleGenerateBudgetVariance}
             onGenerateTaskCompletion={handleGenerateTaskCompletion}
