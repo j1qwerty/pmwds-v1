@@ -3,9 +3,11 @@ import type { NotificationItem } from "../../types";
 export function NotificationList({
   items,
   title = "Notifications",
+  onOpen,
 }: {
   items: NotificationItem[];
   title?: string;
+  onOpen?: (item: NotificationItem) => void | Promise<void>;
 }) {
   const itemsArray = Array.isArray(items) ? items : [];
 
@@ -116,9 +118,11 @@ export function NotificationList({
           }
 
           return (
-            <div 
-              key={item.id} 
-              className="flex gap-3 items-start p-3 rounded-xl hover:bg-surface-container-low cursor-pointer transition-all duration-200 border border-transparent hover:border-outline-variant/30 shrink-0"
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => void onOpen?.(item)}
+              className="w-full text-left flex gap-3 items-start p-3 rounded-xl hover:bg-surface-container-low cursor-pointer transition-all duration-200 border border-transparent hover:border-outline-variant/30 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               <div className={`w-9 h-9 rounded-xl ${config.bg} flex items-center justify-center shrink-0 shadow-sm`}>
                 <span className={`material-symbols-outlined ${config.iconColor} text-[18px]`} style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -154,7 +158,7 @@ export function NotificationList({
                 )}
                
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
