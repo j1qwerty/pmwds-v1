@@ -19,7 +19,7 @@ function recentProjects(projects: Project[], predicate: (project: Project) => bo
     }));
 }
 
-const DashboardStats: React.FC<DashboardStatsProps> = ({ projects = [] }) => {
+const DashboardStats = ({ projects = [] }: DashboardStatsProps) => {
   const stats = [
     {
       icon: <Icon name="file" size={16} />,
