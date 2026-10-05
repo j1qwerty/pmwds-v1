@@ -813,6 +813,24 @@ export interface ProjectHealth {
   generatedAt: string;
 }
 
+export interface AISettingsRequest {
+  defaultProvider: string;
+  defaultModel: string;
+  riskThreshold: number;
+  useLocalModel: boolean;
+  mlModelPath: string;
+  providers: AIProviderConfigRequest[];
+}
+
+export interface AIProviderConfigRequest {
+  provider: string;
+  displayName: string;
+  enabled: boolean;
+  useEnvironmentDefault: boolean;
+  baseUrl: string;
+  defaultModel: string;
+}
+
 export interface AISettingsResponse {
   defaultProvider: string;
   defaultModel: string;
