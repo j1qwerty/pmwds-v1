@@ -47,7 +47,7 @@ public class AIProviderCredential : AuditableEntity
         Enabled = enabled;
         UseEnvironmentDefault = useEnvironmentDefault;
         BaseUrl = baseUrl.Trim();
-        ApiKey = string.IsNullOrWhiteSpace(apiKey) ? ApiKey : apiKey.Trim();
+        // Provider credentials never persist API keys. Secrets are loaded from environment configuration only.\n        ApiKey = null;
         DefaultModel = defaultModel.Trim();
     }
 }
