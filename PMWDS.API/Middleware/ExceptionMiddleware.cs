@@ -22,6 +22,12 @@ public class ExceptionMiddleware
         {
             await _next(ctx);
         }
+        catch (OperationCanceledException) when (ctx.RequestAborted.IsCancellationRequested)
+        {
+            // The client went away (navigated off, closed the tab, or a timeout cancelled the
+            // fetch). Nothing failed server-side, so this must not be logged as an unhandled
+            // exception or answered with a 500 - the connection is already gone anyway.
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex,

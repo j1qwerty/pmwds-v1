@@ -112,28 +112,130 @@ public static class DatabaseConnectionService
         }
 
         Console.WriteLine("[PMWDS] Applying database migrations...");
+
+        // A database whose __EFMigrationsHistory references migrations that no longer exist in
+        // the assembly cannot be migrated: EF tries to create tables that are already there and
+        // fails. Previously that failure was swallowed in Development and answered by dropping
+        // the whole database, which turned a recoverable "baseline this database" problem into
+        // silent data loss. Detect it first and say exactly what to do instead.
+        await GuardAgainstStaleMigrationHistoryAsync(db, environment, ct);
+
         try
         {
             await db.Database.MigrateAsync(ct);
         }
-        catch when (environment.IsDevelopment())
+        catch when (environment.IsDevelopment() && AllowDevelopmentReset())
         {
-            Console.WriteLine("[PMWDS] SQL Server development migration failed; recreating database from InitialCreate.");
+            Console.WriteLine(
+                "[PMWDS] SQL Server development migration failed and Database__AllowDevelopmentReset is on; " +
+                "recreating the database from InitialCreate. Any existing data will be lost.");
             await db.Database.EnsureDeletedAsync(ct);
             await db.Database.MigrateAsync(ct);
+        }
+        catch when (environment.IsDevelopment())
+        {
+            throw new InvalidOperationException(
+                "Database migration failed, and the database was left untouched because " +
+                "Database__AllowDevelopmentReset is not set. Fix the cause, or set " +
+                "Database__AllowDevelopmentReset=true to drop and recreate this development " +
+                "database from scratch (this destroys its data). See the exception above for the " +
+                "underlying migration error.");
         }
 
         if (!await HasExpectedSqlServerSchemaAsync(db, ct))
         {
-            if (!environment.IsDevelopment())
+            if (!environment.IsDevelopment() || !AllowDevelopmentReset())
             {
-                throw new InvalidOperationException("SQL Server schema is incomplete after migrations. Refusing to reset outside Development.");
+                throw new InvalidOperationException(
+                    "SQL Server schema is incomplete after migrations. " +
+                    (environment.IsDevelopment()
+                        ? "Set Database__AllowDevelopmentReset=true to recreate this development database (this destroys its data)."
+                        : "Refusing to reset outside Development."));
             }
 
-            Console.WriteLine("[PMWDS] SQL Server development schema is incomplete; recreating database from InitialCreate.");
+            Console.WriteLine(
+                "[PMWDS] SQL Server development schema is incomplete and Database__AllowDevelopmentReset is on; " +
+                "recreating from InitialCreate. Any existing data will be lost.");
             await db.Database.EnsureDeletedAsync(ct);
             await db.Database.MigrateAsync(ct);
         }
+    }
+
+    /// <summary>
+    /// Destructive resets are opt-in. They used to happen automatically in Development, so any
+    /// migration hiccup silently destroyed the developer's database.
+    /// </summary>
+    private static bool AllowDevelopmentReset()
+    {
+        var configured = Environment.GetEnvironmentVariable("Database__AllowDevelopmentReset");
+        return string.Equals(configured, "true", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Fails with an actionable message when the database was last migrated by a migration set
+    /// that has since been squashed or removed.
+    /// </summary>
+    private static async Task GuardAgainstStaleMigrationHistoryAsync(
+        ApplicationDbContext db,
+        IWebHostEnvironment environment,
+        CancellationToken ct)
+    {
+        var applied = await GetAppliedMigrationIdsAsync(db, ct);
+        if (applied.Count == 0)
+        {
+            return;
+        }
+
+        var known = db.Database.GetMigrations();
+        var unknown = applied.Where(id => !known.Contains(id)).ToList();
+        if (unknown.Count == 0)
+        {
+            return;
+        }
+
+        var message =
+            "This database was migrated by migrations that no longer exist in the application: " +
+            string.Join(", ", unknown) +
+            Environment.NewLine +
+            "EF cannot migrate a database in that state. Baseline it against the current migration " +
+            "set before starting: see docs/database/migration-squash.md." +
+            Environment.NewLine +
+            "For a throwaway development database, set Database__AllowDevelopmentReset=true and restart to " +
+            "drop and recreate it from scratch (this destroys its data).";
+
+        if (environment.IsDevelopment())
+        {
+            Console.WriteLine("[PMWDS] " + message);
+        }
+
+        throw new InvalidOperationException(message);
+    }
+
+    private static async Task<List<string>> GetAppliedMigrationIdsAsync(
+        ApplicationDbContext db,
+        CancellationToken ct)
+    {
+        var connection = db.Database.GetDbConnection();
+        if (connection.State != ConnectionState.Open)
+        {
+            await connection.OpenAsync(ct);
+        }
+
+        var applied = new List<string>();
+        await using var command = connection.CreateCommand();
+        command.CommandText =
+            "SELECT [MigrationId] FROM [__EFMigrationsHistory]";
+
+        await using var reader = await command.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            if (!reader.IsDBNull(0))
+            {
+                applied.Add(reader.GetString(0));
+            }
+        }
+
+        return applied;
     }
 
     /// <summary>
