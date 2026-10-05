@@ -183,6 +183,13 @@ internal static class MiscSeeder
 
     private static async Task SeedWebhooksAsync(ApplicationDbContext context, Guid integrationId, CancellationToken ct)
     {
+        var seedSecret = Environment.GetEnvironmentVariable("PMWDS_SEED_WEBHOOK_SECRET");
+        if (string.IsNullOrWhiteSpace(seedSecret))
+        {
+            // Never persist a hard-coded webhook signing secret in seed data.
+            return;
+        }
+
         var specs = new[]
         {
             ("task.created", "https://hooks.example.com/pmwds/task-created"),
@@ -191,10 +198,19 @@ internal static class MiscSeeder
 
         foreach (var spec in specs)
         {
-            var webhook = await context.Webhooks.FirstOrDefaultAsync(w => w.IntegrationId == integrationId && w.EventType == spec.Item1, ct);
+            var webhook = await context.Webhooks.FirstOrDefaultAsync(
+                w => w.IntegrationId == integrationId && w.EventType == spec.Item1,
+                ct);
+
             if (webhook == null)
             {
-                webhook = Webhook.Create(integrationId, spec.Item1, spec.Item2, "seed-secret-change-me", new[] { "X-PMWDS-Source: seed" }, true);
+                webhook = Webhook.Create(
+                    integrationId,
+                    spec.Item1,
+                    spec.Item2,
+                    seedSecret,
+                    new[] { "X-PMWDS-Source: seed" },
+                    true);
                 webhook.SetCreatedBy(SeedConstants.SeedUser);
                 await context.Webhooks.AddAsync(webhook, ct);
                 await context.SaveChangesAsync(ct);
