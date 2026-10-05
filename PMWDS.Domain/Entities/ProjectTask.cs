@@ -174,11 +174,6 @@ public class ProjectTask : AuditableEntity, IHasDomainEvents
         => _attachments.Add(attachment);
     public void AddDependency(TaskDependency dependency)
         => _dependencies.Add(dependency);
-    public void LogTime(TimeEntry entry)
-    {
-        _timeEntries.Add(entry);
-        ActualHours += (int)entry.Duration.TotalHours;
-    }
     public void Complete()
     {
         Status = TaskStatus.Completed;
