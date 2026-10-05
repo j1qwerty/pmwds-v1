@@ -61,7 +61,7 @@ import type {
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ??
-  "http://localhost:5177/api/v1";
+  "http://localhost:5179/api/v1";
 
 type ApiOptions = {
   token?: string | null;

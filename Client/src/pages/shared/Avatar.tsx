@@ -29,7 +29,7 @@ const sizeClass = {
 const apiOrigin = (() => {
   const configured = import.meta.env.VITE_API_BASE_URL;
   // Unset means local development against a separately hosted API.
-  if (!configured) return "http://localhost:5177";
+  if (!configured) return "http://localhost:5179";
   // A relative base such as "/api/v1" means the API is served from this same origin. Strip it to
   // an empty string so the paths below compose as root-relative URLs. Falling back to localhost
   // here would point avatar and file requests at a developer's machine.

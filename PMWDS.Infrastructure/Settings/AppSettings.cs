@@ -9,7 +9,7 @@ public class EmailSettings
     public string SenderEmail { get; set; } = string.Empty;
     public string SenderName { get; set; } = string.Empty;
     public bool UseSsl { get; set; } = true;
-    public string ClientBaseUrl { get; set; } = "http://localhost:5173";
+    public string ClientBaseUrl { get; set; } = "http://localhost:5175";
     public int PasswordResetMinutes { get; set; } = 30;
 }
 
@@ -41,7 +41,7 @@ public class AISettings
     public string DefaultProvider { get; set; } = "OpenRouter";
     public string DefaultModel { get; set; } = "nvidia/nemotron-3-ultra-550b-a55b:free";
     public string AppName { get; set; } = "PMWDS";
-    public string AppUrl { get; set; } = "http://localhost:5177";
+    public string AppUrl { get; set; } = "http://localhost:5179";
     public string MLModelPath { get; set; } = string.Empty;
     public bool UseLocalModel { get; set; } = false;
     public double RiskThreshold { get; set; } = 0.7;

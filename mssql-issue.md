@@ -68,7 +68,7 @@ on a 7.8 GB box. Raising it invites the paging behaviour that caused the origina
 Every authenticated page load takes roughly **25–27 seconds** on SQL Server. On SQLite the
 same pages are instant.
 
-Measured through a real browser against a local API on `http://localhost:5177`:
+Measured through a real browser against a local API on `http://localhost:5179`:
 
 **Login**
 
@@ -427,7 +427,7 @@ dotnet run --project .\PMWDS.API\
 
 ```powershell
 # Seven parallel calls, the same shape the browser produces
-$base = "http://localhost:5177/api/v1"
+$base = "http://localhost:5179/api/v1"
 $t = (Invoke-RestMethod -Uri "$base/auth/login" -Method Post -ContentType "application/json" `
       -Body '{"email":"superadmin@org1.com","password":"Pmwds@123"}').data.token
 $h = @{ Authorization = "Bearer $t" }

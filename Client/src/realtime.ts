@@ -22,7 +22,7 @@ import type { DataChangedNotification } from "./realtimeScopes";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ??
-  "http://localhost:5177/api/v1";
+  "http://localhost:5179/api/v1";
 
 /** Matches STORAGE_KEY in auth.tsx, where the current JWT is persisted. */
 const AUTH_STORAGE_KEY = "pmwds-client-auth";
@@ -37,7 +37,7 @@ function resolveHubUrl(): string {
   // /api/v1 prefix, so only the origin matters here and the API path must be discarded.
   //
   // That discarding has to happen for BOTH forms of the base:
-  //   absolute  http://localhost:5177/api/v1  -> origin http://localhost:5177
+  //   absolute  http://localhost:5179/api/v1  -> origin http://localhost:5179
   //   relative  /api/v1                       -> origin https://host
   // Previously only the absolute branch stripped the path, so the relative form produced
   // /api/v1/hubs/dashboard - correct nowhere. Dev used the absolute form and passed, so

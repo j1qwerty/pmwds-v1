@@ -156,8 +156,8 @@ with React 19 + Vite 8; resolves to `10.0.11` at time of writing).
 
 - Builds the hub URL from the same base as `Client/src/api.ts`. `API_BASE_URL` there
   is e.g. `https://pmwds.dharmaatribe.app/api/v1`, so derive the origin and append
-  `/hubs/dashboard`. In dev (`http://localhost:5177/api/v1`) that yields
-  `http://localhost:5177/hubs/dashboard`.
+  `/hubs/dashboard`. In dev (`http://localhost:5179/api/v1`) that yields
+  `http://localhost:5179/hubs/dashboard`.
 - A module-level singleton `HubConnection` with `accessTokenFactory` returning the
   current JWT from `localStorage` key `pmwds-client-auth` (matching
   `STORAGE_KEY` in `Client/src/auth.tsx`). Reading from storage rather than React
@@ -330,7 +330,7 @@ Manual, since there is no test suite for this area:
 5. Confirm A itself sees its own save immediately (previously up to 30s stale).
 6. Kill the API or block the socket, confirm the 60s poll + focus refetch still
    recover the data, and that the offline hint appears.
-7. `curl -sI -H "Authorization: Bearer <token>" http://localhost:5177/api/v1/pages`
+7. `curl -sI -H "Authorization: Bearer <token>" http://localhost:5179/api/v1/pages`
    → assert **no** `Cache-Control: public, max-age=30`.
 8. Restart with Redis stopped → confirm `/pages` still returns 200 and one clear
    warning is logged (not a 500).

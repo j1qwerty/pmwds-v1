@@ -100,7 +100,7 @@ Hangfire is enabled only when SQL Server is active (line 130-138 of Program.cs).
 
 - `dotnet build PMWDS.slnx`
 - API startup on SQLite (auto-creates/recreates schema)
-- Swagger at `http://localhost:5177/swagger/v1/swagger.json`
+- Swagger at `http://localhost:5179/swagger/v1/swagger.json`
 - EF migration creation (`dotnet ef migrations add ...`)
 - Full local development workflow
 
@@ -197,7 +197,7 @@ The project uses two competing schema strategies (`EnsureCreated` + migrations) 
 
 ```powershell
 # Run API locally (SQLite auto-bootstrap)
-dotnet run --project PMWDS.API --urls http://localhost:5177
+dotnet run --project PMWDS.API --urls http://localhost:5179
 
 # Add a migration
 dotnet ef migrations add MigrationName --project PMWDS.Persistence --startup-project PMWDS.API --context ApplicationDbContext

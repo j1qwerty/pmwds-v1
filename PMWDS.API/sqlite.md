@@ -8,7 +8,7 @@ PMWDS (Project Management & Workflow Documentation System) is a multi-project .N
 
 ```
 PMWDS.S/
-├── PMWDS.API/           # Main Web API entry point (runs on port 5177)
+├── PMWDS.API/           # Main Web API entry point (runs on port 5179)
 ├── PMWDS.Application/  # Application layer (CQRS, MediatR handlers)
 ├── PMWDS.Domain/       # Domain entities, enums, events
 ├── PMWDS.Persistence/  # EF Core, DbContext, repositories, migrations
@@ -284,7 +284,7 @@ PMWDS.API/App_Data/Files/pmwds-files/ab12/76b1bcb2-f9e3-4db3-bc77-289343d3d118.p
 ```bash
 cd PMWDS.API
 dotnet run
-# Opens on http://localhost:5177
+# Opens on http://localhost:5179
 ```
 
 ### SQLite Limitations with Hangfire

@@ -46,14 +46,14 @@ npm run build
 API:
 
 ```powershell
-dotnet run --project PMWDS.API --urls http://localhost:5177
+dotnet run --project PMWDS.API --urls http://localhost:5179
 ```
 
 Client:
 
 ```powershell
 cd Client
-npm run dev -- --host 127.0.0.1 --port 5173
+npm run dev -- --host 127.0.0.1 --port 5175
 ```
 
 ## Core Configuration Files
@@ -172,7 +172,7 @@ SQLite note:
 ```powershell
 # Do not rely on direct database update against the existing dev SQLite file.
 # Use the API startup path for local SQLite schema bootstrap and seed data.
-dotnet run --project PMWDS.API --urls http://localhost:5177
+dotnet run --project PMWDS.API --urls http://localhost:5179
 ```
 
 ## JWT Authentication
@@ -284,7 +284,7 @@ File: `PMWDS.API/appsettings.json`
   "DefaultProvider": "OpenRouter",
   "DefaultModel": "openai/gpt-oss-120b:free",
   "AppName": "PMWDS",
-  "AppUrl": "http://localhost:5177",
+  "AppUrl": "http://localhost:5179",
   "OpenAI": {
     "Enabled": true,
     "BaseUrl": "https://api.openai.com/v1",
@@ -299,7 +299,7 @@ File: `PMWDS.API/appsettings.json`
     "DefaultModel": "openai/gpt-oss-120b:free",
     "ModelsPath": "/models",
     "Headers": {
-      "HTTP-Referer": "http://localhost:5177",
+      "HTTP-Referer": "http://localhost:5179",
       "X-OpenRouter-Title": "PMWDS"
     }
   },
@@ -374,10 +374,10 @@ File: `PMWDS.API/appsettings.json`
 
 ```json
 "AllowedOrigins": [
-  "http://localhost:3000",
+  "http://localhost:3002",
   "http://localhost:4200",
-  "http://localhost:5177",
-  "http://localhost:5173",
+  "http://localhost:5179",
+  "http://localhost:5175",
   "https://pmwds.yourdomain.com"
 ]
 ```
@@ -424,7 +424,7 @@ Production changes:
 The React client defaults to:
 
 ```text
-http://localhost:5177/api/v1
+http://localhost:5179/api/v1
 ```
 
 Override with Vite environment variable:
@@ -438,7 +438,7 @@ Local development:
 
 ```powershell
 cd Client
-npm run dev -- --host 127.0.0.1 --port 5173
+npm run dev -- --host 127.0.0.1 --port 5175
 ```
 
 Production build:

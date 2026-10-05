@@ -53,7 +53,7 @@ The app supports two database modes:
 
 ```powershell
 dotnet build PMWDS.slnx
-dotnet run --project PMWDS.API --urls http://localhost:5177
+dotnet run --project PMWDS.API --urls http://localhost:5179
 ```
 
 The SQLite database is at `PMWDS.API/App_Data/pmwds-dev.sqlite`. The API automatically uses SQLite because `appsettings.Development.json` has `Database:ForceSqlite: true`.
@@ -72,7 +72,7 @@ Run the API pointing to Docker SQL Server:
 
 ```powershell
 dotnet build PMWDS.slnx
-dotnet run --project PMWDS.API --urls http://localhost:5177
+dotnet run --project PMWDS.API --urls http://localhost:5179
 ```
 
 The API checks SQL Server once and uses it when reachable. Hangfire and Redis cache are active in this mode.
@@ -90,16 +90,16 @@ Run the client:
 ```powershell
 cd Client
 npm install
-npm run dev -- --host 127.0.0.1 --port 5173
+npm run dev -- --host 127.0.0.1 --port 5175
 ```
 
 Default URLs:
 
 ```text
-API:    http://localhost:5177
-Client: http://127.0.0.1:5173
-Swagger: http://localhost:5177/swagger
-Scalar:  http://localhost:5177/scalar
+API:    http://localhost:5179
+Client: http://127.0.0.1:5175
+Swagger: http://localhost:5179/swagger
+Scalar:  http://localhost:5179/scalar
 ```
 
 ## Docker Setup
@@ -273,7 +273,7 @@ of the in-process host:
 ```powershell
 # local
 dotnet run --project .\PMWDS.API
-$env:PMWDS_TEST_BASE_URL = "http://localhost:5177"
+$env:PMWDS_TEST_BASE_URL = "http://localhost:5179"
 dotnet test PMWDS.Tests\PMWDS.Tests.csproj
 
 # the VPS
