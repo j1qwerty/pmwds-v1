@@ -551,6 +551,19 @@ export interface WorkloadReport {
   generatedAt: string;
 }
 
+export interface ProjectDashboardData {
+  totalProjects: number;
+  activeProjects: number;
+  completedProjects: number;
+  overdueProjects: number;
+  highRiskProjects: number;
+  averageHealthScore: number;
+  totalBudget: number;
+  totalActualCost: number;
+  recentProjects: ProjectSummary[];
+  atRiskProjects: ProjectSummary[];
+}
+
 export interface DashboardData {
   totalProjects: number;
   activeProjects: number;
