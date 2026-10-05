@@ -1,0 +1,9 @@
+<Solution>
+  <Project Path="PMWDS.AI/PMWDS.AI.csproj" />
+  <Project Path="PMWDS.API/PMWDS.API.csproj" />
+  <Project Path="PMWDS.Application/PMWDS.Application.csproj" />
+  <Project Path="PMWDS.Domain/PMWDS.Domain.csproj" />
+  <Project Path="PMWDS.Infrastructure/PMWDS.Infrastructure.csproj" />
+  <Project Path="PMWDS.Persistence/PMWDS.Persistence.csproj" />
+  <Project Path="PMWDS.Tests/PMWDS.Tests.csproj" />
+</Solution>

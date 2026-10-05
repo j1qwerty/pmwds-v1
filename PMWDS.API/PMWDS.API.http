@@ -1,0 +1,6 @@
+@PMWDS.API_HostAddress = http://localhost:5177
+
+GET {{PMWDS.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
