@@ -19,7 +19,7 @@ public interface IDelayPredictionEngine
 public class TaskDelayInput
 {
     [LoadColumn(0)] public float EstimatedHours { get; set; }
-    [LoadColumn(1)] public float ActualHours { get; set; }
+    [LoadColumn(1)] public float DaysSinceStart { get; set; }
     [LoadColumn(2)] public float ProgressPercentage { get; set; }
     [LoadColumn(3)] public float DaysUntilDue { get; set; }
     [LoadColumn(4)] public float EscalationLevel { get; set; }
@@ -118,7 +118,7 @@ public class MLDelayPredictionEngine : IDelayPredictionEngine
     return new()
     {
         EstimatedHours = task.EstimatedHours,
-        ActualHours = task.ActualHours,
+        DaysSinceStart = (float)(DateTime.UtcNow - task.StartDate).TotalDays,
         ProgressPercentage = (float)task.ProgressPercentage,
         DaysUntilDue =
     (float)(task.DueDate - DateTime.UtcNow)
@@ -151,17 +151,17 @@ public class MLDelayPredictionEngine : IDelayPredictionEngine
         // Low progress vs time consumed
         var totalDays = (task.DueDate - task.StartDate)
         .TotalDays;
+        var elapsed = (DateTime.UtcNow - task.StartDate)
+        .TotalDays;
         if (totalDays > 0)
         {
-            var elapsed = (DateTime.UtcNow - task.StartDate)
-            .TotalDays;
             var expected = elapsed / totalDays * 100;
             if (task.ProgressPercentage < expected - 20)
                 risk += 0.30;
         }
-        // Hours exceeded estimate
-        if (task.EstimatedHours > 0
-        && task.ActualHours > task.EstimatedHours * 0.9)
+        // The estimate is spent before the deadline even arrives. Without a
+        // time tracker the best available proxy is elapsed calendar days.
+        if (task.EstimatedHours > 0 && daysLeft > 0 && elapsed > task.EstimatedHours * 0.75)
             risk += 0.15;
         // Escalation already triggered
         if (task.IsEscalated)
@@ -182,8 +182,8 @@ public class MLDelayPredictionEngine : IDelayPredictionEngine
             factors.Add("Task is already past due date.");
         if (task.ProgressPercentage < 30 && daysLeft < 5)
             factors.Add("Low progress with deadline approaching.");
-        if (task.ActualHours > task.EstimatedHours)
-            factors.Add("Actual hours exceed estimate.");
+        if (task.EstimatedHours > 0 && daysLeft > 0 && (DateTime.UtcNow - task.StartDate).TotalDays > task.EstimatedHours * 0.75)
+            factors.Add("Most of the time estimate is already spent.");
         if (task.IsEscalated)
             factors.Add("Task has been escalated.");
         if (task.Dependencies?.Any() == true)

@@ -194,7 +194,6 @@ class Project {
  +string Status
  +string Priority
  +int EstimatedHours
- +int ActualHours
  +double ProgressPercentage
  +List~Guid~ Dependencies
  +List~string~ Tags
@@ -204,10 +203,8 @@ class Project {
  +RemoveDependency(taskId: Guid): void
  +AssignToUser(userId: Guid, assignerId: Guid): void
  +Complete(): void
- +CalculateTimeRemaining(): TimeSpan
  +IsOverdue(): bool
  +GetSubTasks(): List~Task~
- +AddTimeEntry(entry: TimeEntry): void
  }
  class SubTask {
  +Guid SubTaskId
@@ -230,24 +227,10 @@ class Project {
  +Validate(): bool
  +GetCriticalPath(): List~Guid~
  }
- class TimeEntry {
- +Guid TimeEntryId
- +Guid TaskId
- +Guid UserId
- +DateTime StartTime
- +DateTime? EndTime
- +string Description
- +bool IsBillable
-+CalculateDuration(): TimeSpan
- +StopTimer(): void
- +UpdateDescription(description: string): void
- }
-
-Project "1" -- "*" Milestone
+ Project "1" -- "*" Milestone
 Project "1" -- "*" Task
 Task "1" -- "*" SubTask
 Task "1" -- "*" TaskDependency
-Task "1" -- "*" TimeEntry
 ```
 
 ---

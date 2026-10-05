@@ -139,8 +139,6 @@ Viewer        → minimal access
 | `POST /{id}/escalate` | ✅ `CanManageTaskAsync()` | ✓ |
 | **`POST /{id}/comments`** | ⚠️ Only `CanAccessProjectAsync()` | **GAP-5**: Adding comments should require `CanManageProjectAsync()` |
 | **`POST /{id}/attachments`** | ⚠️ Only `CanAccessProjectAsync()` | **GAP-5**: Uploading attachments should require `CanManageProjectAsync()` |
-| **`POST /{id}/time/start`** | ⚠️ Only `CanAccessProjectAsync()` | **GAP-5**: Starting time tracking should require `CanManageProjectAsync()` |
-| **`POST /{id}/time/stop`** | ⚠️ Only `CanAccessProjectAsync()` | **GAP-5**: Stopping time tracking should require `CanManageProjectAsync()` |
 | `GET /overdue` | ✅ `GetAccessibleProjectIdsAsync()` | ✓ |
 | `GET /escalated` | ✅ `GetAccessibleProjectIdsAsync()` | ✓ |
 | `GET /unassigned` | ✅ `GetAccessibleProjectIdsAsync()` | ✓ |
@@ -315,7 +313,7 @@ The `Manager` named policy's `RequireAny` logic means a user who has `REPORT_CRE
 | **GAP-2** | 🔴 **High** | Projects | `GetDashboard()` | When `departmentId` is null, the dashboard shows all-project data without any role-scope filtering |
 | **GAP-3** | 🟡 **Medium** | Projects | `Create()` | Logic restricts project creation to SuperAdmin/Director only; DepartmentHeads with `ProjectCreate` permission are denied |
 | **GAP-4** | 🟡 **Medium** | Tasks/Subtasks | `CreateSubtask()` | Subtask's `ProjectId` from DTO is not validated against parent task's project – allows cross-project subtask creation |
-| **GAP-5** | 🟡 **Medium** | Tasks | `AddComment`, `UploadAttachment`, `StartTimer`, `StopTimer` | Write/action operations require only view-level access (`CanAccessProjectAsync`) instead of manage-level (`CanManageProjectAsync`) |
+| **GAP-5** | 🟡 **Medium** | Tasks | `AddComment`, `UploadAttachment` | Write/action operations require only view-level access (`CanAccessProjectAsync`) instead of manage-level (`CanManageProjectAsync`) |
 | **GAP-6** | 🟡 **Medium** | Tasks/Dependencies | `CreateDependency`, `UpdateDependency`, `DeleteDependency` | Dependency CRUD operations require only view-level access instead of manage-level |
 | **GAP-7** | 🟡 **Medium** | Reports | `GetStoredReports`, `GetStoredReport`, `DownloadStoredReport` | Stored report retrieval has no scope check – users can access any stored report |
 | **GAP-8** | 🟡 **Medium** | RoleScopeService | Missing methods | No `ScopeMilestonesAsync`, `ScopeActivityLogsAsync`, `ScopeReportsAsync` IQueryable scoping methods |
@@ -361,7 +359,7 @@ The `Manager` named policy's `RequireAny` logic means a user who has `REPORT_CRE
 2. **GAP-2**: Apply `ScopeProjectsAsync()` to the dashboard query in `ProjectsController.GetDashboard()` when `departmentId` is null
 
 ### Medium Priority
-3. **GAP-5**: Upgrade `AddComment`, `UploadAttachment`, `StartTimer`, `StopTimer` from `CanAccessProjectAsync()` to `CanManageProjectAsync()`
+3. **GAP-5**: Upgrade `AddComment`, `UploadAttachment` from `CanAccessProjectAsync()` to `CanManageProjectAsync()`
 4. **GAP-6**: Upgrade dependency CRUD endpoints to use `CanManageProjectAsync()`
 5. **GAP-7**: Add scope filtering to stored report endpoints in `ReportsController.cs`
 6. **GAP-4**: Validate subtask's `ProjectId` matches parent task's project in `CreateSubtask()`
@@ -409,7 +407,7 @@ Scope handled in this pass: Auth, Users, Profiles, Roles/Permissions, Organizati
    - `POST /projects` no longer hard-denies scoped non-Director managers after the policy passes; it validates department scope and project-manager organization membership.
 
 7. Task and subtask gaps were fixed.
-   - Comments, attachments, timer start, and timer stop now require project manage access.
+   - Comments and attachments now require project manage access.
    - Dependency create/update/delete now require manage-level access to the involved tasks/projects.
    - Subtask creation now rejects a `ProjectId` that does not match the parent task's project.
 

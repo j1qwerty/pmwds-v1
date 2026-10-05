@@ -26,7 +26,6 @@ public class ProjectTask : AuditableEntity, IHasDomainEvents
     public string? RecurrencePattern { get; private set; }
     // Effort
     public int EstimatedHours { get; private set; }
-    public int ActualHours { get; private set; }
     public double ProgressPercentage { get; private set; }
     public string? CompletionNotes { get; private set; }
     // Escalation
@@ -232,11 +231,6 @@ public class ProjectTask : AuditableEntity, IHasDomainEvents
     public bool IsOverdue()
         => Status != TaskStatus.Completed
         && DateTime.UtcNow > DueDate;
-    public int GetEfficiencyRatio()
-    {
-        if (ActualHours == 0) return 0;
-        return (int)(EstimatedHours / (double)ActualHours * 100);
-    }
     public void ClearDomainEvents()
         => _domainEvents.Clear();
 }

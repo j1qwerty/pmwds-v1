@@ -190,7 +190,6 @@ const iconMap = {
   lightbulb: HiOutlineLightBulb,
   rule: HiOutlineClipboardList,
   restart_alt: FiRefreshCw,
-  timer: HiOutlineClock,
 
   // Material Symbol name aliases (only those not already defined above)
   search_off: HiOutlineSearch,

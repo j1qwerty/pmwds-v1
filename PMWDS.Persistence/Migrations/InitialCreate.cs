@@ -444,7 +444,6 @@ public partial class InitialCreate : Migration
          IsRecurring = t.Column<bool>(nullable: false),
          RecurrencePattern = t.Column<string>(nullable: true),
          EstimatedHours = t.Column<int>(nullable: false),
-         ActualHours = t.Column<int>(nullable: false),
          ProgressPercentage = t.Column<decimal>(type: "decimal(5,2)", nullable: false),
          CompletionNotes = t.Column<string>(nullable: true),
          IsEscalated = t.Column<bool>(nullable: false),

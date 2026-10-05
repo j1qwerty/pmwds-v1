@@ -56,7 +56,6 @@ const KNOWN_ICONS = new Set<string>([
   "workspace_premium",
   "verified",
   "schedule",
-  "timer",
   "event_busy",
   "hourglass_bottom",
   "speed",

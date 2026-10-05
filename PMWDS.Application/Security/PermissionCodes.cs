@@ -41,7 +41,6 @@ public static class PermissionCodes
     public const string TaskAssign = "TASK_ASSIGN";
     public const string TaskCommentCreate = "TASK_COMMENT_CREATE";
     public const string TaskAttachmentCreate = "TASK_ATTACHMENT_CREATE";
-    public const string TaskTimeTrack = "TASK_TIME_TRACK";
 
     public const string SubtaskManage = "SUBTASK_MANAGE";
     public const string SubtaskView = "SUBTASK_VIEW";

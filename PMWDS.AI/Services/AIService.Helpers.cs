@@ -43,7 +43,7 @@ public partial class AIService
             "1.0.0",
             _settings.MLModelPath,
             new Dictionary<string, double> { ["riskThreshold"] = _settings.RiskThreshold },
-            new[] { "EstimatedHours", "ActualHours", "ProgressPercentage", "DaysUntilDue", "EscalationLevel", "DependencyCount" });
+            new[] { "EstimatedHours", "DaysSinceStart", "ProgressPercentage", "DaysUntilDue", "EscalationLevel", "DependencyCount" });
         model.SetCreatedBy("system");
         await _uow.AIModels.AddAsync(model, ct);
         await _uow.SaveChangesAsync(ct);
@@ -135,7 +135,7 @@ public partial class AIService
             ["taskId"] = task.Id,
             ["priority"] = task.Priority.ToString(),
             ["estimatedHours"] = task.EstimatedHours,
-            ["actualHours"] = task.ActualHours,
+            ["daysSinceStart"] = (DateTime.UtcNow - task.StartDate).TotalDays,
             ["progressPercentage"] = task.ProgressPercentage,
             ["dependencyCount"] = task.Dependencies.Count,
             ["candidateCount"] = candidateCount
@@ -146,7 +146,7 @@ public partial class AIService
         {
             ["taskId"] = task.Id,
             ["estimatedHours"] = task.EstimatedHours,
-            ["actualHours"] = task.ActualHours,
+            ["daysSinceStart"] = (DateTime.UtcNow - task.StartDate).TotalDays,
             ["progressPercentage"] = task.ProgressPercentage,
             ["daysUntilDue"] = (task.DueDate - DateTime.UtcNow).TotalDays,
             ["dependencyCount"] = task.Dependencies.Count,

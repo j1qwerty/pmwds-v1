@@ -9,7 +9,7 @@ namespace PMWDS.Tests.Infrastructure;
 /// </summary>
 public sealed class Session : IDisposable
 {
-    private const string DefaultPassword = "Pmwds@123";
+    private const string DefaultPassword = ApiFactory.SeedPassword;
 
     private Session(ApiClient client, string email, string userId, string[] roles, string[] permissions)
     {
@@ -193,7 +193,10 @@ public sealed class ApiFixture : IAsyncLifetime
     }
 }
 
-/// <summary>Seeded identities. Password is the seeder default, see SeedConstants.DefaultPassword.</summary>
+/// <summary>
+/// Seeded identities. <see cref="Password"/> is the value the test factory puts in
+/// <c>Seed__DefaultPassword</c>, which is where the seeder reads it from.
+/// </summary>
 public static class SeededUsers
 {
     public const string SuperAdmin = "superadmin@org1.com";
@@ -203,5 +206,5 @@ public static class SeededUsers
     public const string TeamMember = "member@org1.com";       // PWDC
     public const string Viewer = "viewer@org1.com";           // PWD
 
-    public const string Password = "Pmwds@123";
+    public const string Password = ApiFactory.SeedPassword;
 }

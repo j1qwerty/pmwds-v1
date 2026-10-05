@@ -1957,9 +1957,6 @@ namespace PMWDS.Persistence.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("ActualHours")
-                        .HasColumnType("INTEGER");
-
                     b.Property<Guid?>("AssignedByUserId")
                         .HasColumnType("TEXT");
 

@@ -52,6 +52,13 @@ public sealed class ApiFactory : WebApplicationFactory<PMWDS.API.TestHost>
     public static string ExternalBaseUrl =>
         Environment.GetEnvironmentVariable("PMWDS_TEST_BASE_URL")!.TrimEnd('/');
 
+    /// <summary>
+    /// Password used for every seeded account in the test database. The seeder reads
+    /// <c>Seed__DefaultPassword</c> from the environment and has no built-in fallback, so the
+    /// suite has to supply the same value here or seeding would abort.
+    /// </summary>
+    public const string SeedPassword = "Pmwds@Test_Only_0123456789";
+
     private static Dictionary<string, string?> BuildSettings(string databasePath, string storageRoot) => new()
     {
         // SQLite: fast and self-contained, and it runs the same migrations and cascade
@@ -83,6 +90,8 @@ public sealed class ApiFactory : WebApplicationFactory<PMWDS.API.TestHost>
         ["Serilog:MinimumLevel:Override:System"] = "Error",
 
         ["AllowedOrigins:0"] = "http://localhost",
+
+        ["Seed:DefaultPassword"] = SeedPassword,
     };
 
     /// <summary>

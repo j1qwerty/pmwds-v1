@@ -49,7 +49,6 @@ internal static class RolesAndPermissionsSeeder
             (PermissionCodes.TaskAssign, "Assign Tasks", "Assign task ownership.", "Tasks", false),
             (PermissionCodes.TaskCommentCreate, "Create Task Comments", "Add comments to tasks.", "Tasks", false),
             (PermissionCodes.TaskAttachmentCreate, "Create Task Attachments", "Upload task attachments.", "Tasks", false),
-            (PermissionCodes.TaskTimeTrack, "Track Task Time", "Start and stop task timers.", "Tasks", false),
             (PermissionCodes.SubtaskManage, "Manage Subtasks", "Manage all subtask permissions.", "Subtasks", false),
             (PermissionCodes.SubtaskView, "View Subtasks", "View subtask records.", "Subtasks", false),
             (PermissionCodes.SubtaskCreate, "Create Subtasks", "Create subtask records.", "Subtasks", false),
@@ -134,6 +133,10 @@ internal static class RolesAndPermissionsSeeder
             ["ACTIVITY_LOGS.VIEW"] = PermissionCodes.ActivityLogView
         };
 
+        // Retired codes. Nothing grants these any more, so the rows and any role
+        // grants are removed rather than left orphaned in the Permissions table.
+        var retiredCodes = new[] { "TASK_TIME_TRACK" };
+
         var legacyCodes = replacements.Keys.ToList();
         var targetCodes = replacements.Values.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         var permissions = await context.Permissions
@@ -161,6 +164,47 @@ internal static class RolesAndPermissionsSeeder
         }
 
         context.Permissions.RemoveRange(permissions.Where(permission => legacyCodes.Contains(permission.Code)));
+
+        await RemoveRetiredPermissionsAsync(context, retiredCodes, ct);
+    }
+
+    /// <summary>
+    /// Deletes permission rows for features that no longer exist, together with any role grants
+    /// pointing at them. Seeded roles are rebuilt from the catalog on every run, so removing the
+    /// grant here is enough; this only exists to clean up databases seeded before the removal.
+    /// </summary>
+    private static async Task RemoveRetiredPermissionsAsync(
+        ApplicationDbContext context,
+        string[] retiredCodes,
+        CancellationToken ct)
+    {
+        var retired = await context.Permissions
+            .Where(permission => retiredCodes.Contains(permission.Code))
+            .ToListAsync(ct);
+
+        if (retired.Count == 0)
+        {
+            return;
+        }
+
+        var retiredIds = retired.Select(permission => permission.Id).ToList();
+        var roles = await context.Roles
+            .Include(role => role.Permissions)
+            .Where(role => role.Permissions.Any(permission => retiredIds.Contains(permission.Id)))
+            .ToListAsync(ct);
+
+        foreach (var role in roles)
+        {
+            foreach (var permissionId in role.Permissions
+                         .Where(permission => retiredIds.Contains(permission.Id))
+                         .Select(permission => permission.Id)
+                         .ToList())
+            {
+                role.RemovePermission(permissionId);
+            }
+        }
+
+        context.Permissions.RemoveRange(retired);
     }
 
     private static async Task SeedRolesAsync(ApplicationDbContext context, CancellationToken ct)
@@ -225,7 +269,7 @@ internal static class RolesAndPermissionsSeeder
         {
             PermissionCodes.ProjectView,
             PermissionCodes.MilestoneView,
-            PermissionCodes.TaskView, PermissionCodes.TaskEdit, PermissionCodes.TaskCommentCreate, PermissionCodes.TaskAttachmentCreate, PermissionCodes.TaskTimeTrack,
+            PermissionCodes.TaskView, PermissionCodes.TaskEdit, PermissionCodes.TaskCommentCreate, PermissionCodes.TaskAttachmentCreate,
             PermissionCodes.SubtaskView, PermissionCodes.SubtaskCreate, PermissionCodes.SubtaskEdit,
             PermissionCodes.NotificationView,
             PermissionCodes.ActivityLogCreate,

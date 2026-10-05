@@ -137,7 +137,7 @@ When using SQLite:
 **Entity Sets:**
 - `Departments`, `Projects`, `Milestones`, `ProjectTasks`
 - `TaskDependencies`, `TaskAssignments`, `TaskComments`, `TaskAttachments`
-- `TimeEntries`, `ProjectDocuments`
+- `ProjectDocuments`
 - `Skills`, `UserSkills`
 - `Notifications`, `AuditLogs`
 
@@ -155,7 +155,7 @@ When using SQLite:
 **2. ProjectTask** (`PMWDS.Domain/Entities/ProjectTask.cs`)
 - Title, Description, Status, Priority
 - StartDate, DueDate, CompletedDate
-- EstimatedHours, ActualHours, ProgressPercentage
+- EstimatedHours, ProgressPercentage
 - Assignment: AssignedToUserId, AssignedByUserId, AssignedDate
 - AI fields: AIDelayProbability, AIPredictedCompletionDate
 
@@ -194,8 +194,8 @@ Response: { "token": "jwt...", "expiry": "...", "userId": "...", "fullName": "..
 ```
 
 **Password Validation:**
-1. If user has custom `PasswordHash` set: SHA256(password + userId)
-2. Fallback legacy passwords: "Pmwds@123", "Admin@12345!", "EMP001", "EMP001@123"
+1. ASP.NET Core `PasswordHasher<ApplicationUser>` against `PasswordHash`.
+2. A user with no `PasswordHash` can never authenticate; there is no fallback password.
 
 **Roles (auto-resolved from JobTitle):**
 - "SuperAdmin" → SuperAdmin role
@@ -205,7 +205,7 @@ Response: { "token": "jwt...", "expiry": "...", "userId": "...", "fullName": "..
 - Default → TeamMember role
 
 **JWT Settings:**
-- Secret: `PMWDS_SuperSecretKey_2025_ChangeInProduction!`
+- Secret: supplied by the environment as `Jwt__Secret` (no default; startup fails when unset or shorter than 32 characters)
 - Issuer: `PMWDS`
 - Audience: `PMWDS_Users`
 - Expiry: 480 minutes (8 hours)
@@ -308,9 +308,9 @@ dotnet ef migrations add InitialCreate ...
 
 ### Test Users (Seeded)
 
-Check `PMWDS.Persistence/Migrations/SeedData.cs` for default users. Common test accounts:
-- `admin@pmwds.com` / `Admin@12345!` → SuperAdmin
-- Regular users with employee codes (EMP001, etc.)
+Check `PMWDS.Persistence/Migrations/Seeders/UsersSeeder.cs` for the seeded accounts.
+Every seeded user gets the same password, supplied by `Seed__DefaultPassword` in the
+environment. Seeding fails with an explicit message when that variable is missing.
 
 ---
 

@@ -36,7 +36,6 @@ export const Permission = {
   TaskAssign: "TASK_ASSIGN",
   TaskCommentCreate: "TASK_COMMENT_CREATE",
   TaskAttachmentCreate: "TASK_ATTACHMENT_CREATE",
-  TaskTimeTrack: "TASK_TIME_TRACK",
 
   SubtaskManage: "SUBTASK_MANAGE",
   SubtaskView: "SUBTASK_VIEW",
@@ -150,7 +149,6 @@ export const PERMISSION_GROUPS = {
     assign: Permission.TaskAssign,
     comment: Permission.TaskCommentCreate,
     attach: Permission.TaskAttachmentCreate,
-    time: Permission.TaskTimeTrack,
   },
   subtask: {
     view: Permission.SubtaskView,
@@ -266,7 +264,6 @@ export const PERMISSION_COVERAGE: Record<string, readonly string[]> = {
     Permission.TaskAssign,
     Permission.TaskCommentCreate,
     Permission.TaskAttachmentCreate,
-    Permission.TaskTimeTrack,
   ],
   [Permission.SubtaskManage]: [
     Permission.SubtaskView,

@@ -181,16 +181,26 @@ File: `PMWDS.API/appsettings.json`
 
 ```json
 "Jwt": {
-  "Secret": "PMWDS_SuperSecretKey_2025_ChangeInProduction!",
+  "Secret": "",
   "Issuer": "PMWDS",
   "Audience": "PMWDS_Users",
   "ExpiryMinutes": 480
 }
 ```
 
+The secret is never stored in a tracked file. Set it in the environment (`.env` locally,
+`/etc/pmwds/pmwds.env` on the server) as:
+
+```text
+Jwt__Secret=<at least 32 random characters>
+```
+
+The API refuses to start when `Jwt:Secret` is shorter than 32 bytes. There is no development
+fallback value.
+
 Production changes:
 
-- Replace `Secret` with a long random value stored outside source control.
+- Generate a fresh random `Jwt__Secret` and keep it outside source control.
 - Keep issuer and audience stable across API and clients.
 - Review expiry duration for production security requirements.
 

@@ -274,7 +274,6 @@ export interface Task {
   dueDate: string;
   completedDate?: string | null;
   estimatedHours: number;
-  actualHours: number;
   progressPercentage: number;
   projectId: string;
   projectName?: string | null;

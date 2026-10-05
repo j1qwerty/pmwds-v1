@@ -332,7 +332,7 @@ internal static class MiscSeeder
 
         model = type == "TaskAllocation"
             ? TaskAllocationModel.Create(name, "1.0.0", "Models/task-allocation.zip", new Dictionary<string, double> { ["riskThreshold"] = 0.7 }, new[] { "Availability", "Performance", "Workload", "BurnoutRisk" })
-            : DelayPredictionModel.Create(name, "1.0.0", "Models/delay-prediction.zip", new Dictionary<string, double> { ["riskThreshold"] = 0.7 }, new[] { "EstimatedHours", "ActualHours", "ProgressPercentage", "DaysUntilDue" });
+            : DelayPredictionModel.Create(name, "1.0.0", "Models/delay-prediction.zip", new Dictionary<string, double> { ["riskThreshold"] = 0.7 }, new[] { "EstimatedHours", "DaysSinceStart", "ProgressPercentage", "DaysUntilDue" });
         model.SetCreatedBy(SeedConstants.SeedUser);
         model.UpdateMetrics(type == "TaskAllocation" ? 0.79 : 0.74, type == "TaskAllocation" ? 0.76 : 0.71, type == "TaskAllocation" ? 0.73 : 0.69);
         await context.AIModels.AddAsync(model, ct);

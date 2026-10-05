@@ -111,8 +111,7 @@ public class ReportService : IReportService
             .ToDictionary(g => g.Key.ToString(), g => new
             {
                 Count = g.Count(),
-                TotalEstimatedHours = g.Sum(t => t.EstimatedHours),
-                TotalActualHours = g.Sum(t => t.ActualHours)
+                TotalEstimatedHours = g.Sum(t => t.EstimatedHours)
             });
 
         var context = new
@@ -131,7 +130,6 @@ public class ReportService : IReportService
             },
             BudgetUtilization = budgetUtilization,
             TotalEstimatedHours = tasks.Sum(t => t.EstimatedHours),
-            TotalActualHours = tasks.Sum(t => t.ActualHours),
         };
 
         return await GenerateReportAsync(
@@ -160,6 +158,14 @@ public class ReportService : IReportService
 
         var taskList = tasks.ToList();
 
+        // Without a time tracker, elapsed calendar days are the only honest
+        // completion-time signal available for completed tasks.
+        var completedDurations = taskList
+            .Where(t => t.Status == Domain.Enums.TaskStatus.Completed && t.CompletedDate.HasValue)
+            .Select(t => (t.CompletedDate!.Value - t.StartDate).TotalDays)
+            .Where(days => days >= 0)
+            .ToList();
+
         var byStatus = taskList
             .GroupBy(t => t.Status)
             .ToDictionary(g => g.Key.ToString(), g => g.Count());
@@ -183,11 +189,7 @@ public class ReportService : IReportService
             Overdue = taskList.Count(t => t.IsOverdue()),
             InProgress = taskList.Count(t => t.Status == Domain.Enums.TaskStatus.InProgress),
             AvgProgress = taskList.Count > 0 ? taskList.Average(t => t.ProgressPercentage) : 0,
-            AvgCompletionHours = taskList
-                .Where(t => t.Status == Domain.Enums.TaskStatus.Completed && t.ActualHours > 0)
-                .Select(t => t.ActualHours)
-                .DefaultIfEmpty(0)
-                .Average(),
+            AvgDaysToComplete = completedDurations.Count > 0 ? completedDurations.Average() : 0,
         };
 
         return await GenerateReportAsync(
