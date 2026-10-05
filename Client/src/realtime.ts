@@ -247,6 +247,19 @@ export function startRealtime(): Promise<void> {
   return starting;
 }
 
+export async function subscribeToProject(projectId: string): Promise<void> {
+  if (!projectId) return;
+  await startRealtime();
+  if (connection?.state === HubConnectionState.Connected) {
+    await connection.invoke("SubscribeToProject", projectId);
+  }
+}
+
+export async function unsubscribeFromProject(projectId: string): Promise<void> {
+  if (!projectId || !connection || connection.state !== HubConnectionState.Connected) return;
+  await connection.invoke("UnsubscribeFromProject", projectId);
+}
+
 export function stopRealtime(): void {
   stopped = true;
   clearRestart();
