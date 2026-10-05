@@ -529,17 +529,6 @@ export default function TaskPerformanceTable({
                           <Icon name="edit" size={16} /> 
                         </button>
                       )}
-
-                      {canDelete && (
-                        <button
-                          className="p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg inline-flex items-center justify-center"
-                          style={{ width: "28px", height: "28px" }}
-                          title="Delete task"
-                          onClick={() => handleDeleteTask(task.id)}
-                        >
-                          <span className="material-symbols-outlined text-sm">delete</span>
-                        </button>
-                      )}
                     </div>
                   </td>
                 </tr>
