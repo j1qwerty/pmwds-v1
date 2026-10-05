@@ -13,7 +13,7 @@ export function NotificationList({
 
   if (!itemsArray.length) {
     return (
-      <div className="bg-surface-container-lowest  rounded-xl p-lg ambient-glow border border-outline-variant/20 h-[430px] flex flex-col overflow-hidden">
+      <div className="bg-surface-container-lowest  rounded-xl p-lg ambient-glow border border-outline-variant/20 h-[360px] flex flex-col overflow-hidden">
         <div className="flex justify-between items-center mb-md pb-sm border-b border-surface-variant">
           <div className="flex items-center gap-sm">
             <span className="material-symbols-outlined text-primary bg-primary/10 p-1.5 rounded-lg">notifications</span>
@@ -87,7 +87,7 @@ export function NotificationList({
   const unreadCount = itemsArray.filter(item => !item.isRead).length;
 
   return (
-    <div className="bg-surface-container-lowest rounded-xl p-lg ambient-glow border border-outline-variant/20 h-[430px] flex flex-col overflow-hidden">
+    <div className="bg-surface-container-lowest rounded-xl p-lg ambient-glow border border-outline-variant/20 h-[360px] flex flex-col overflow-hidden">
       <div className="flex justify-between items-center mb-md pb-sm border-b border-surface-variant">
         <div className="flex items-center gap-sm">
           <span className="material-symbols-outlined text-primary bg-primary/10 p-1.5 rounded-lg">notifications</span>

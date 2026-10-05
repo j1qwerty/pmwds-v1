@@ -24,7 +24,7 @@ export function ProjectOverview({
   const doneOffset = -(newDash + pendingDash);
 
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-md border border-slate-100 h-[430px] flex flex-col overflow-hidden">
+    <div className="bg-white rounded-2xl p-6 shadow-md border border-slate-100 h-[360px] flex flex-col overflow-hidden">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-sm font-semibold text-slate-700">Project Overview</h3>
         <button className="text-slate-400 hover:text-slate-600">

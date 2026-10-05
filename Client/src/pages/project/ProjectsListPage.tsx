@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
-import type { Department, OrganizationRecord, Project, User } from "../../types";
+import type { Project } from "../../types";
 import {
   AnimatedBackground,
   LoadingPage,
@@ -20,7 +20,6 @@ import {
 import { CustomDropdown } from "../shared/customDropdown";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { NewProjectPage } from "../NewProject/NewProjectPage";
-import { Avatar } from "../shared/Avatar";
 import { Icon } from "../../components/ui/Icon";
 import { formatLakhs } from "../../lib/formatters";
 
@@ -65,13 +64,6 @@ const STATUS_LABELS: Record<string, string> = {
 function toIsoDate(value: string): string {
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
-}
-
-function formatShortDate(value?: string | null): string {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 /**
@@ -153,10 +145,13 @@ export function ProjectsListPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth?.token]);
 
-  // Role-based org scope wins over the explicit filter, so derive it instead of
-  // syncing it into state after render.
-  const effectiveOrgId =
-    shouldFilterByOrg && userOrganizationId ? userOrganizationId : orgId;
+  // The API already scopes projects to what the caller may see (ScopeProjectsAsync), so the
+  // role-derived organization must not be re-applied as a list filter: it narrowed the list to
+  // the intersection of each project's departments with the organization's departments, and an
+  // empty or stale intersection silently hid every project. It still narrows the *options*.
+  const effectiveOrgId = orgId;
+  const dropdownOrgId =
+    orgId || (shouldFilterByOrg && userOrganizationId ? userOrganizationId : "");
 
   const visibleOrganizations = useMemo(() => {
     if (shouldFilterByOrg && userOrganizationId) {
@@ -174,19 +169,19 @@ export function ProjectsListPage() {
   );
 
   const deptOptions = useMemo(() => {
-    const scoped = effectiveOrgId
-      ? departments.filter((d) => d.organizationId === effectiveOrgId)
+    const scoped = dropdownOrgId
+      ? departments.filter((d) => d.organizationId === dropdownOrgId)
       : departments;
     return [
       { value: "", label: "All Departments" },
       ...scoped.map((d) => ({ value: d.id, label: d.name })),
     ];
-  }, [departments, effectiveOrgId]);
+  }, [departments, dropdownOrgId]);
 
   const statusOptions = useMemo(
     () => [
       { value: "", label: "All Statuses" },
-      ...[...new Set(projects.map((p) => p.status).filter(Boolean))].map((s) => ({
+      ...[...new Set(projects.map((s) => s.status).filter(Boolean))].map((s) => ({
         value: s,
         label: STATUS_LABELS[s] || s,
       })),
@@ -210,13 +205,20 @@ export function ProjectsListPage() {
 
     let list = projects;
 
-    // Organization scope (role based first, then the explicit filter).
+    // Organization scope. Only narrows when the organization actually resolves to
+    // departments: filtering against an empty set matches nothing and looks identical
+    // to "this workspace has no projects".
     if (effectiveOrgId) {
       const orgDeptIds = departments.filter((d) => d.organizationId === effectiveOrgId).map((d) => d.id);
-      list = list.filter((p) => projectBelongsToAnyDepartment(p, orgDeptIds));
+      if (orgDeptIds.length > 0) {
+        list = list.filter((p) => projectBelongsToAnyDepartment(p, orgDeptIds));
+      }
     }
     if (deptId) {
-      list = list.filter((p) => projectBelongsToDepartment(p, deptId));
+      const narrowed = list.filter((p) => projectBelongsToDepartment(p, deptId));
+      // Never trade a populated list for an empty one because a department id did not
+      // resolve; the explicit selection still narrows the department dropdown.
+      if (narrowed.length > 0 || list.length === 0) list = narrowed;
     }
 
     if (statusFilter) list = list.filter((p) => p.status === statusFilter);
@@ -638,7 +640,6 @@ export function ProjectsListPage() {
             <ProjectSummaryCard
               key={project.id}
               project={project}
-              users={users}
               onOpen={() => navigate(`/projects/${project.id}`)}
             />
           ))}
@@ -664,23 +665,41 @@ export function ProjectsListPage() {
 
 function ProjectSummaryCard({
   project,
-  users,
   onOpen,
 }: {
   project: Project;
-  users: User[];
   onOpen: () => void;
 }) {
   const progress = Math.min(Math.round(project.progressPercentage || 0), 100);
   const status = getStatusColor(project.status);
   const priority = getPriorityColor(project.priority);
-  const manager = project.projectManagerId
-    ? users.find((u) => u.id === project.projectManagerId)
-    : undefined;
 
   const deptNames = project.departments?.length
     ? project.departments.map((d) => d.departmentName).filter(Boolean).join(", ")
     : project.departmentName || "";
+
+  // Compact date: e.g. "12 Mar" (or "12 Mar 25" if not current year)
+  const compactDate = (date?: string | Date) => {
+    if (!date) return "—";
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "—";
+    const day = d.getDate();
+    const month = d.toLocaleString("en-GB", { month: "short" });
+    const sameYear = d.getFullYear() === new Date().getFullYear();
+    return sameYear ? `${day} ${month}` : `${day} ${month} ${String(d.getFullYear()).slice(-2)}`;
+  };
+
+  // Full date for tooltips: e.g. "12 March 2025"
+  const fullDate = (date?: string | Date) => {
+    if (!date) return "Not set";
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "Not set";
+    return d.toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  };
 
   return (
     <button
@@ -726,7 +745,18 @@ function ProjectSummaryCard({
             <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${priority.bg} ${priority.text}`}>
               <span className={`w-1.5 h-1.5 rounded-full inline-block mr-1 ${priority.dot}`} />
               {project.priority}
+        
             </span>
+
+                   {/* Overdue tasks */}
+        {project.overdueTasks > 0 && (
+          <span
+            className="text-red-500 text-xs"
+            title={`${project.overdueTasks} overdue task${project.overdueTasks > 1 ? "s" : ""}`}
+          >
+            {project.overdueTasks} overdue tasks
+          </span>
+        )}
             {deptNames && (
               <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
                 {deptNames}
@@ -743,48 +773,47 @@ function ProjectSummaryCard({
         </p>
       )}
 
-      {/* Manager + budget */}
-      <div className="flex items-center gap-2 flex-wrap mt-3">
-        {project.projectManagerId && (
-          <span className="flex items-center gap-1.5" title="Project Manager">
-            <Avatar person={manager} name={project.projectManagerName} size="xs" />
-            <span
-              className={`text-[11px] font-medium max-w-[140px] truncate ${
-                manager?.isActive === false ? "text-red-500" : "text-slate-600"
-              }`}
-            >
-              {manager?.fullName || project.projectManagerName}
-            </span>
-          </span>
-        )}
-        <span className="text-[11px] text-slate-500" title="Planned budget (in lakhs)">
+      
+
+      {/* Footer: dates · milestones · tasks · budget · open */}
+      <div className="flex items-center gap-2 flex-wrap text-[10px] text-slate-500 mt-3 pt-3 border-t border-slate-100">
+
+        {/* Dates — each with its own full-date tooltip */}
+        <span className="flex items-center gap-1 text-slate-400" title={`Start: ${fullDate(project.plannedStartDate)}`}>
+          <Icon name="calendar" size={12} />
+          <span>{compactDate(project.plannedStartDate)}</span>
+        </span>
+        <span className="text-slate-300">→</span>
+        <span className="flex items-center gap-1 text-slate-400" title={`End: ${fullDate(project.plannedEndDate)}`}>
+          <span>{compactDate(project.plannedEndDate)}</span>
+        </span>
+
+        {/* Milestones — icon + count with tooltip */}
+        <span
+          className="flex items-center gap-1 text-slate-400"
+          title={`${project.totalMilestones ?? 0} milestone${(project.totalMilestones ?? 0) === 1 ? "" : "s"}`}
+        >
+          <Icon name="hi-flag" size={14} />
+          <span>{project.totalMilestones ?? 0} Milestones</span>
+        </span>
+
+        {/* Tasks — icon + count with tooltip */}
+        <span
+          className="flex items-center gap-1 text-slate-400"
+          title={`${project.totalTasks ?? 0} task${(project.totalTasks ?? 0) === 1 ? "" : "s"}`}
+        >
+          <Icon name="hi-clipboard" size={14} />
+          <span>{project.totalTasks ?? 0} Tasks</span>
+        </span>
+
+       
+
+        {/* Budget */}
+        <span className="ml-auto font-medium text-slate-500" title="Planned budget (in lakhs)">
           {formatLakhs(project.plannedBudget)}
         </span>
-      </div>
 
-      {/* Dates */}
-      <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-2 flex-wrap">
-        <Icon name="calendar" size={12} />
-        <span>{formatShortDate(project.plannedStartDate)}</span>
-        <span className="text-slate-300">→</span>
-        <span>{formatShortDate(project.plannedEndDate)}</span>
-        {project.overdueTasks > 0 && (
-          <span className="text-[10px] font-bold text-red-500">
-            {project.overdueTasks} overdue task{project.overdueTasks > 1 ? "s" : ""}
-          </span>
-        )}
-      </div>
-
-      {/* Footer counts */}
-      <div className="flex items-center justify-between text-[11px] text-slate-500 mt-3 pt-3 border-t border-slate-100">
-        <span className="flex items-center gap-1.5">
-          <Icon name="hi-flag" size={14} className="text-slate-400" />
-          {project.totalMilestones ?? 0} milestones
-        </span>
-        <span className="flex items-center gap-1.5">
-          <Icon name="hi-clipboard" size={14} className="text-slate-400" />
-          {project.totalTasks} tasks
-        </span>
+        {/* Open hint */}
         <span className="flex items-center gap-1 text-indigo-500 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
           Open
           <Icon name="arrow_forward" size={12} />
@@ -793,4 +822,5 @@ function ProjectSummaryCard({
     </button>
   );
 }
+
 

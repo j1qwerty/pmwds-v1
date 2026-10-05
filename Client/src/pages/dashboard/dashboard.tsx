@@ -37,7 +37,7 @@ export function DashboardPage() {
 
   const { departments, users } = appData;
   const [dashboard, setDashboard] = useState<ProjectDashboardData | null>(null);
-  const [myTasks, setMyTasks] = useState<Task[]>([]);
+  const [workspaceTasks, setWorkspaceTasks] = useState<Task[]>([]);
   const [unread, setUnread] = useState<NotificationItem[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [escalatedTasks, setEscalatedTasks] = useState<Task[]>([]);
@@ -87,10 +87,14 @@ export function DashboardPage() {
     }
   }, [auth, addToast]);
 
-  const loadMyTasks = useCallback(async () => {
+  const loadTaskStats = useCallback(async () => {
     if (!auth) return;
     try {
-      setMyTasks(await api.getMyTasks(auth.token));
+      // Workspace task counts, not "my tasks": the stat cards are portfolio metrics and
+      // reading only the caller's assignments left every card at zero for anyone who was not
+      // personally assigned work.
+      const response = await api.getAccessibleTasks(auth.token);
+      setWorkspaceTasks(response.items ?? []);
     } catch (cause) {
       addToast(cause instanceof Error ? cause.message : "Failed to load tasks", "error");
     }
@@ -136,7 +140,7 @@ export function DashboardPage() {
       const criticalLoads = [
         ["dashboard", loadDashboard],
         ["projects", loadProjects],
-        ["tasks", loadMyTasks],
+        ["tasks", loadTaskStats],
       ] as const;
 
       for (const [name, load] of criticalLoads) {
@@ -157,47 +161,7 @@ export function DashboardPage() {
 
     void loadInitial();
     return () => { disposed = true; };
-  }, [auth, loadDashboard, loadProjects, loadMyTasks, loadNotifications, loadEscalations, loadActivity]);
-
-  useEffect(() => {
-    if (!auth) return;
-    let timer: number | undefined;
-
-    const schedule = (work: () => void) => {
-      if (timer !== undefined) window.clearTimeout(timer);
-      timer = window.setTimeout(work, 250);
-    };
-
-    const stopListening = onDataChanged((notification) => {
-      switch (notification.scope) {
-        case REALTIME_SCOPES.projects:
-          schedule(() => { void loadDashboard(); void loadProjects(); });
-          break;
-        case REALTIME_SCOPES.tasks:
-        case REALTIME_SCOPES.milestones:
-          schedule(() => {
-            void loadMyTasks();
-            void loadEscalations();
-            if (lastTaskPerformanceQuery) void loadTaskPerformance(lastTaskPerformanceQuery);
-          });
-          break;
-        case REALTIME_SCOPES.notifications:
-          schedule(() => { void loadNotifications(); });
-          break;
-        default:
-          break;
-      }
-    });
-
-    return () => {
-      if (timer !== undefined) window.clearTimeout(timer);
-      stopListening();
-    };
-  // loadTaskPerformance is declared below. The callback is invoked after render, so the
-  // lexical binding is initialized when the effect runs. Keep the dependency list focused
-  // on values that control which realtime scopes we subscribe to.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth, loadDashboard, loadProjects, loadMyTasks, loadEscalations, loadNotifications, lastTaskPerformanceQuery]);
+  }, [auth, loadDashboard, loadProjects, loadTaskStats, loadNotifications, loadEscalations, loadActivity]);
 
   const loadTaskPerformance = useCallback(async (query: TaskPerformanceQuery) => {
     if (!auth) return;
@@ -231,6 +195,44 @@ export function DashboardPage() {
     }
   }, [auth, addToast]);
 
+  useEffect(() => {
+    if (!auth) return;
+    let timer: number | undefined;
+
+    const schedule = (work: () => void) => {
+      if (timer !== undefined) window.clearTimeout(timer);
+      timer = window.setTimeout(work, 250);
+    };
+
+    const stopListening = onDataChanged((notification) => {
+      switch (notification.scope) {
+        case REALTIME_SCOPES.projects:
+          schedule(() => { void loadDashboard(); void loadProjects(); });
+          break;
+        case REALTIME_SCOPES.tasks:
+        case REALTIME_SCOPES.milestones:
+          schedule(() => {
+            void loadTaskStats();
+            void loadEscalations();
+            if (lastTaskPerformanceQuery) void loadTaskPerformance(lastTaskPerformanceQuery);
+          });
+          break;
+        case REALTIME_SCOPES.notifications:
+          schedule(() => { void loadNotifications(); });
+          break;
+        default:
+          break;
+      }
+    });
+
+    return () => {
+      if (timer !== undefined) window.clearTimeout(timer);
+      stopListening();
+    };
+  // loadTaskPerformance is declared above so the realtime handler can reference it directly,
+  // rather than capturing a binding that did not exist yet when the effect was created.
+  }, [auth, loadDashboard, loadProjects, loadTaskStats, loadEscalations, loadNotifications, lastTaskPerformanceQuery, loadTaskPerformance]);
+
   const openTaskDetails = async (task: Task) => {
     if (!auth) return;
     try {
@@ -250,7 +252,7 @@ export function DashboardPage() {
 
   const refreshTaskLists = useCallback(async () => {
     if (!auth) return;
-    await Promise.allSettled([loadMyTasks(), loadEscalations()]);
+    await Promise.allSettled([loadTaskStats(), loadEscalations()]);
     if (lastTaskPerformanceQuery) await loadTaskPerformance(lastTaskPerformanceQuery);
     if (selectedTask) {
       try {
@@ -259,7 +261,7 @@ export function DashboardPage() {
         // Keep the current modal state if the follow-up read fails.
       }
     }
-  }, [auth, loadMyTasks, loadEscalations, lastTaskPerformanceQuery, loadTaskPerformance, selectedTask]);
+  }, [auth, loadTaskStats, loadEscalations, lastTaskPerformanceQuery, loadTaskPerformance, selectedTask]);
 
   const openNotification = useCallback(async (item: NotificationItem) => {
     if (!auth) return;
@@ -343,7 +345,7 @@ export function DashboardPage() {
       </section>
 
       <div className="py-4">
-        <TaskStats tasks={myTasks} />
+        <TaskStats tasks={workspaceTasks} />
       </div>
 
       <TaskPerformanceTable
@@ -391,7 +393,7 @@ export function DashboardPage() {
               }
               const freshTask = await api.getTask(auth.token, taskId);
               setSelectedTask(freshTask);
-              setMyTasks((current) => current.map((task) => task.id === freshTask.id ? freshTask : task));
+              setWorkspaceTasks((current) => current.map((task) => task.id === freshTask.id ? freshTask : task));
             } catch (cause) {
               addToast(cause instanceof Error ? cause.message : "Failed to update task", "error");
               throw cause;
@@ -405,7 +407,7 @@ export function DashboardPage() {
           onDelete={async (taskId) => {
             if (!auth) return;
             await api.deleteTask(auth.token, taskId);
-            setMyTasks((current) => current.filter((task) => task.id !== taskId));
+            setWorkspaceTasks((current) => current.filter((task) => task.id !== taskId));
             setSelectedTask(null);
             await refreshTaskLists();
           }}

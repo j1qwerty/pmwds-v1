@@ -372,6 +372,16 @@ export const api = {
   getTasks(token: string, query: TaskListQuery = {}) {
     return request<PaginatedResponse<Task>>("tasks", { token, query });
   },
+  /**
+   * Every task the caller can see, for portfolio-level counts on the dashboard.
+   *
+   * Distinct from `getMyTasks`, which returns only tasks assigned to the caller. The dashboard
+   * stat cards are workspace metrics, so they must not silently collapse to zero for anyone who
+   * is not personally assigned work.
+   */
+  getAccessibleTasks(token: string, pageSize = 200) {
+    return request<PaginatedResponse<Task>>("tasks", { token, query: { page: 1, pageSize } });
+  },
   getMyTasks(token: string) {
     return requestList<Task>("tasks/my-tasks", { token });
   },

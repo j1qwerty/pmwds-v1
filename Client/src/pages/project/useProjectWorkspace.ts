@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
@@ -6,8 +6,6 @@ import { useAuth } from "../../auth";
 import { onDataChanged, subscribeToProject, unsubscribeFromProject } from "../../realtime";
 import { PROJECT_WORKSPACE_SCOPES } from "../../realtimeScopes";
 import type { Milestone, MilestoneDependency, Project, Task, User } from "../../types";
-import { projectBelongsToAnyDepartment } from "../shared/index";
-import { useUserOrganization } from "../shared/useUserOrganization";
 
 /** See the matching constants in appData.tsx. */
 const REALTIME_DEBOUNCE_MS = 250;
@@ -29,8 +27,6 @@ export function useProjectWorkspace(): ProjectWorkspaceData {
   const { auth } = useAuth();
   const { data } = useAppData();
   const users = data.users;
-  const departments = data.departments;
-  const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
 
   const [project, setProject] = useState<Project | null>(null);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
@@ -39,16 +35,11 @@ export function useProjectWorkspace(): ProjectWorkspaceData {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const visibleProject = useMemo(() => {
-    if (!project) return null;
-    if (shouldFilterByOrg && userOrganizationId) {
-      const orgDeptIds = (departments.length ? departments : data.departments)
-        .filter((d) => d.organizationId === userOrganizationId)
-        .map((d) => d.id);
-      if (!projectBelongsToAnyDepartment(project, orgDeptIds)) return null;
-    }
-    return project;
-  }, [project, data.departments, departments, shouldFilterByOrg, userOrganizationId]);
+  // No client-side organization narrowing here. The project came from
+  // `GET /projects/{id}`, which the API scopes to what the caller may access, so the role
+  // filter would be redundant - and when the department list was empty or stale it resolved
+  // every project to `null` and every tab rendered "project not found".
+  const visibleProject = project;
 
   const load = useCallback(async () => {
     if (!auth || !projectId) {
@@ -154,15 +145,3 @@ export function useProjectWorkspace(): ProjectWorkspaceData {
   };
 }
 
-export function filterProjectsByUserScope(
-  projects: Project[],
-  departments: { id: string; organizationId?: string | null }[],
-  userOrganizationId: string | null,
-  shouldFilterByOrg: boolean,
-): Project[] {
-  if (!shouldFilterByOrg || !userOrganizationId) return projects;
-  const orgDeptIds = departments
-    .filter((d) => d.organizationId === userOrganizationId)
-    .map((d) => d.id);
-  return projects.filter((p) => projectBelongsToAnyDepartment(p, orgDeptIds));
-}
