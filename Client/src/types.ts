@@ -555,6 +555,8 @@ export interface ProjectDashboardData {
   totalProjects: number;
   activeProjects: number;
   completedProjects: number;
+  onHoldProjects: number;
+  delayedProjects: number;
   overdueProjects: number;
   highRiskProjects: number;
   averageHealthScore: number;
@@ -562,6 +564,7 @@ export interface ProjectDashboardData {
   totalActualCost: number;
   recentProjects: ProjectSummary[];
   atRiskProjects: ProjectSummary[];
+  recentProjectPreviews: ProjectSummary[];
 }
 
 export interface DashboardData {
