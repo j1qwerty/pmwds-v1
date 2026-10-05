@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
@@ -26,6 +27,8 @@ import { Icon } from "../../components/ui/Icon";
 
 export function ProjectTasksPage() {
   const ws = useProjectWorkspace();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const notificationTaskId = searchParams.get("taskId");
   const { data: appData } = useAppData();
   const { auth } = useAuth();
   const { addToast } = useToast();
@@ -60,6 +63,17 @@ export function ProjectTasksPage() {
   const boardSettingsRef = useRef<HTMLDivElement>(null);
 
   const { setNavHeader } = useNavHeader();
+  useEffect(() => {
+    if (!notificationTaskId || ws.loading) return;
+    const task = ws.tasks.find((item) => item.id === notificationTaskId);
+    if (!task) return;
+
+    setViewTask(task);
+    const next = new URLSearchParams(searchParams);
+    next.delete("taskId");
+    setSearchParams(next, { replace: true });
+  }, [notificationTaskId, ws.loading, ws.tasks, searchParams, setSearchParams]);
+
 
   useEffect(() => {
     if (!ws.project) {
