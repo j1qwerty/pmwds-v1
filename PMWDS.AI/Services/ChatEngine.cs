@@ -431,7 +431,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
             return new ResolvedProviderConfig(
                 ProviderId: "OpenAI",
                 Enabled: options.Enabled,
-                ApiKey: string.IsNullOrWhiteSpace(options.ApiKey) ? _settings.OpenAIApiKey : options.ApiKey,
+                ApiKey: options.ApiKey,
                 BaseUrl: string.IsNullOrWhiteSpace(options.BaseUrl) ? "https://api.openai.com/v1" : options.BaseUrl,
                 DefaultModel: string.IsNullOrWhiteSpace(options.DefaultModel) ? _settings.OpenAIModel : options.DefaultModel,
                 ModelsPath: string.IsNullOrWhiteSpace(options.ModelsPath) ? "/models" : options.ModelsPath,

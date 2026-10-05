@@ -16,6 +16,7 @@ interface ReportGeneratorProps {
   onGenerateTaskCompletion: () => void;
   onGenerateDepartmentWorkload: () => void;
   onGenerateDelayAnalysis: () => void;
+  generationError?: string | null;
 }
 
 const REPORT_TYPES = [
@@ -74,7 +75,7 @@ const colorMap: Record<string, { bg: string; text: string; border: string; hover
   red: { bg: "bg-red-50", text: "text-red-600", border: "border-red-200", hover: "hover:bg-red-100" },
 };
 
-export function ReportGenerator({ filters, generatingReportType, isGeneratingType, ...handlers }: ReportGeneratorProps) {
+export function ReportGenerator({ filters, generatingReportType, isGeneratingType, generationError, ...handlers }: ReportGeneratorProps) {
   const anyGenerating = generatingReportType !== null;
 
   return (
@@ -86,6 +87,16 @@ export function ReportGenerator({ filters, generatingReportType, isGeneratingTyp
       <p className="text-xs text-slate-500 mb-5">
         Select a report type to generate an AI-powered report. Reports can be viewed inline or downloaded as PDF.
       </p>
+
+      {generationError && !anyGenerating && (
+        <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3" role="alert">
+          <span className="material-symbols-outlined text-red-500 text-lg">error</span>
+          <div>
+            <p className="text-sm text-red-700 font-semibold">Report generation failed</p>
+            <p className="text-[11px] text-red-600 mt-0.5 leading-relaxed">{generationError}</p>
+          </div>
+        </div>
+      )}
 
       {anyGenerating && (
         <div className="mb-4 p-3 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center gap-3">

@@ -15,7 +15,6 @@ public static class SeedData
     public static async Task SeedAsync(
         ApplicationDbContext context,
         CancellationToken ct = default,
-        IReadOnlyDictionary<string, string?>? aiProviderKeys = null,
         string? storageBasePath = null)
     {
         var strategy = context.Database.CreateExecutionStrategy();
@@ -35,7 +34,7 @@ public static class SeedData
                 await GovernmentProjectsSeeder.SeedAsync(context, ct);
                 await NotificationsSeeder.SeedAsync(context, ct);
                 await ActivityLogsSeeder.SeedAsync(context, ct);
-                await MiscSeeder.SeedAsync(context, ct, aiProviderKeys);
+                await MiscSeeder.SeedAsync(context, ct);
 
                 await transaction.CommitAsync(ct);
             }
