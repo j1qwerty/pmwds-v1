@@ -195,16 +195,6 @@ export function TaskSubtaskCard({
     onParentRefresh?.();
   };
 
-  const handleTaskStartTimer = async (taskId: string, description: string) => {
-    if (!auth) return;
-    try {
-      await api.startTaskTimer(auth.token, taskId, description);
-    } catch (e) {
-      addToast(e instanceof Error ? e.message : "Failed to start timer", "error");
-      throw e;
-    }
-  };
-
   const handleTaskEscalate = async () => {
     if (!auth) return;
     try {
@@ -465,7 +455,6 @@ export function TaskSubtaskCard({
           onAddComment={handleTaskAddComment}
           onDelete={handleDeleteTask}
           onEscalate={handleTaskEscalate}
-          onStartTimer={handleTaskStartTimer}
           onRefresh={async () => {
             onParentRefresh?.();
           }}

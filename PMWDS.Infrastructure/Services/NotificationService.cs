@@ -99,7 +99,7 @@ public class NotificationService : INotificationService
             Message: $"You have been assigned: {task.Title}",
             Type: NotificationType.TaskAssigned,
             Priority: NotificationPriority.Normal,
-            ActionUrl: $"/tasks/{taskId}",
+            ActionUrl: $"/projects/{task.ProjectId}/tasks?taskId={taskId}",
             RelatedEntityId: taskId.ToString(),
             RelatedEntityType: "Task"),
             ct);

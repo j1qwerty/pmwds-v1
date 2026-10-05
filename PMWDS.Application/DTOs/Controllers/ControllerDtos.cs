@@ -155,8 +155,6 @@ public record AIProviderSettingsDto
     public bool Enabled { get; set; }
     public bool UseEnvironmentDefault { get; set; } = true;
     public string BaseUrl { get; set; } = "";
-    public string ApiKey { get; set; } = "";
-    public bool HasStoredKey { get; set; }
     public string DefaultModel { get; set; } = "";
 }
 
@@ -321,4 +319,3 @@ public record UpdateSkillDto(
 public record UpdateTaskStatusRequest(PMWDS.Domain.Enums.TaskStatus NewStatus, bool ConfirmReset = false);
 public record AssignTaskRequest(string? AssigneeId, bool UseAIRecommendation = false, List<string>? AssigneeIds = null);
 public record AddCommentRequest(string Comment);
-public record StartTimerRequest(string Description, bool IsBillable = false);

@@ -49,10 +49,6 @@ public class TaskConfiguration
         .WithOne()
         .HasForeignKey(a => a.TaskId)
         .OnDelete(DeleteBehavior.Cascade);
-        b.HasMany(e => e.TimeEntries)
-        .WithOne(t => t.Task)
-        .HasForeignKey(t => t.TaskId)
-        .OnDelete(DeleteBehavior.Cascade);
         b.HasMany(e => e.Assignments)
         .WithOne(a => a.Task)
         .HasForeignKey(a => a.TaskId)

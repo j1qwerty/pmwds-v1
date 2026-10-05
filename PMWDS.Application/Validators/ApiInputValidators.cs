@@ -118,12 +118,6 @@ public sealed class AddCommentRequestValidator : AbstractValidator<AddCommentReq
         => RuleFor(x => x.Comment).NotEmpty().MaximumLength(4000);
 }
 
-public sealed class StartTimerRequestValidator : AbstractValidator<StartTimerRequest>
-{
-    public StartTimerRequestValidator()
-        => RuleFor(x => x.Description).NotEmpty().MaximumLength(2000);
-}
-
 public sealed class CreateDepartmentDtoValidator : AbstractValidator<CreateDepartmentDto>
 {
     public CreateDepartmentDtoValidator()

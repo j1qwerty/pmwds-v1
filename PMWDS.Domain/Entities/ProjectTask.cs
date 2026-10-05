@@ -53,8 +53,6 @@ public class ProjectTask : AuditableEntity, IHasDomainEvents
     _attachments.AsReadOnly();
     public IReadOnlyCollection<TaskAssignment> Assignments =>
     _assignments.AsReadOnly();
-    public IReadOnlyCollection<TimeEntry> TimeEntries =>
-    _timeEntries.AsReadOnly();
     public ICollection<AllocationRecommendation> AllocationRecommendations { get; private set; } = new List<AllocationRecommendation>();
     public ICollection<DelayPrediction> DelayPredictions { get; private set; } = new List<DelayPrediction>();
     private readonly List<ProjectTask> _subTasks = new();
@@ -62,7 +60,6 @@ public class ProjectTask : AuditableEntity, IHasDomainEvents
     private readonly List<TaskComment> _comments = new();
     private readonly List<TaskAttachment> _attachments = new();
     private readonly List<TaskAssignment> _assignments = new();
-    private readonly List<TimeEntry> _timeEntries = new();
     private readonly List<IDomainEvent> _domainEvents = new();
     public IReadOnlyList<IDomainEvent> DomainEvents =>
     _domainEvents.AsReadOnly();
@@ -73,7 +70,6 @@ public class ProjectTask : AuditableEntity, IHasDomainEvents
         _comments = new();
         _attachments = new();
         _assignments = new();
-        _timeEntries = new();
         _domainEvents = new();
         AllocationRecommendations = new List<AllocationRecommendation>();
         DelayPredictions = new List<DelayPrediction>();
@@ -153,17 +149,6 @@ public class ProjectTask : AuditableEntity, IHasDomainEvents
             sub.ResetAllProgress();
         }
     }
-    public void Start()
-    {
-        if (Status == TaskStatus.NotStarted)
-        {
-            Status = TaskStatus.InProgress;
-            _domainEvents.Add(
-            new TaskStatusChangedEvent(Id,
-            TaskStatus.NotStarted,
-            TaskStatus.InProgress));
-        }
-    }
     public void UpdateProgress(
     double percentage, string? notes = null)
     {
@@ -189,11 +174,6 @@ public class ProjectTask : AuditableEntity, IHasDomainEvents
         => _attachments.Add(attachment);
     public void AddDependency(TaskDependency dependency)
         => _dependencies.Add(dependency);
-    public void LogTime(TimeEntry entry)
-    {
-        _timeEntries.Add(entry);
-        ActualHours += (int)entry.Duration.TotalHours;
-    }
     public void Complete()
     {
         Status = TaskStatus.Completed;

@@ -1,85 +1,77 @@
-import React from 'react';
-import type { Project } from "../../types";
+import type { Project, ProjectDashboardData } from "../../types";
 import { getStatusColor } from "../shared/colors";
 import { Icon } from "../../components/ui/Icon";
-
-interface StatCardProps {
-  icon: React.ReactNode;
-  value: number;
-  label: string;
-  statusKey: string;
-}
-
-const StatCard: React.FC<StatCardProps> = ({ icon, value, label, statusKey }) => {
-  const colors = getStatusColor(statusKey);
-
-  return (
-    <div className={`shadow-sm grouprelative ${colors.badgeBg} overflow-hidden ${colors.shadowHoverColor} rounded-2xl p-4 hover:shadow-md transition-all duration-300 h-full flex flex-col justify-between border-0`}>
-      {/* <div className={`absolute bottom-1/2 right-0 w-24 h-24 bg-red-600 rounded-full  group-hover:opacity-80 transition-all pointer-events-none `} /> */}
-
-      <div className="relative flex items-center gap-3 mb-2">
-        <div className={`w-8 h-8 ${colors.badgeBg} rounded-lg flex items-center justify-center ${colors.badgeText} shrink-0`}>
-          {icon}
-        </div>
-        <span className={`text-xs font-medium ${[colors.badgeText]} uppercase tracking-wider`}>
-          {label}
-        </span>
-      </div>
-
-      <div className="relative mt-2">
-        <span className={`text-2xl font-bold text-center tracking-wider ${colors.text}`}>
-          {value.toLocaleString()}
-        </span>
-      </div>
-    </div>
-  );
-};
+import { MetricStatCard, type MetricStatDetail } from "../shared/MetricStatCard";
 
 interface DashboardStatsProps {
   projects?: Project[];
+  dashboard?: ProjectDashboardData | null;
 }
 
-const DashboardStats: React.FC<DashboardStatsProps> = ({ projects = [] }) => {
+function recentProjects(dashboard: ProjectDashboardData | null | undefined, projects: Project[], predicate: (project: { status: string; progressPercentage: number }) => boolean): MetricStatDetail[] {
+  const source = dashboard?.recentProjectPreviews?.length ? dashboard.recentProjectPreviews : projects;
+  return source
+    .filter(predicate)
+    .slice(0, 5)
+    .map((project) => ({
+      id: project.id,
+      title: project.name,
+      subtitle: `${project.projectCode} · ${project.status}`,
+    }));
+}
+
+export default function DashboardStats({ projects = [], dashboard }: DashboardStatsProps) {
   const stats = [
     {
       icon: <Icon name="file" size={16} />,
-      value: projects.length,
-      label: 'Total Projects',
-      statusKey: 'Total',
+      value: dashboard?.totalProjects ?? projects.length,
+      label: "Total Projects",
+      statusKey: "Total",
+      details: recentProjects(dashboard, projects, () => true),
     },
     {
       icon: <Icon name="clock" size={16} />,
-      value: projects.filter(p => p.status === "InProgress").length,
-      label: 'In Progress',
-      statusKey: 'InProgress',
+      value: dashboard?.activeProjects ?? projects.filter((p) => p.status === "InProgress").length,
+      label: "In Progress",
+      statusKey: "InProgress",
+      details: recentProjects(dashboard, projects, (p) => p.status === "InProgress"),
     },
     {
       icon: <Icon name="alert-circle" size={16} />,
-      value: projects.filter(p => p.status === "OnHold").length,
-      label: 'On Hold',
-      statusKey: 'OnHold',
+      value: dashboard?.onHoldProjects ?? projects.filter((p) => p.status === "OnHold").length,
+      label: "On Hold",
+      statusKey: "OnHold",
+      details: recentProjects(dashboard, projects, (p) => p.status === "OnHold"),
     },
     {
       icon: <Icon name="check-circle" size={16} />,
-      value: projects.filter(p => p.status === "Completed" || p.progressPercentage === 100).length,
-      label: 'Completed',
-      statusKey: 'Completed',
+      value: dashboard?.completedProjects ?? projects.filter((p) => p.status === "Completed" || p.progressPercentage === 100).length,
+      label: "Completed",
+      statusKey: "Completed",
+      details: recentProjects(dashboard, projects, (p) => p.status === "Completed" || p.progressPercentage === 100),
     },
     {
       icon: <Icon name="close" size={16} />,
-      value: projects.filter(p => p.status === "Delayed").length,
-      label: 'Delayed',
-      statusKey: 'Delayed',
+      value: dashboard?.delayedProjects ?? projects.filter((p) => p.status === "Delayed").length,
+      label: "Delayed",
+      statusKey: "Delayed",
+      details: recentProjects(dashboard, projects, (p) => p.status === "Delayed"),
     },
   ];
 
   return (
-    <div className="grid grid-cols-5 gap-4 ">
+    <div className="grid grid-cols-5 gap-4">
       {stats.map((stat) => (
-        <StatCard key={stat.label} {...stat} />
+        <MetricStatCard
+          key={stat.label}
+          icon={stat.icon}
+          value={stat.value}
+          label={stat.label}
+          tone={getStatusColor(stat.statusKey)}
+          details={stat.details}
+          detailLabel="Latest projects"
+        />
       ))}
     </div>
   );
-};
-
-export default DashboardStats;
+}

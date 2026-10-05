@@ -3,9 +3,10 @@ import { getPriorityColor, getStatusColor } from "../colors";
 
 type HighRiskInterventionsProps = {
   tasks?: Task[];
+  onOpenTask?: (task: Task) => void | Promise<void>;
 };
 
-export function HighRiskInterventions({ tasks = [] }: HighRiskInterventionsProps) {
+export function HighRiskInterventions({ tasks = [], onOpenTask }: HighRiskInterventionsProps) {
   return (
     <section className="max-w-150 flex flex-col gap-[clamp(1px,0.4vw,8px)] bg-white rounded-2xl p-6 shadow-md  p-[clamp(8px,2vw,32px)] border border-slate-100 hover:shadow-blue-200 h-[430px] overflow-hidden">
       <div className="flex items-center gap-[clamp(4px,1vw,8px)] border-b border-slate-300 pb-1 shrink-0">
@@ -24,9 +25,11 @@ export function HighRiskInterventions({ tasks = [] }: HighRiskInterventionsProps
           const statusColor = getStatusColor(task.status);
 
           return (
-            <div
+            <button
               key={task.id}
-              className={`shrink-0 p-[clamp(8px,1.5vw,12px)] rounded-lg border ${statusColor.border} ${statusColor.bg} relative overflow-hidden`}
+              type="button"
+              onClick={() => void onOpenTask?.(task)}
+              className={`w-full text-left shrink-0 p-[clamp(8px,1.5vw,12px)] rounded-lg border ${statusColor.border} ${statusColor.bg} relative overflow-hidden hover:shadow-sm transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300`}
             >
               <div className={`absolute top-[clamp(6px,1vw,8px)] right-[clamp(6px,1vw,8px)] w-[clamp(6px,0.8vw,8px)] h-[clamp(6px,0.8vw,8px)] rounded-full ${statusColor.dot}`} />
               
@@ -42,7 +45,7 @@ export function HighRiskInterventions({ tasks = [] }: HighRiskInterventionsProps
                 {task.assignedToUserName && ` • ${task.assignedToUserName}`}
                 {task.dueDate && ` • Due ${new Date(task.dueDate).toLocaleDateString()}`}
               </p>
-            </div>
+            </button>
           );
         })}
 

@@ -8,6 +8,7 @@ using Microsoft.Extensions.Options;
 using PMWDS.Application.DTOs.AI;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Application.Security;
+using PMWDS.Application.Security;
 using PMWDS.Infrastructure.Settings;
 using PMWDS.Persistence.Context;
 
@@ -62,7 +63,6 @@ public class OpenAICompatibleChatEngine : IChatEngine
     private readonly AISettings _settings;
     private readonly IUnitOfWork _uow;
     private readonly ApplicationDbContext _db;
-    private readonly ISensitiveDataProtector _sensitiveData;
 
     // In-memory session history (production: use Redis)
     private static readonly ConcurrentDictionary<string, List<ChatMessagePayload>> Sessions = new();
@@ -81,14 +81,12 @@ public class OpenAICompatibleChatEngine : IChatEngine
         HttpClient httpClient,
         IOptions<AISettings> settings,
         IUnitOfWork uow,
-        ApplicationDbContext db,
-        ISensitiveDataProtector sensitiveData)
+        ApplicationDbContext db)
     {
         _httpClient = httpClient;
         _settings = settings.Value;
         _uow = uow;
         _db = db;
-        _sensitiveData = sensitiveData;
     }
 
     public async Task<bool> IsConfiguredAsync(string? provider = null, CancellationToken ct = default)
@@ -408,22 +406,15 @@ public class OpenAICompatibleChatEngine : IChatEngine
             return environmentProvider;
         }
 
-        var storedApiKey = _sensitiveData.Unprotect(stored.ApiKey);
+        // Provider selection and model overrides may be stored as ordinary settings.
+        // Provider secrets always come from environment-backed configuration.
+        var resolved = environmentProvider with
+        {
+            Enabled = stored.Enabled,
+            BaseUrl = string.IsNullOrWhiteSpace(stored.BaseUrl) ? environmentProvider.BaseUrl : stored.BaseUrl,
+            DefaultModel = string.IsNullOrWhiteSpace(stored.DefaultModel) ? environmentProvider.DefaultModel : stored.DefaultModel
+        };
 
-        var resolved = stored.UseEnvironmentDefault
-            ? environmentProvider with
-            {
-                Enabled = stored.Enabled,
-                BaseUrl = string.IsNullOrWhiteSpace(stored.BaseUrl) ? environmentProvider.BaseUrl : stored.BaseUrl,
-                DefaultModel = string.IsNullOrWhiteSpace(stored.DefaultModel) ? environmentProvider.DefaultModel : stored.DefaultModel
-            }
-            : environmentProvider with
-            {
-                Enabled = stored.Enabled,
-                ApiKey = string.IsNullOrWhiteSpace(storedApiKey) ? environmentProvider.ApiKey : storedApiKey,
-                BaseUrl = string.IsNullOrWhiteSpace(stored.BaseUrl) ? environmentProvider.BaseUrl : stored.BaseUrl,
-                DefaultModel = string.IsNullOrWhiteSpace(stored.DefaultModel) ? environmentProvider.DefaultModel : stored.DefaultModel
-            };
         EnsureAllowedProviderUrl(resolved);
         return resolved;
     }

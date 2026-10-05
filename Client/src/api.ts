@@ -13,6 +13,7 @@ import type {
   BurnoutRiskRecord,
   ChatResponse,
   DashboardData,
+  ProjectDashboardData,
   DatabaseStatus,
   DashboardRecord,
   DelayPrediction,
@@ -216,7 +217,7 @@ export const api = {
     return request<void>("auth/logout", { method: "POST", token });
   },
   getDashboard(token: string, departmentId?: string | null) {
-    return request<DashboardData>("projects/dashboard", {
+    return request<ProjectDashboardData>("projects/dashboard", {
       token,
       query: { departmentId: departmentId ?? undefined },
     });
@@ -440,16 +441,6 @@ export const api = {
     const form = new FormData();
     form.set("file", file);
     return request<Task>(`tasks/${id}/attachments`, { token, method: "POST", body: form });
-  },
-  startTaskTimer(token: string, id: string, description: string, isBillable = false) {
-    return request<Task>(`tasks/${id}/time/start`, {
-      token,
-      method: "POST",
-      body: { description, isBillable },
-    });
-  },
-  stopTaskTimer(token: string, id: string) {
-    return request<Task>(`tasks/${id}/time/stop`, { token, method: "POST" });
   },
   deleteTask(token: string, id: string) {
     return request<void>(`tasks/${id}`, { token, method: "DELETE" });

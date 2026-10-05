@@ -8,7 +8,6 @@ import { usePermission, useToast, ModalOverlay } from "../../shared";
 import { TaskHeaderCard } from "../../nested/components/TaskHeaderCard";
 import { ProgressCommentForm } from "../../nested/components/ProgressCommentForm";
 import { SubtasksSection } from "../../nested/components/SubtasksSection";
-import { TimerSection } from "../../nested/components/TimerSection";
 import { AiInsightsSection } from "../../nested/components/AiInsightsSection";
 
 interface TaskSubtaskDetailsProps {
@@ -24,7 +23,6 @@ interface TaskSubtaskDetailsProps {
   onEdit: (task: Task) => void;
   onUpdateProgress?: (progress: number, notes: string) => void;
   onAddComment?: (comment: string) => void;
-  onStartTimer?: (description: string) => void;
   onRefresh?: () => void;
   onEscalate: () => void;
   onMessage?: (message: string) => void;
@@ -59,7 +57,6 @@ function TaskSubtaskDetailsModalInner({
   onEdit,
   onUpdateProgress = () => {},
   onAddComment = () => {},
-  onStartTimer = () => {},
   onRefresh = () => {},
   onEscalate,
   onMessage,
@@ -75,8 +72,6 @@ function TaskSubtaskDetailsModalInner({
   const [progress, setProgress] = useState(Math.round(task.progressPercentage || 0));
   const [progressComment, setProgressComment] = useState("");
   const progressBarRef = useRef<HTMLDivElement>(null);
-
-  const [timerDescription, setTimerDescription] = useState("Focused execution block");
 
   const [subtasks, setSubtasks] = useState<Task[]>(task.subTasks || []);
   const [expandedSubtaskIds, setExpandedSubtaskIds] = useState<Set<string>>(new Set());
@@ -143,12 +138,6 @@ function TaskSubtaskDetailsModalInner({
       return;
     }
     onStatusChange(nextStatus);
-  };
-
-  // Timer
-  const handleStartTimer = () => {
-    onStartTimer(timerDescription);
-    setTimerDescription("Focused execution block");
   };
 
   // Subtask handlers
@@ -345,11 +334,6 @@ function TaskSubtaskDetailsModalInner({
             parentTaskDueDate={task.dueDate}
           />
 
-          <TimerSection
-            description={timerDescription}
-            onDescriptionChange={setTimerDescription}
-            onStart={handleStartTimer}
-          />
 
           <AiInsightsSection
             recommendation={recommendation}

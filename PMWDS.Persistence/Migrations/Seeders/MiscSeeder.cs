@@ -60,24 +60,11 @@ internal static class MiscSeeder
 
         foreach (var task in tasks)
         {
-            await SeedTimeEntriesAsync(context, task, users, ct);
             await SeedCommentsAsync(context, task, users, ct);
         }
 
         await SeedDependenciesAsync(context, tasks, ct);
         await context.SaveChangesAsync(ct);
-    }
-
-    private static async Task SeedTimeEntriesAsync(ApplicationDbContext context, ProjectTask task, List<ApplicationUser> users, CancellationToken ct)
-    {
-        if (await context.TimeEntries.AnyAsync(t => t.TaskId == task.Id, ct))
-            return;
-
-        foreach (var user in users.Take(2))
-        {
-            var entry = TimeEntry.ManualEntry(task.Id, user.Id, DateTime.UtcNow.AddHours(-3), DateTime.UtcNow.AddHours(-1), $"Focused delivery work on {task.Title}", true);
-            await context.TimeEntries.AddAsync(entry, ct);
-        }
     }
 
     private static async Task SeedCommentsAsync(ApplicationDbContext context, ProjectTask task, List<ApplicationUser> users, CancellationToken ct)
@@ -196,6 +183,13 @@ internal static class MiscSeeder
 
     private static async Task SeedWebhooksAsync(ApplicationDbContext context, Guid integrationId, CancellationToken ct)
     {
+        var seedSecret = Environment.GetEnvironmentVariable("PMWDS_SEED_WEBHOOK_SECRET");
+        if (string.IsNullOrWhiteSpace(seedSecret))
+        {
+            // Never persist a hard-coded webhook signing secret in seed data.
+            return;
+        }
+
         var specs = new[]
         {
             ("task.created", "https://hooks.example.com/pmwds/task-created"),
@@ -204,10 +198,19 @@ internal static class MiscSeeder
 
         foreach (var spec in specs)
         {
-            var webhook = await context.Webhooks.FirstOrDefaultAsync(w => w.IntegrationId == integrationId && w.EventType == spec.Item1, ct);
+            var webhook = await context.Webhooks.FirstOrDefaultAsync(
+                w => w.IntegrationId == integrationId && w.EventType == spec.Item1,
+                ct);
+
             if (webhook == null)
             {
-                webhook = Webhook.Create(integrationId, spec.Item1, spec.Item2, "seed-secret-change-me", new[] { "X-PMWDS-Source: seed" }, true);
+                webhook = Webhook.Create(
+                    integrationId,
+                    spec.Item1,
+                    spec.Item2,
+                    seedSecret,
+                    new[] { "X-PMWDS-Source: seed" },
+                    true);
                 webhook.SetCreatedBy(SeedConstants.SeedUser);
                 await context.Webhooks.AddAsync(webhook, ct);
                 await context.SaveChangesAsync(ct);
@@ -371,7 +374,6 @@ internal static class MiscSeeder
                         enabled: true,
                         existing.UseEnvironmentDefault,
                         existing.BaseUrl,
-                        apiKey: null,
                         existing.DefaultModel);
                     existing.SetModified(SeedConstants.SeedUser);
                 }
@@ -385,7 +387,6 @@ internal static class MiscSeeder
                 spec.Enabled,
                 useEnvironmentDefault: true,
                 spec.BaseUrl,
-                apiKey: null,
                 spec.DefaultModel);
             credential.SetCreatedBy(SeedConstants.SeedUser);
             await context.AIProviderCredentials.AddAsync(credential, ct);

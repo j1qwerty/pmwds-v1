@@ -13,23 +13,6 @@ public static class SensitiveDataMigrationService
     {
         var changed = false;
 
-        var credentials = await db.AIProviderCredentials.ToListAsync(ct);
-        foreach (var credential in credentials)
-        {
-            if (!string.IsNullOrWhiteSpace(credential.ApiKey) && !protector.IsProtected(credential.ApiKey))
-            {
-                credential.Update(
-                    credential.Provider,
-                    credential.DisplayName,
-                    credential.Enabled,
-                    credential.UseEnvironmentDefault,
-                    credential.BaseUrl,
-                    protector.Protect(credential.ApiKey),
-                    credential.DefaultModel);
-                changed = true;
-            }
-        }
-
         var webhooks = await db.Webhooks.ToListAsync(ct);
         foreach (var webhook in webhooks)
         {

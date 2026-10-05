@@ -53,7 +53,6 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<TaskAttachment> TaskAttachments { get; }
     public IRepository<TaskDependency> TaskDependencies { get; }
     public IRepository<MilestoneDependency> MilestoneDependencies { get; }
-    public IRepository<TimeEntry> TimeEntries { get; }
 
     public UnitOfWork(ApplicationDbContext context, IPublisher publisher)
     {
@@ -98,7 +97,6 @@ public class UnitOfWork : IUnitOfWork
         TaskAttachments = new EfRepository<TaskAttachment>(context);
         TaskDependencies = new EfRepository<TaskDependency>(context);
         MilestoneDependencies = new EfRepository<MilestoneDependency>(context);
-        TimeEntries = new EfRepository<TimeEntry>(context);
     }
 
     public async Task<int> SaveChangesAsync(CancellationToken ct = default)

@@ -482,7 +482,6 @@ public static class DatabaseConnectionService
                 "MilestoneDependencies",
                 "Tasks",
                 "TaskAssignments",
-                "TimeEntries",
                 "AIGlobalSettings"
             };
 
@@ -503,8 +502,7 @@ public static class DatabaseConnectionService
                 await HasSqlServerColumnTypeAsync(connection, "Tasks", "AssignedByUserId", "uniqueidentifier", ct) &&
                 await HasSqlServerColumnTypeAsync(connection, "Tasks", "AIRecommendedAssigneeId", "uniqueidentifier", ct) &&
                 await HasSqlServerColumnTypeAsync(connection, "TaskAssignments", "UserId", "uniqueidentifier", ct) &&
-                await HasSqlServerColumnTypeAsync(connection, "TaskComments", "UserId", "uniqueidentifier", ct) &&
-                await HasSqlServerColumnTypeAsync(connection, "TimeEntries", "UserId", "uniqueidentifier", ct);
+                await HasSqlServerColumnTypeAsync(connection, "TaskComments", "UserId", "uniqueidentifier", ct);
         }
         finally
         {
@@ -577,6 +575,18 @@ WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = @tableName AND COLUMN_NAME = @column
 
         try
         {
+            // Legacy compatibility: older schemas included AIGlobalSettings.IsActive,
+            // but AIGlobalSetting is no longer an auditable entity. The consolidated
+            // migrations drop this column. Remove it here too when an older baseline
+            // still contains it so the runtime model and physical schema agree.
+            if (await HasSqliteColumnAsync(connection, "AIGlobalSettings", "IsActive", ct))
+            {
+                await ExecuteSqliteAsync(
+                    connection,
+                    "ALTER TABLE \"AIGlobalSettings\" DROP COLUMN \"IsActive\"",
+                    ct);
+            }
+
             if (!await HasSqliteColumnAsync(connection, "Users", "PasswordResetTokenExpiresAt", ct))
             {
                 await ExecuteSqliteAsync(connection, "ALTER TABLE \"Users\" ADD COLUMN \"PasswordResetTokenExpiresAt\" TEXT NULL", ct);

@@ -10,13 +10,16 @@ public record ProjectDashboardDto(
   int TotalProjects,
   int ActiveProjects,
   int CompletedProjects,
+  int OnHoldProjects,
+  int DelayedProjects,
   int OverdueProjects,
   int HighRiskProjects,
   double AverageHealthScore,
   decimal TotalBudget,
   decimal TotalActualCost,
   List<ProjectSummaryDto> RecentProjects,
-  List<ProjectSummaryDto> AtRiskProjects
+  List<ProjectSummaryDto> AtRiskProjects,
+  List<ProjectSummaryDto> RecentProjectPreviews
 );
 public class GetProjectDashboardQueryHandler
  : IRequestHandler<GetProjectDashboardQuery,
@@ -43,6 +46,10 @@ public class GetProjectDashboardQueryHandler
         p.Status == ProjectStatus.InProgress),
         CompletedProjects: list.Count(p =>
         p.Status == ProjectStatus.Completed),
+        OnHoldProjects: list.Count(p =>
+        p.Status == ProjectStatus.OnHold),
+        DelayedProjects: list.Count(p =>
+        p.Status == ProjectStatus.Delayed || p.GetDelayDays() > 0),
         OverdueProjects: list.Count(p =>
         p.GetDelayDays() > 0),
         HighRiskProjects: list.Count(p =>
@@ -59,6 +66,11 @@ public class GetProjectDashboardQueryHandler
         AtRiskProjects: list
         .Where(p => p.AIDelayRiskScore >= 0.7)
         .OrderByDescending(p => p.AIDelayRiskScore)
+        .Take(10)
+        .Select(p => ProjectSummaryDto.FromEntity(p))
+        .ToList(),
+        RecentProjectPreviews: list
+        .OrderByDescending(p => p.CreatedDate)
         .Take(10)
         .Select(p => ProjectSummaryDto.FromEntity(p))
         .ToList()

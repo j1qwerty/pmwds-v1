@@ -294,7 +294,6 @@ export interface Task {
   dependencies?: TaskDependency[];
   comments?: TaskComment[];
   attachments?: TaskAttachment[];
-  timeEntries?: TaskTimeEntry[];
   subTasks?: Task[];
   hasSubTasks?: boolean;
   aiOptimalAssigneeScore?: number;
@@ -551,6 +550,22 @@ export interface WorkloadReport {
   generatedAt: string;
 }
 
+export interface ProjectDashboardData {
+  totalProjects: number;
+  activeProjects: number;
+  completedProjects: number;
+  onHoldProjects: number;
+  delayedProjects: number;
+  overdueProjects: number;
+  highRiskProjects: number;
+  averageHealthScore: number;
+  totalBudget: number;
+  totalActualCost: number;
+  recentProjects: ProjectSummary[];
+  atRiskProjects: ProjectSummary[];
+  recentProjectPreviews: ProjectSummary[];
+}
+
 export interface DashboardData {
   totalProjects: number;
   activeProjects: number;
@@ -798,6 +813,24 @@ export interface ProjectHealth {
   generatedAt: string;
 }
 
+export interface AISettingsRequest {
+  defaultProvider: string;
+  defaultModel: string;
+  riskThreshold: number;
+  useLocalModel: boolean;
+  mlModelPath: string;
+  providers: AIProviderConfigRequest[];
+}
+
+export interface AIProviderConfigRequest {
+  provider: string;
+  displayName: string;
+  enabled: boolean;
+  useEnvironmentDefault: boolean;
+  baseUrl: string;
+  defaultModel: string;
+}
+
 export interface AISettingsResponse {
   defaultProvider: string;
   defaultModel: string;
@@ -813,8 +846,6 @@ export interface AIProviderConfig {
   enabled: boolean;
   useEnvironmentDefault: boolean;
   baseUrl: string;
-  apiKey: string;
-  hasStoredKey: boolean;
   defaultModel: string;
 }
 
@@ -945,36 +976,8 @@ export interface UtilizationCertificateCapabilities {
   isOwner: boolean;
 }
 
-export interface TaskTimeEntry {
-  id: string;
-  taskId: string;
-  userId: string;
-  userName?: string | null;
-  description?: string | null;
-  startTime: string;
-  endTime?: string | null;
-  durationMinutes: number;
-  isBillable: boolean;
-}
 
-export interface AISettingsRequest {
-  defaultProvider: string;
-  defaultModel: string;
-  riskThreshold: number;
-  useLocalModel: boolean;
-  mlModelPath: string;
-  providers: AIProviderConfigRequest[];
-}
 
-export interface AIProviderConfigRequest {
-  provider: string;
-  displayName: string;
-  enabled: boolean;
-  useEnvironmentDefault: boolean;
-  baseUrl: string;
-  apiKey: string;
-  defaultModel: string;
-}
 
 export interface DatabaseStatus {
   provider: string;

@@ -1,12 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
-import type {
-  AlertRuleRecord,
-  Department,
-  NotificationItem,
-  NotificationTemplateRecord,
-} from "../../types";
+import { onDataChanged } from "../../realtime";
+import { REALTIME_SCOPES } from "../../realtimeScopes";
+import type { AlertRuleRecord, Department, NotificationItem, NotificationTemplateRecord } from "../../types";
 import {
   AnimatedBackground,
   LoadingPage,
@@ -28,22 +26,21 @@ import { DeleteConfirmationModal } from "../shared/DeleteConfirmationModal";
 
 export function NotificationsPage() {
   const { auth } = useAuth();
+  const navigate = useNavigate();
   const perm = usePermission();
-  // Templates and Alert Rules are SuperAdmin-only. Keying this off the
-  // superadmin role (rather than the template/rule permissions) hides the
-  // stat cards, the tabs, and the loaders for every other role.
   const canConfigure = perm.isSuperAdmin;
   const canBroadcast = perm.has(PERMISSION_GROUPS.notification.broadcast);
+  const { addToast } = useToast();
+  const { setNavHeader } = useNavHeader();
 
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [templates, setTemplates] = useState<NotificationTemplateRecord[]>([]);
   const [rules, setRules] = useState<AlertRuleRecord[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
-  const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"inbox" | "templates" | "rules">("inbox");
+  const [notificationView, setNotificationView] = useState<"all" | "unread">("all");
 
-  // Modal states
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [templateModal, setTemplateModal] = useState<{ open: boolean; editTemplate?: NotificationTemplateRecord }>({ open: false });
   const [ruleModal, setRuleModal] = useState<{ open: boolean; editRule?: AlertRuleRecord }>({ open: false });
@@ -53,8 +50,6 @@ export function NotificationsPage() {
     id: string;
     name: string;
   }>({ open: false, type: "template", id: "", name: "" });
-
-  const { setNavHeader } = useNavHeader();
 
   useEffect(() => {
     setNavHeader({
@@ -68,52 +63,109 @@ export function NotificationsPage() {
     });
   }, [setNavHeader, canConfigure, canBroadcast]);
 
-  const loadData = () => {
+  const loadInbox = useCallback(async () => {
     if (!auth) return;
-    setLoading(true);
-    Promise.all([
-      api.getNotifications(auth.token),
-      canConfigure ? api.getNotificationTemplates(auth.token) : Promise.resolve([]),
-      canConfigure ? api.getAlertRules(auth.token) : Promise.resolve([]),
-      canBroadcast ? api.getDepartments(auth.token) : Promise.resolve([]),
-    ])
-      .then(([notificationData, templateData, ruleData, departmentData]) => {
-        setItems(notificationData);
-        setTemplates(templateData);
-        setRules(ruleData);
-        setDepartments(departmentData);
-      })
-      .finally(() => setLoading(false));
-  };
+    setItems(await api.getNotifications(auth.token));
+  }, [auth]);
 
-  useEffect(() => { loadData(); }, [auth, canBroadcast, canConfigure]);
+  const loadTemplates = useCallback(async () => {
+    if (!auth || !canConfigure) return;
+    setTemplates(await api.getNotificationTemplates(auth.token));
+  }, [auth, canConfigure]);
+
+  const loadRules = useCallback(async () => {
+    if (!auth || !canConfigure) return;
+    setRules(await api.getAlertRules(auth.token));
+  }, [auth, canConfigure]);
+
+  const loadDepartments = useCallback(async () => {
+    if (!auth || !canBroadcast) return;
+    setDepartments(await api.getDepartments(auth.token));
+  }, [auth, canBroadcast]);
 
   useEffect(() => {
-    if (!canConfigure && activeTab !== "inbox") {
-      setActiveTab("inbox");
-    }
-  }, [activeTab, canConfigure]);
+    if (!auth) return;
+    let disposed = false;
+    setLoading(true);
+    loadInbox()
+      .catch((cause) => {
+        if (!disposed) addToast(cause instanceof Error ? cause.message : "Failed to load notifications", "error");
+      })
+      .finally(() => {
+        if (!disposed) setLoading(false);
+      });
+    return () => { disposed = true; };
+  }, [auth, loadInbox, addToast]);
 
-  const unreadCount = items.filter(i => !i.isRead).length;
+  useEffect(() => {
+    if (!auth) return;
+    let timer: number | undefined;
+    const stopListening = onDataChanged((notification) => {
+      if (notification.scope !== REALTIME_SCOPES.notifications) return;
+      if (timer !== undefined) window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        void loadInbox().catch((cause) => addToast(cause instanceof Error ? cause.message : "Failed to refresh notifications", "error"));
+      }, 250);
+    });
+    return () => {
+      if (timer !== undefined) window.clearTimeout(timer);
+      stopListening();
+    };
+  }, [auth, loadInbox, addToast]);
+
+  useEffect(() => {
+    if (!canConfigure) {
+      setActiveTab("inbox");
+      return;
+    }
+    if (activeTab === "templates") void loadTemplates();
+    if (activeTab === "rules") void loadRules();
+  }, [activeTab, canConfigure, loadTemplates, loadRules]);
+
+  const handleOpenNotification = async (item: NotificationItem) => {
+    if (!auth) return;
+    if (!item.isRead) {
+      try {
+        await api.markNotificationRead(auth.token, item.id);
+        setItems((current) => current.map((notification) => notification.id === item.id ? { ...notification, isRead: true } : notification));
+      } catch {
+        // Acknowledgement failure must not block navigation.
+      }
+    }
+
+    if (!item.actionUrl) return;
+    if (item.actionUrl.startsWith("/tasks/")) {
+      const taskId = item.actionUrl.split("/").filter(Boolean)[1];
+      if (!taskId) return;
+      try {
+        const task = await api.getTask(auth.token, taskId);
+        navigate(`/projects/${task.projectId}/tasks?taskId=${task.id}`);
+      } catch {
+        addToast("The linked task could not be opened.", "error");
+      }
+      return;
+    }
+    navigate(item.actionUrl);
+  };
 
   const handleMarkAllRead = async () => {
     if (!auth) return;
     await api.markAllNotificationsRead(auth.token);
+    setItems((current) => current.map((item) => ({ ...item, isRead: true })));
     addToast("All notifications marked as read.");
-    loadData();
   };
 
   const handleMarkRead = async (id: string) => {
     if (!auth) return;
     await api.markNotificationRead(auth.token, id);
-    loadData();
+    setItems((current) => current.map((item) => item.id === id ? { ...item, isRead: true } : item));
   };
 
   const handleDeleteNotification = async (id: string) => {
     if (!auth) return;
     await api.deleteNotification(auth.token, id);
+    setItems((current) => current.filter((item) => item.id !== id));
     addToast("Notification deleted.");
-    loadData();
   };
 
   const handleBroadcast = async (payload: Record<string, unknown>) => {
@@ -133,7 +185,7 @@ export function NotificationsPage() {
       addToast("Template created.");
     }
     setTemplateModal({ open: false });
-    loadData();
+    await loadTemplates();
   };
 
   const handleRuleSubmit = async (payload: Record<string, unknown>) => {
@@ -146,20 +198,29 @@ export function NotificationsPage() {
       addToast("Rule created.");
     }
     setRuleModal({ open: false });
-    loadData();
+    await loadRules();
   };
 
   const handleDelete = async () => {
     if (!auth) return;
     if (deleteConfirm.type === "template") {
       await api.deleteNotificationTemplate(auth.token, deleteConfirm.id);
+      await loadTemplates();
     } else {
       await api.deleteAlertRule(auth.token, deleteConfirm.id);
+      await loadRules();
     }
     addToast(`${deleteConfirm.type === "template" ? "Template" : "Rule"} deleted.`);
     setDeleteConfirm({ open: false, type: "template", id: "", name: "" });
-    loadData();
   };
+
+  const unreadCount = items.filter((item) => !item.isRead).length;
+
+  const ensureDepartmentsLoaded = async () => {
+    if (departments.length === 0) await loadDepartments();
+  };
+
+  const filteredItems = notificationView === "unread" ? items.filter((item) => !item.isRead) : items;
 
   if (loading) return <LoadingPage label="Loading notifications..." />;
 
@@ -167,11 +228,6 @@ export function NotificationsPage() {
     <div>
       <AnimatedBackground />
 
-
-
-
-
-      {/* Stats Row */}
       <div className={`relative z-10 grid grid-cols-2 ${canConfigure ? "md:grid-cols-4" : "md:grid-cols-2"} gap-3 mb-5`}>
         <StatCard label="Total Notifications" value={items.length} color="indigo" icon="notifications" />
         <StatCard label="Unread" value={unreadCount} color="amber" icon="mark_email_unread" />
@@ -183,47 +239,29 @@ export function NotificationsPage() {
         )}
       </div>
 
-      {/* Tab Navigation */}
       <div className="relative z-10 mb-5">
         <div className="flex gap-2 border-b border-slate-200 pb-0">
-          <TabButton
-            active={activeTab === "inbox"}
-            onClick={() => setActiveTab("inbox")}
-            icon="inbox"
-            label="Inbox"
-            count={unreadCount}
-            countColor="amber"
-          />
+          <TabButton active={activeTab === "inbox"} onClick={() => setActiveTab("inbox")} icon="inbox" label="Inbox" count={unreadCount} countColor="amber" />
           {canConfigure && (
             <>
-              <TabButton
-                active={activeTab === "templates"}
-                onClick={() => setActiveTab("templates")}
-                icon="description"
-                label="Templates"
-                count={templates.length}
-              />
-              <TabButton
-                active={activeTab === "rules"}
-                onClick={() => setActiveTab("rules")}
-                icon="rule"
-                label="Alert Rules"
-                count={rules.length}
-              />
+              <TabButton active={activeTab === "templates"} onClick={() => setActiveTab("templates")} icon="description" label="Templates" count={templates.length} />
+              <TabButton active={activeTab === "rules"} onClick={() => setActiveTab("rules")} icon="rule" label="Alert Rules" count={rules.length} />
             </>
           )}
         </div>
       </div>
 
-      {/* Tab Content */}
       <div className="relative z-10">
         {activeTab === "inbox" && (
           <NotificationInbox
-            items={items}
+            items={filteredItems}
+            view={notificationView}
+            onViewChange={setNotificationView}
+            onOpen={handleOpenNotification}
             onMarkRead={handleMarkRead}
             onMarkAllRead={handleMarkAllRead}
             onDelete={handleDeleteNotification}
-            onBroadcast={() => setBroadcastOpen(true)}
+            onBroadcast={() => { void ensureDepartmentsLoaded(); setBroadcastOpen(true); }}
             canWrite={canBroadcast}
           />
         )}
@@ -249,34 +287,21 @@ export function NotificationsPage() {
         )}
       </div>
 
-      {/* Modals */}
       {broadcastOpen && canBroadcast && (
         <ModalOverlay onClose={() => setBroadcastOpen(false)}>
-          <BroadcastModal
-            departments={departments}
-            onSubmit={handleBroadcast}
-            onCancel={() => setBroadcastOpen(false)}
-          />
+          <BroadcastModal departments={departments} onSubmit={handleBroadcast} onCancel={() => setBroadcastOpen(false)} />
         </ModalOverlay>
       )}
 
       {templateModal.open && canConfigure && (
         <ModalOverlay onClose={() => setTemplateModal({ open: false })}>
-          <TemplateFormModal
-            initialData={templateModal.editTemplate}
-            onSubmit={handleTemplateSubmit}
-            onCancel={() => setTemplateModal({ open: false })}
-          />
+          <TemplateFormModal initialData={templateModal.editTemplate} onSubmit={handleTemplateSubmit} onCancel={() => setTemplateModal({ open: false })} />
         </ModalOverlay>
       )}
 
       {ruleModal.open && canConfigure && (
         <ModalOverlay onClose={() => setRuleModal({ open: false })}>
-          <RuleFormModal
-            initialData={ruleModal.editRule}
-            onSubmit={handleRuleSubmit}
-            onCancel={() => setRuleModal({ open: false })}
-          />
+          <RuleFormModal initialData={ruleModal.editRule} onSubmit={handleRuleSubmit} onCancel={() => setRuleModal({ open: false })} />
         </ModalOverlay>
       )}
 
@@ -293,5 +318,3 @@ export function NotificationsPage() {
     </div>
   );
 }
-
-
