@@ -95,7 +95,9 @@ export function AIPage() {
       try {
         await loadProjects();
         if (disposed) return;
-        await Promise.allSettled([loadMyTasks(), loadAISettings()]);
+        await loadMyTasks();
+        if (disposed) return;
+        await loadAISettings();
       } catch (cause) {
         if (!disposed) {
           addToast(cause instanceof Error ? cause.message : "Failed to load AI project data", "error");
