@@ -392,11 +392,11 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">API Key</label>
-                  <div className="h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-slate-400 text-sm">lock</span>
-                    <span className="text-[11px] text-slate-500">Loaded from server environment</span>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Credential source</label>
+                  <div className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs flex items-center bg-slate-50 text-slate-500">
+                    Server environment
                   </div>
+                  <p className="text-[10px] text-slate-400 mt-1">Provider API keys are configured on the server and are never sent to the browser.</p>
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Default Model</label>
