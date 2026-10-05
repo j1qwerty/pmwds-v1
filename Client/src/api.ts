@@ -147,7 +147,9 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
       try {
         const json = JSON.parse(responseText);
         message = json.error?.message || json.message || json.error || responseText;
-      } catch {}
+      } catch {
+        // Keep the server-provided response text when it is not valid JSON.
+      }
       throw new ApiError(message || `Request failed with status ${response.status}`, response.status);
     }
 

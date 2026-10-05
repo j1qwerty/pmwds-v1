@@ -113,7 +113,7 @@ public class AIController : BaseApiController
                     provider.Enabled,
                     provider.UseEnvironmentDefault,
                     provider.BaseUrl,
-                    provider.DefaultModel);
+                                        provider.DefaultModel);
                 existing.SetCreatedBy(User.Identity?.Name ?? "system");
                 await _db.AIProviderCredentials.AddAsync(existing, ct);
             }
@@ -125,7 +125,7 @@ public class AIController : BaseApiController
                     provider.Enabled,
                     provider.UseEnvironmentDefault,
                     provider.BaseUrl,
-                    provider.DefaultModel);
+                                        provider.DefaultModel);
             }
         }
 

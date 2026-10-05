@@ -45,4 +45,3 @@ jobs:
       - run: dotnet restore PMWDS.slnx
       - run: dotnet build PMWDS.slnx --configuration Release --no-restore
       - run: dotnet test PMWDS.slnx --configuration Release --no-build
-
