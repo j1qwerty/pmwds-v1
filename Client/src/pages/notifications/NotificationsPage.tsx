@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
+import { resolveNotificationTarget } from "../../lib/notificationTarget";
 import { useAuth } from "../../auth";
 import { onDataChanged } from "../../realtime";
 import { REALTIME_SCOPES } from "../../realtimeScopes";
@@ -133,19 +134,19 @@ export function NotificationsPage() {
       }
     }
 
-    if (!item.actionUrl) return;
-    if (item.actionUrl.startsWith("/tasks/")) {
-      const taskId = item.actionUrl.split("/").filter(Boolean)[1];
-      if (!taskId) return;
+    const target = resolveNotificationTarget(item);
+    if (target.kind === "none") return;
+
+    if (target.kind === "task") {
       try {
-        const task = await api.getTask(auth.token, taskId);
+        const task = await api.getTask(auth.token, target.taskId);
         navigate(`/projects/${task.projectId}/tasks?taskId=${task.id}`);
       } catch {
         addToast("The linked task could not be opened.", "error");
       }
       return;
     }
-    navigate(item.actionUrl);
+    navigate(target.path);
   };
 
   const handleMarkAllRead = async () => {

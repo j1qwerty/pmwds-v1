@@ -6,6 +6,18 @@ on:
     branches: [main]
 
 jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Notification ActionUrls must resolve to a served route
+        run: node scripts/check-notification-targets.mjs
+      - name: No unreachable client modules
+        run: node scripts/check-client-reachability.mjs
+
   client:
     runs-on: ubuntu-latest
     defaults:
@@ -45,3 +57,5 @@ jobs:
       - run: dotnet restore PMWDS.slnx
       - run: dotnet build PMWDS.slnx --configuration Release --no-restore
       - run: dotnet test PMWDS.slnx --configuration Release --no-build
+      - name: EF model must match the migration snapshot
+        run: dotnet ef migrations has-pending-model-changes --project PMWDS.Persistence --startup-project PMWDS.Persistence

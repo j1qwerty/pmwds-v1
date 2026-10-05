@@ -13,12 +13,37 @@ internal static class NotificationsSeeder
         await SeedNotificationTemplatesAsync(context, ct);
         await SeedAlertRulesAsync(context, ct);
 
+        // Seeded notifications must point somewhere real. "/tasks" is not a route - the client
+        // serves tasks under their project - so a click landed on the "no access" page.
+        var sampleProject = await context.Projects
+            .OrderBy(project => project.CreatedDate)
+            .FirstOrDefaultAsync(ct);
+        var sampleTask = sampleProject == null
+            ? null
+            : await context.Tasks
+                .Where(task => task.ProjectId == sampleProject.Id)
+                .OrderBy(task => task.CreatedDate)
+                .FirstOrDefaultAsync(ct);
+
         foreach (var user in users)
         {
             if (await context.Notifications.AnyAsync(n => n.UserId == user.Id.ToString(), ct))
                 continue;
 
-            await context.Notifications.AddAsync(Notification.Create(user.Id.ToString(), "Task assigned", "A seeded delivery task is ready for review.", NotificationType.TaskAssigned, NotificationPriority.Normal, "/tasks"), ct);
+            if (sampleTask != null)
+            {
+                await context.Notifications.AddAsync(Notification.Create(
+                    user.Id.ToString(),
+                    "Task assigned",
+                    $"Task '{sampleTask.Title}' is ready for review.",
+                    NotificationType.TaskAssigned,
+                    NotificationPriority.Normal,
+                    $"/projects/{sampleTask.ProjectId}/tasks?taskId={sampleTask.Id}",
+                    sampleTask.Id.ToString(),
+                    "Task"), ct);
+            }
+
+            // The AI page is a real route, so this one is safe to link directly.
             await context.Notifications.AddAsync(Notification.Create(user.Id.ToString(), "AI insight available", "Project risk signals have been refreshed.", NotificationType.AIInsight, NotificationPriority.High, "/ai", null, null, true), ct);
         }
 

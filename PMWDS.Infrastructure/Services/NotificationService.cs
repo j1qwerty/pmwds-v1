@@ -208,14 +208,23 @@ public class NotificationService : INotificationService
     public async Task SendAIInsightAsync(
         string userId,
         string insight,
+        Guid? projectId = null,
         CancellationToken ct = default)
     {
+        // Without an ActionUrl the client had nowhere to navigate on click, so the row was
+        // effectively dead. Scope to the project when there is one, otherwise to the AI page,
+        // which always exists.
+        var actionUrl = projectId.HasValue ? $"/projects/{projectId.Value}" : "/ai";
+
         await SendAsync(new SendNotificationDto(
             UserId: userId,
             Title: "AI Insight",
             Message: insight,
             Type: NotificationType.AIInsight,
             Priority: NotificationPriority.Normal,
+            ActionUrl: actionUrl,
+            RelatedEntityId: projectId?.ToString(),
+            RelatedEntityType: projectId.HasValue ? "Project" : null,
             IsAIGenerated: true),
             ct);
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
+import { resolveNotificationTarget } from "../../lib/notificationTarget";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
 import { onDataChanged } from "../../realtime";
@@ -270,14 +271,12 @@ export function DashboardPage() {
       // Navigation should still work even if acknowledgement fails.
     }
 
-    const actionUrl = item.actionUrl;
-    if (!actionUrl) return;
+    const target = resolveNotificationTarget(item);
+    if (target.kind === "none") return;
 
-    if (actionUrl.startsWith("/tasks/")) {
-      const taskId = actionUrl.split("/").filter(Boolean)[1];
-      if (!taskId) return;
+    if (target.kind === "task") {
       try {
-        const task = await api.getTask(auth.token, taskId);
+        const task = await api.getTask(auth.token, target.taskId);
         navigate(`/projects/${task.projectId}/tasks?taskId=${task.id}`);
       } catch {
         addToast("The linked task could not be opened.", "error");
@@ -285,7 +284,7 @@ export function DashboardPage() {
       return;
     }
 
-    navigate(actionUrl);
+    navigate(target.path);
   }, [auth, navigate, addToast]);
 
   const activityData = useMemo(() => {

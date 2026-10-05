@@ -26,7 +26,11 @@ public interface INotificationService
     PMWDS.Domain.Enums.ProjectStatus oldStatus,
     PMWDS.Domain.Enums.ProjectStatus newStatus,
     CancellationToken ct = default);
-    Task SendAIInsightAsync(
-    string userId, string insight,
+    /// <param name="projectId">
+/// Project the insight is about, when it belongs to one. Used to build the ActionUrl so
+/// clicking the notification lands on that project instead of doing nothing.
+/// </param>
+Task SendAIInsightAsync(
+    string userId, string insight, Guid? projectId = null,
     CancellationToken ct = default);
 }
