@@ -340,8 +340,8 @@ internal static class MiscSeeder
             if (existing != null)
             {
                 // Older databases were seeded with OpenRouter disabled, which made it
-                // unusable as the default provider. Enable it when a key is available.
-                var shouldEnable = hasEnvironmentKey || spec.Enabled;
+                // Older databases may have a disabled provider. Keep the seeded provider settings aligned with the current configuration.
+                var shouldEnable = spec.Enabled;
                 if (shouldEnable && !existing.Enabled)
                 {
                     existing.Update(
