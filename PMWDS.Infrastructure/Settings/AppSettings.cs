@@ -37,7 +37,6 @@ public class SecurityValidationSettings
 
 public class AISettings
 {
-    public string OpenAIApiKey { get; set; } = string.Empty;
     public string OpenAIModel { get; set; } = "gpt-4o";
     public string DefaultProvider { get; set; } = "OpenRouter";
     public string DefaultModel { get; set; } = "nvidia/nemotron-3-ultra-550b-a55b:free";
