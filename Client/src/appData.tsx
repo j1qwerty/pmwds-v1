@@ -233,6 +233,26 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     void refresh();
   }, [refresh]);
 
+  const refreshReferenceData = useCallback(async (scope?: string) => {
+    if (!auth) return;
+
+    try {
+      // Reference collections are refreshed one at a time. A realtime burst should never
+      // fan out into three independent queries per event.
+      if (!scope || scope === "organizations") {
+        setOrganizations(await api.getOrganizations(auth.token));
+      }
+      if (!scope || scope === "departments") {
+        setDepartments(await api.getDepartments(auth.token));
+      }
+      if (!scope || scope === "users") {
+        setUsers(await api.getUsers(auth.token));
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Reference data could not be loaded.");
+    }
+  }, [auth]);
+
   useEffect(() => {
     if (!auth) {
       referenceLoadRef.current = null;
@@ -243,33 +263,19 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     referenceLoadRef.current = auth.userId;
     let disposed = false;
 
-    const loadReferenceData = async () => {
+    const loadInitialReferenceData = async () => {
       try {
-        // These are deliberately sequential. The data is useful to many pages, but it is
-        // reference data, not the critical path for the first screen.
-        const organizationsData = await api.getOrganizations(auth.token);
-        if (disposed) return;
-        setOrganizations(organizationsData);
-
-        const departmentsData = await api.getDepartments(auth.token);
-        if (disposed) return;
-        setDepartments(departmentsData);
-
-        const usersData = await api.getUsers(auth.token);
-        if (disposed) return;
-        setUsers(usersData);
-      } catch (cause) {
-        if (!disposed) {
-          setError(cause instanceof Error ? cause.message : "Reference data could not be loaded.");
-        }
+        await refreshReferenceData();
+      } catch {
+        // refreshReferenceData records a user-visible error. Keep bootstrap usable.
       }
     };
 
-    void loadReferenceData();
+    if (!disposed) void loadInitialReferenceData();
     return () => {
       disposed = true;
     };
-  }, [auth]);
+  }, [auth, refreshReferenceData]);
 
   useEffect(() => {
     if (!auth) return;
@@ -287,8 +293,13 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     };
 
     const stopListening = onDataChanged((notification) => {
-      if (GLOBAL_SCOPES.includes(notification.scope)) {
+      if (notification.scope === "projects" || GLOBAL_SCOPES.includes(notification.scope) && notification.scope === "permissions") {
         scheduleRefresh(REALTIME_DEBOUNCE_MS);
+        return;
+      }
+
+      if (notification.scope === "organizations" || notification.scope === "departments" || notification.scope === "users") {
+        void refreshReferenceData(notification.scope);
       }
     });
 
