@@ -100,6 +100,7 @@ let restartAttempt = 0;
 
 const dataChangedHandlers = new Set<DataChangedHandler>();
 const statusHandlers = new Set<StatusHandler>();
+const projectSubscriptions = new Set<string>();
 
 function setStatus(next: RealtimeStatus) {
   if (status === next) return;
@@ -203,9 +204,17 @@ export function startRealtime(): Promise<void> {
     setStatus("reconnecting");
   });
 
-  hub.onreconnected(() => {
+  hub.onreconnected(async () => {
     restartAttempt = 0;
     setStatus("connected");
+
+    for (const projectId of projectSubscriptions) {
+      try {
+        await hub.invoke("SubscribeToProject", projectId);
+      } catch {
+        // The project workspace will still refresh from focus/polling if re-subscription fails.
+      }
+    }
   });
 
   hub.onclose(() => {
@@ -249,6 +258,7 @@ export function startRealtime(): Promise<void> {
 
 export async function subscribeToProject(projectId: string): Promise<void> {
   if (!projectId) return;
+  projectSubscriptions.add(projectId);
   await startRealtime();
   if (connection?.state === HubConnectionState.Connected) {
     await connection.invoke("SubscribeToProject", projectId);
@@ -256,7 +266,9 @@ export async function subscribeToProject(projectId: string): Promise<void> {
 }
 
 export async function unsubscribeFromProject(projectId: string): Promise<void> {
-  if (!projectId || !connection || connection.state !== HubConnectionState.Connected) return;
+  if (!projectId) return;
+  projectSubscriptions.delete(projectId);
+  if (!connection || connection.state !== HubConnectionState.Connected) return;
   await connection.invoke("UnsubscribeFromProject", projectId);
 }
 
@@ -267,6 +279,7 @@ export function stopRealtime(): void {
 
   dataChangedHandlers.clear();
   statusHandlers.clear();
+  projectSubscriptions.clear();
   starting = null;
 
   const hub = connection;
