@@ -4,7 +4,7 @@ import { useAuth } from "../../../auth";
 import type { Task, User } from "../../../types";
 import { getPriorityColor, getStatusColor, usePermission, useToast } from "../../shared";
 import { SubtaskFormModal } from "./SubtaskFormModal";
-import { AvatarStackk } from "../../shared/Avatark";
+import { AvatarStack } from "../../shared/Avatar";
 import { SubtaskEditModal } from "../../shared/modals/SubtaskEditModal";
 import { FiAlertTriangle } from "react-icons/fi";
 import { TaskEditModal } from "../../shared/modals/TaskEditModal";
@@ -385,7 +385,7 @@ export function TaskSubtaskCard({
 
           {assigneeUsers.length > 0 && (
             <div className="flex items-center gap-0.5">
-              <AvatarStackk users={assigneeUsers} limit={2} size="xs" />
+              <AvatarStack people={assigneeUsers} limit={2} size="xs" />
             </div>
           )}
         </div>

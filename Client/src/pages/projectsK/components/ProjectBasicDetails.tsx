@@ -1,7 +1,7 @@
 import type { Project } from "../../../types";
 import { formatDate, formatLakhs } from "../../../lib/formatters";
 import { GlassCard, getStatusColor, getPriorityColor } from "../../shared";
-import { Avatark } from "../../shared/Avatark";
+import { Avatar } from "../../shared/Avatar";
 import { 
   HiOutlineCalendar, 
   HiOutlineFlag, 
@@ -269,7 +269,7 @@ export function ProjectBasicDetails({
               className="flex items-center gap-2 text-slate-600"
               title="Project Manager"
             >
-              <Avatark 
+              <Avatar 
                 person={manager} 
                 name={project.projectManagerName} 
                 size="xs" 

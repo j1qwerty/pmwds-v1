@@ -14,7 +14,7 @@ import {
 } from "../projectsK/components";
 import { Icon } from "../../components/ui/Icon";
 import { formatLakhs } from "../../lib/formatters";
-import { Avatark } from "../shared/Avatark";
+import { Avatar } from "../shared/Avatar";
 
 const emptyProjectForm = (): ProjectFormState => ({
   projectCode: "",
@@ -142,7 +142,7 @@ export function ProjectInfoCard({
               )}
               {project.projectManagerId && (
                 <div className="flex items-center gap-1.5" title="Project Manager">
-                  <Avatark person={manager} name={project.projectManagerName} size="xs" />
+                  <Avatar person={manager} name={project.projectManagerName} size="xs" />
                   <span className={`text-xs font-medium truncate max-w-[120px] ${manager?.isActive === false ? "text-red-500" : "text-slate-500"}`}>
                     {manager?.fullName || project.projectManagerName}
                   </span>

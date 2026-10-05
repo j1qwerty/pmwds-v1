@@ -20,7 +20,7 @@ import { useProjectWorkspace } from "./nestedShared";
 import { ProjectNotFound } from "./ProjectNotFound";
 import { ProjectInfoCard } from "./ProjectInfoCard";
 import { Icon } from "../../components/ui/Icon";
-import { Avatark } from "../shared/Avatark";
+import { Avatar } from "../shared/Avatar";
 import { TaskStatusDonut, MilestoneTimeline, BudgetBar } from "./components/OverviewCharts";
 import { OverviewAIInsights } from "./components/OverviewAIInsights";
 import { formatLakhs } from "../../lib/formatters";
@@ -824,7 +824,7 @@ export function ProjectOverviewPage() {
                         <tr key={userId} className="hover:bg-slate-50 transition-colors">
                           <td className="px-4 py-2">
                             <div className="flex items-center gap-2">
-                              <Avatark person={user} name={name} size="xs" />
+                              <Avatar person={user} name={name} size="xs" />
                               <span className="font-medium text-slate-700 truncate max-w-[120px]">
                                 {name}
                               </span>

@@ -20,7 +20,7 @@ import {
 import { CustomDropdown } from "../shared/customDropdown";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { NewProjectPage } from "../NewProject/NewProjectPage";
-import { Avatark } from "../shared/Avatark";
+import { Avatar } from "../shared/Avatar";
 import { Icon } from "../../components/ui/Icon";
 import { formatLakhs } from "../../lib/formatters";
 
@@ -747,7 +747,7 @@ function ProjectSummaryCard({
       <div className="flex items-center gap-2 flex-wrap mt-3">
         {project.projectManagerId && (
           <span className="flex items-center gap-1.5" title="Project Manager">
-            <Avatark person={manager} name={project.projectManagerName} size="xs" />
+            <Avatar person={manager} name={project.projectManagerName} size="xs" />
             <span
               className={`text-[11px] font-medium max-w-[140px] truncate ${
                 manager?.isActive === false ? "text-red-500" : "text-slate-600"

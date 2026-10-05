@@ -1,14 +1,20 @@
-import type { User, WorkloadMember } from "../../types";
-
-type AvatarPerson = Partial<User> &
-  Partial<WorkloadMember> & {
-    id?: string;
-    userId?: string;
-    name?: string;
-    profilePictureUrl?: string | null;
-    fullName?: string | null;
-    email?: string | null;
-  };
+/**
+ * Structural shape an avatar needs.
+ *
+ * This used to be `Partial<User> & Partial<WorkloadMember> & {...}`. Intersecting the two domain
+ * types narrowed `fullName` to `string | undefined`, so any caller holding `string | null` - which
+ * is exactly what the API returns - failed to type-check against the stack. Declaring the fields
+ * the component actually reads keeps every caller assignable, including full `User` records.
+ */
+export type AvatarPerson = {
+  id?: string;
+  userId?: string;
+  name?: string | null;
+  fullName?: string | null;
+  email?: string | null;
+  profilePictureUrl?: string | null;
+  isActive?: boolean;
+};
 
 type AvatarProps = {
   person?: AvatarPerson | null;
