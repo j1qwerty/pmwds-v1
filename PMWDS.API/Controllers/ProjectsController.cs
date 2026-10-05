@@ -74,6 +74,8 @@ public class ProjectsController : BaseApiController
                 TotalProjects = group.Count(),
                 ActiveProjects = group.Count(project => project.Status == ProjectStatus.InProgress),
                 CompletedProjects = group.Count(project => project.Status == ProjectStatus.Completed),
+                OnHoldProjects = group.Count(project => project.Status == ProjectStatus.OnHold),
+                DelayedProjects = group.Count(project => project.Status == ProjectStatus.Delayed),
                 OverdueProjects = group.Count(project =>
                     (project.ActualEndDate.HasValue && project.ActualEndDate > project.PlannedEndDate) ||
                     (!project.ActualEndDate.HasValue && now > project.PlannedEndDate)),
@@ -87,6 +89,23 @@ public class ProjectsController : BaseApiController
         var recentProjectRows = await query
             .OrderByDescending(project => project.CreatedDate)
             .Take(5)
+            .Select(project => new
+            {
+                project.Id,
+                project.ProjectCode,
+                project.Name,
+                project.Status,
+                project.ProgressPercentage,
+                project.AIHealthScore,
+                project.AIDelayRiskScore,
+                project.ActualEndDate,
+                project.PlannedEndDate
+            })
+            .ToListAsync(ct);
+
+        var recentProjectPreviewRows = await query
+            .OrderByDescending(project => project.CreatedDate)
+            .Take(50)
             .Select(project => new
             {
                 project.Id,
@@ -145,17 +164,33 @@ public class ProjectsController : BaseApiController
                 project.PlannedEndDate))
             .ToList();
 
+        var recentProjectPreviews = recentProjectPreviewRows
+            .Select(project => new ProjectSummaryDto(
+                project.Id,
+                project.ProjectCode,
+                project.Name,
+                project.Status.ToString(),
+                project.ProgressPercentage,
+                project.AIHealthScore,
+                project.AIDelayRiskScore,
+                GetDelayDays(project.ActualEndDate, project.PlannedEndDate, now),
+                project.PlannedEndDate))
+            .ToList();
+
         return Ok(new ProjectDashboardDto(
             TotalProjects: metrics?.TotalProjects ?? 0,
             ActiveProjects: metrics?.ActiveProjects ?? 0,
             CompletedProjects: metrics?.CompletedProjects ?? 0,
+            OnHoldProjects: metrics?.OnHoldProjects ?? 0,
+            DelayedProjects: metrics?.DelayedProjects ?? 0,
             OverdueProjects: metrics?.OverdueProjects ?? 0,
             HighRiskProjects: metrics?.HighRiskProjects ?? 0,
             AverageHealthScore: metrics?.AverageHealthScore ?? 0,
             TotalBudget: metrics?.TotalBudget ?? 0,
             TotalActualCost: metrics?.TotalActualCost ?? 0,
             RecentProjects: recentProjects,
-            AtRiskProjects: atRiskProjects));
+            AtRiskProjects: atRiskProjects,
+            RecentProjectPreviews: recentProjectPreviews));
     }
 
     [HttpGet]
