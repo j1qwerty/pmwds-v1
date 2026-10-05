@@ -440,16 +440,6 @@ export const api = {
     form.set("file", file);
     return request<Task>(`tasks/${id}/attachments`, { token, method: "POST", body: form });
   },
-  startTaskTimer(token: string, id: string, description: string, isBillable = false) {
-    return request<Task>(`tasks/${id}/time/start`, {
-      token,
-      method: "POST",
-      body: { description, isBillable },
-    });
-  },
-  stopTaskTimer(token: string, id: string) {
-    return request<Task>(`tasks/${id}/time/stop`, { token, method: "POST" });
-  },
   deleteTask(token: string, id: string) {
     return request<void>(`tasks/${id}`, { token, method: "DELETE" });
   },
