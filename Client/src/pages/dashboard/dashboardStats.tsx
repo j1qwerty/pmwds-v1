@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import type { Project, ProjectDashboardData } from "../../types";
 import { getStatusColor } from "../shared/colors";
 import { Icon } from "../../components/ui/Icon";
@@ -8,19 +9,32 @@ interface DashboardStatsProps {
   dashboard?: ProjectDashboardData | null;
 }
 
-function recentProjects(dashboard: ProjectDashboardData | null | undefined, projects: Project[], predicate: (project: { status: string; progressPercentage: number }) => boolean): MetricStatDetail[] {
+const PREVIEW_LIMIT = 10;
+
+function recentProjects(
+  dashboard: ProjectDashboardData | null | undefined,
+  projects: Project[],
+  predicate: (project: { status: string; progressPercentage: number }) => boolean,
+): MetricStatDetail[] {
   const source = dashboard?.recentProjectPreviews?.length ? dashboard.recentProjectPreviews : projects;
   return source
     .filter(predicate)
-    .slice(0, 5)
+    .slice(0, PREVIEW_LIMIT)
     .map((project) => ({
       id: project.id,
       title: project.name,
       subtitle: `${project.projectCode} · ${project.status}`,
+      projectId: project.id,
     }));
 }
 
 export default function DashboardStats({ projects = [], dashboard }: DashboardStatsProps) {
+  const navigate = useNavigate();
+
+  const openProject = (detail: MetricStatDetail) => {
+    if (detail.projectId) navigate(`/projects/${detail.projectId}`);
+  };
+
   const stats = [
     {
       icon: <Icon name="file" size={16} />,
@@ -70,6 +84,7 @@ export default function DashboardStats({ projects = [], dashboard }: DashboardSt
           tone={getStatusColor(stat.statusKey)}
           details={stat.details}
           detailLabel="Latest projects"
+          onOpenDetail={openProject}
         />
       ))}
     </div>

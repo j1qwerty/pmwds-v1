@@ -4,7 +4,14 @@ export interface MetricStatDetail {
   id: string;
   title: string;
   subtitle?: string;
+  /**
+   * Set by the owner so the row can be a link target. The card itself does not know about
+   * routing; `onOpenDetail` decides what to do with it.
+   */
+  projectId?: string;
 }
+
+const MAX_DETAILS = 10;
 
 interface MetricStatCardProps {
   icon: ReactNode;
@@ -19,8 +26,17 @@ interface MetricStatCardProps {
   };
   details: MetricStatDetail[];
   detailLabel?: string;
+  /** When provided the hover rows become clickable. */
+  onOpenDetail?: (detail: MetricStatDetail) => void;
 }
 
+/**
+ * A dashboard metric with a hover/focus panel listing the items behind the number.
+ *
+ * The panel is rendered below the card rather than in a portal, so it relies on no ancestor
+ * clipping it. It reveals on hover *and* on focus-within, and the card is focusable, so the
+ * same list is reachable from the keyboard.
+ */
 export function MetricStatCard({
   icon,
   value,
@@ -28,7 +44,10 @@ export function MetricStatCard({
   tone,
   details,
   detailLabel = "Latest",
+  onOpenDetail,
 }: MetricStatCardProps) {
+  const shown = details.slice(0, MAX_DETAILS);
+
   return (
     <div
       tabIndex={0}
@@ -50,22 +69,47 @@ export function MetricStatCard({
         </span>
       </div>
 
-      <div className="pointer-events-none invisible absolute left-0 right-0 top-[calc(100%+8px)] z-40 rounded-xl border border-slate-200 bg-white p-3 text-left opacity-0 shadow-xl transition-all duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+      <div
+        className="absolute left-0 right-0 top-[calc(100%+8px)] z-40 rounded-xl border border-slate-200 bg-white p-3 text-left opacity-0 shadow-xl transition-all duration-150 invisible group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
+        // Rows are interactive only when there is a handler; keeping the panel itself
+        // pointer-transparent would otherwise make the links unclickable.
+        style={onOpenDetail ? undefined : { pointerEvents: "none" }}
+      >
         <div className="mb-2 flex items-center justify-between gap-2">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{detailLabel}</span>
-          <span className="text-[10px] text-slate-400">{Math.min(details.length, 5)} shown</span>
+          <span className="text-[10px] text-slate-400">
+            {details.length > shown.length ? `showing ${shown.length} of ${details.length}` : `${shown.length} shown`}
+          </span>
         </div>
-        {details.length === 0 ? (
+        {shown.length === 0 ? (
           <p className="text-xs text-slate-400">No matching items.</p>
         ) : (
-          <div className="space-y-2">
-            {details.slice(0, 5).map((detail) => (
-              <div key={detail.id} className="min-w-0">
-                <p className="truncate text-xs font-semibold text-slate-700">{detail.title}</p>
-                {detail.subtitle && <p className="truncate text-[10px] text-slate-400">{detail.subtitle}</p>}
-              </div>
-            ))}
-          </div>
+          <ul className="space-y-1">
+            {shown.map((detail) => {
+              const content = (
+                <>
+                  <p className="truncate text-xs font-semibold text-slate-700">{detail.title}</p>
+                  {detail.subtitle && <p className="truncate text-[10px] text-slate-400">{detail.subtitle}</p>}
+                </>
+              );
+
+              return (
+                <li key={detail.id} className="min-w-0">
+                  {onOpenDetail ? (
+                    <button
+                      type="button"
+                      onClick={() => onOpenDetail(detail)}
+                      className="w-full text-left rounded-md px-1.5 py-1 -mx-1.5 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+                    >
+                      {content}
+                    </button>
+                  ) : (
+                    <div className="px-1.5 py-1 -mx-1.5">{content}</div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         )}
       </div>
     </div>

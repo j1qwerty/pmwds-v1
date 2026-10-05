@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import type { Task } from "../../../types";
 import { getStatusColor } from "../colors";
 import { Icon } from "../../../components/ui/Icon";
@@ -7,19 +8,32 @@ type TaskStatsProps = {
   tasks?: Task[];
 };
 
+const PREVIEW_LIMIT = 10;
+
+/**
+ * Latest tasks behind a number, annotated with the project and milestone they sit under so the
+ * number is explainable rather than just countable.
+ */
 function recentTasks(tasks: Task[], predicate: (task: Task) => boolean): MetricStatDetail[] {
   return tasks
     .filter(predicate)
     .sort((a, b) => new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime())
-    .slice(0, 5)
+    .slice(0, PREVIEW_LIMIT)
     .map((task) => ({
       id: task.id,
       title: task.title,
       subtitle: [task.projectName ?? "General", task.milestoneName ?? "No milestone"].join(" · "),
+      projectId: task.projectId,
     }));
 }
 
 export default function TaskStats({ tasks = [] }: TaskStatsProps) {
+  const navigate = useNavigate();
+
+  const openTask = (detail: MetricStatDetail) => {
+    if (detail.projectId) navigate(`/projects/${detail.projectId}/tasks?taskId=${detail.id}`);
+  };
+
   const stats = [
     {
       icon: <Icon name="file" size={16} />,
@@ -69,6 +83,7 @@ export default function TaskStats({ tasks = [] }: TaskStatsProps) {
           tone={getStatusColor(stat.statusKey)}
           details={stat.details}
           detailLabel="Latest tasks"
+          onOpenDetail={openTask}
         />
       ))}
     </div>
