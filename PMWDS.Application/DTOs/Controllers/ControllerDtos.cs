@@ -155,8 +155,6 @@ public record AIProviderSettingsDto
     public bool Enabled { get; set; }
     public bool UseEnvironmentDefault { get; set; } = true;
     public string BaseUrl { get; set; } = "";
-    public string ApiKey { get; set; } = "";
-    public bool HasStoredKey { get; set; }
     public string DefaultModel { get; set; } = "";
 }
 
