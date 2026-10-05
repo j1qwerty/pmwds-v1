@@ -256,6 +256,8 @@ export function NotificationsPage() {
         {activeTab === "inbox" && (
           <NotificationInbox
             items={filteredItems}
+            unreadCount={unreadCount}
+            totalCount={items.length}
             view={notificationView}
             onViewChange={setNotificationView}
             onOpen={handleOpenNotification}

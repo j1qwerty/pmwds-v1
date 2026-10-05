@@ -1,8 +1,16 @@
 import type { NotificationItem } from "../../types";
-import { GlassCard, GradientButton } from "../shared";
+import { GlassCard, GradientButton, TabButton } from "../shared";
 
 interface NotificationInboxProps {
+  /** Already narrowed to the active view. */
   items: NotificationItem[];
+  /**
+   * Unread total across the whole inbox. Passed separately because `items` is filtered, so
+   * the badge on the Unread tab would otherwise read 0 while that tab is selected.
+   */
+  unreadCount: number;
+  /** Total across the whole inbox, for the All tab badge. */
+  totalCount: number;
   view: "all" | "unread";
   onViewChange: (view: "all" | "unread") => void;
   onOpen: (item: NotificationItem) => void | Promise<void>;
@@ -15,6 +23,8 @@ interface NotificationInboxProps {
 
 export function NotificationInbox({
   items,
+  unreadCount,
+  totalCount,
   view,
   onViewChange,
   onOpen,
@@ -45,21 +55,24 @@ export function NotificationInbox({
         </div>
       </div>
 
-      <div className="px-6 py-3 border-b border-slate-100 flex items-center gap-2">
-        <button
-          type="button"
+      {/* All / Unread are tabs, not pill toggles, so they match the Inbox/Templates/Rules bar
+          above them instead of looking like an unrelated control inside the card. */}
+      <div className="flex items-center gap-1 border-b border-slate-200 px-4">
+        <TabButton
+          active={view === "all"}
           onClick={() => onViewChange("all")}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${view === "all" ? "bg-indigo-50 text-indigo-600" : "text-slate-500 hover:bg-slate-50"}`}
-        >
-          All notifications
-        </button>
-        <button
-          type="button"
+          icon="notifications"
+          label="All"
+          count={totalCount}
+        />
+        <TabButton
+          active={view === "unread"}
           onClick={() => onViewChange("unread")}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${view === "unread" ? "bg-amber-50 text-amber-600" : "text-slate-500 hover:bg-slate-50"}`}
-        >
-          Unread
-        </button>
+          icon="mark_email_unread"
+          label="Unread"
+          count={unreadCount}
+          countColor="amber"
+        />
       </div>
 
       <div className="max-h-[600px] overflow-y-auto">
