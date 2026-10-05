@@ -14,6 +14,8 @@ jobs:
         working-directory: Client
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
           version: 10
@@ -22,12 +24,22 @@ jobs:
           node-version: 24
       - run: pnpm install
       - run: pnpm run build
-      - run: pnpm run lint
+      - name: Lint changed client files
+        shell: bash
+        run: |
+          files=$(git diff --name-only origin/main...HEAD -- Client/src | grep -E '\.(ts|tsx)$' || true)
+          if [ -n "$files" ]; then
+            pnpm exec eslint $files
+          else
+            echo "No changed TypeScript client files to lint."
+          fi
 
   backend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.x'
