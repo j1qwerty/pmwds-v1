@@ -14,7 +14,14 @@ export function StatsCards({ health, burnout, delay }: StatsCardsProps) {
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      <StatCard label="Active Signals" value={activeSignals} subtext="Current delivery risks" icon="psychology" color="indigo" />
+      <StatCard
+        label="Active Signals"
+        value={activeSignals}
+        subtext="Current delivery risks"
+        icon="psychology"
+        color="indigo"
+        hint="Active signals count current health weaknesses, risk items, high-risk team burnout records, and high-delay tasks."
+      />
       <StatCard
         label="Overall Health"
         value={health ? Math.round(health.overallHealthScore * 100) + "%" : "—"}
@@ -23,13 +30,21 @@ export function StatsCards({ health, burnout, delay }: StatsCardsProps) {
         color="emerald"
         hint="This uses the selected project's overall health score. It is based on schedule, budget, team capacity, and completed work."
       />
-      <StatCard label="Risk Alerts" value={riskAlerts} subtext="Requires attention" icon="warning" color="red" />
+      <StatCard
+        label="Risk Alerts"
+        value={riskAlerts}
+        subtext="Requires attention"
+        icon="warning"
+        color="red"
+        hint="Risk alerts count team members above the burnout-risk threshold plus the selected task when its delay probability is 70% or higher."
+      />
       <StatCard
         label="Delay Risk"
         value={delay ? Math.round(Number(delay.delayProbability || 0) * 100) + "%" : "—"}
         subtext={delay?.delayProbability !== undefined ? (Number(delay.delayProbability) >= 0.7 ? "High" : Number(delay.delayProbability) >= 0.4 ? "Medium" : "Low") : "Awaiting task data"}
         icon="speed"
         color="violet"
+        hint="Delay risk is the selected task's probability of finishing after its planned due date. AI output is used when available, otherwise the live-data fallback uses current progress and dates."
       />
     </div>
   );
