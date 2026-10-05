@@ -444,18 +444,7 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     await DatabaseConnectionService.PrepareDatabaseAsync(db, databaseStatus, builder.Environment);
 
-    // The .env key is the final key for AI providers; pass it to seeding so the
-    // provider credentials and default provider reflect real configuration.
-    var aiSettings = scope.ServiceProvider.GetRequiredService<IOptions<AISettings>>().Value;
-    var aiProviderKeys = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
-    {
-        ["OpenAI"] = string.IsNullOrWhiteSpace(aiSettings.OpenAI?.ApiKey)
-            ? aiSettings.OpenAIApiKey
-            : aiSettings.OpenAI?.ApiKey,
-        ["OpenRouter"] = aiSettings.OpenRouter?.ApiKey
-    };
-
-    await SeedData.SeedAsync(db, aiProviderKeys: aiProviderKeys, storageBasePath: storageRoot);
+    await SeedData.SeedAsync(db, storageBasePath: storageRoot);
     await SensitiveDataMigrationService.ProtectExistingAsync(
         db,
         scope.ServiceProvider.GetRequiredService<ISensitiveDataProtector>());
