@@ -321,4 +321,3 @@ public record UpdateSkillDto(
 public record UpdateTaskStatusRequest(PMWDS.Domain.Enums.TaskStatus NewStatus, bool ConfirmReset = false);
 public record AssignTaskRequest(string? AssigneeId, bool UseAIRecommendation = false, List<string>? AssigneeIds = null);
 public record AddCommentRequest(string Comment);
-public record StartTimerRequest(string Description, bool IsBillable = false);
