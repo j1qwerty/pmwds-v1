@@ -1,16 +1,17 @@
-import type { Project } from "../../types";
+import type { Project, ProjectDashboardData } from "../../types";
 import { getStatusColor } from "../shared/colors";
 import { Icon } from "../../components/ui/Icon";
 import { MetricStatCard, type MetricStatDetail } from "../shared/MetricStatCard";
 
 interface DashboardStatsProps {
   projects?: Project[];
+  dashboard?: ProjectDashboardData | null;
 }
 
-function recentProjects(projects: Project[], predicate: (project: Project) => boolean): MetricStatDetail[] {
-  return projects
+function recentProjects(dashboard: ProjectDashboardData | null | undefined, projects: Project[], predicate: (project: { status: string; progressPercentage: number }) => boolean): MetricStatDetail[] {
+  const source = dashboard?.recentProjectPreviews?.length ? dashboard.recentProjectPreviews : projects;
+  return source
     .filter(predicate)
-    .sort((a, b) => new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime())
     .slice(0, 5)
     .map((project) => ({
       id: project.id,
@@ -19,42 +20,42 @@ function recentProjects(projects: Project[], predicate: (project: Project) => bo
     }));
 }
 
-const DashboardStats = ({ projects = [] }: DashboardStatsProps) => {
+export default function DashboardStats({ projects = [], dashboard }: DashboardStatsProps) {
   const stats = [
     {
       icon: <Icon name="file" size={16} />,
-      value: projects.length,
+      value: dashboard?.totalProjects ?? projects.length,
       label: "Total Projects",
       statusKey: "Total",
-      details: recentProjects(projects, () => true),
+      details: recentProjects(dashboard, projects, () => true),
     },
     {
       icon: <Icon name="clock" size={16} />,
-      value: projects.filter((p) => p.status === "InProgress").length,
+      value: dashboard?.activeProjects ?? projects.filter((p) => p.status === "InProgress").length,
       label: "In Progress",
       statusKey: "InProgress",
-      details: recentProjects(projects, (p) => p.status === "InProgress"),
+      details: recentProjects(dashboard, projects, (p) => p.status === "InProgress"),
     },
     {
       icon: <Icon name="alert-circle" size={16} />,
-      value: projects.filter((p) => p.status === "OnHold").length,
+      value: dashboard?.onHoldProjects ?? projects.filter((p) => p.status === "OnHold").length,
       label: "On Hold",
       statusKey: "OnHold",
-      details: recentProjects(projects, (p) => p.status === "OnHold"),
+      details: recentProjects(dashboard, projects, (p) => p.status === "OnHold"),
     },
     {
       icon: <Icon name="check-circle" size={16} />,
-      value: projects.filter((p) => p.status === "Completed" || p.progressPercentage === 100).length,
+      value: dashboard?.completedProjects ?? projects.filter((p) => p.status === "Completed" || p.progressPercentage === 100).length,
       label: "Completed",
       statusKey: "Completed",
-      details: recentProjects(projects, (p) => p.status === "Completed" || p.progressPercentage === 100),
+      details: recentProjects(dashboard, projects, (p) => p.status === "Completed" || p.progressPercentage === 100),
     },
     {
       icon: <Icon name="close" size={16} />,
-      value: projects.filter((p) => p.status === "Delayed").length,
+      value: dashboard?.delayedProjects ?? projects.filter((p) => p.status === "Delayed").length,
       label: "Delayed",
       statusKey: "Delayed",
-      details: recentProjects(projects, (p) => p.status === "Delayed"),
+      details: recentProjects(dashboard, projects, (p) => p.status === "Delayed"),
     },
   ];
 
@@ -73,6 +74,4 @@ const DashboardStats = ({ projects = [] }: DashboardStatsProps) => {
       ))}
     </div>
   );
-};
-
-export default DashboardStats;
+}
