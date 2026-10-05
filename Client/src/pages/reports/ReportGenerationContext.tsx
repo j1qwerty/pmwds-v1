@@ -43,6 +43,7 @@ type ReportGenerationContextValue = {
   /** Most recent successful generation, for consumers that mount late. */
   lastResult: GenerationResult | null;
   clearLastResult: () => void;
+  generationError: string | null;
 };
 
 const ReportGenerationContext = createContext<ReportGenerationContextValue | null>(null);
@@ -51,6 +52,7 @@ export function ReportGenerationProvider({ children }: PropsWithChildren) {
   const { auth } = useAuth();
   const [pending, setPending] = useState<Set<string>>(new Set());
   const [lastResult, setLastResult] = useState<GenerationResult | null>(null);
+  const [generationError, setGenerationError] = useState<string | null>(null);
 
   // Mirrors `pending` for synchronous reads within the same tick, so a rapid
   // second click cannot slip through before React re-renders.
@@ -80,11 +82,15 @@ export function ReportGenerationProvider({ children }: PropsWithChildren) {
       }
 
       begin(reportType);
+      setGenerationError(null);
       try {
         const report = await api.generateReport(auth.token, reportType, body);
         const result: GenerationResult = { reportType, report, exportParams };
         setLastResult(result);
         return result;
+      } catch (cause) {
+        setGenerationError(cause instanceof Error ? cause.message : "Report generation failed.");
+        throw cause;
       } finally {
         end(reportType);
       }
@@ -100,8 +106,9 @@ export function ReportGenerationProvider({ children }: PropsWithChildren) {
       generate,
       lastResult,
       clearLastResult: () => setLastResult(null),
+      generationError,
     }),
-    [pending, generate, lastResult],
+    [pending, generate, lastResult, generationError],
   );
 
   return (
