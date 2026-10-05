@@ -230,7 +230,11 @@ export function AppDataProvider({ children }: PropsWithChildren) {
   }, [auth, logout]);
 
   useEffect(() => {
-    void refresh();
+    const timer = window.setTimeout(() => {
+      void refresh();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [refresh]);
 
   const refreshReferenceData = useCallback(async (scope?: string) => {
