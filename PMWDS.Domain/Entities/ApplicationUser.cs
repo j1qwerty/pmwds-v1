@@ -41,11 +41,8 @@ public class ApplicationUser : AuditableEntity
     _skills.AsReadOnly();
     public IReadOnlyCollection<TaskAssignment> TaskAssignments =>
     _taskAssignments.AsReadOnly();
-    public IReadOnlyCollection<TimeEntry> TimeEntries =>
-    _timeEntries.AsReadOnly();
     private readonly List<UserSkill> _skills = new();
     private readonly List<TaskAssignment> _taskAssignments = new();
-    private readonly List<TimeEntry> _timeEntries = new();
     protected ApplicationUser() { }
     public static ApplicationUser Create(
     string email,
