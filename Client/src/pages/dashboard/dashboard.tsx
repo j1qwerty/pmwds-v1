@@ -233,6 +233,10 @@ export function DashboardPage() {
     setSelectedTask(task);
   };
 
+  const openTaskLocation = useCallback((task: Task) => {
+    navigate(`/projects/${task.projectId}/tasks?taskId=${task.id}`);
+  }, [navigate]);
+
   const refreshTaskLists = useCallback(async () => {
     if (!auth) return;
     await Promise.allSettled([loadMyTasks(), loadEscalations()]);
@@ -309,7 +313,7 @@ export function DashboardPage() {
 
       <section className="my-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <HighRiskInterventions tasks={escalatedTasks} onOpenTask={openTaskDetails} />
+          <HighRiskInterventions tasks={escalatedTasks} onOpenTask={openTaskLocation} />
 
           <ProjectOverview
             newProjects={Math.max(0, (dashboard?.totalProjects ?? 0) - (dashboard?.activeProjects ?? 0) - (dashboard?.completedProjects ?? 0))}
