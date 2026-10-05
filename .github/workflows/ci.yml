@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  client:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Client
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: Client/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm run lint
+
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.x'
+      - run: dotnet restore PMWDS.slnx
+      - run: dotnet build PMWDS.slnx --configuration Release --no-restore
+      - run: dotnet test PMWDS.slnx --configuration Release --no-build
