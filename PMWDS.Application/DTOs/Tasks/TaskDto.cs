@@ -33,7 +33,6 @@ public record TaskDto(
     List<TaskDependencyDto> Dependencies,
     List<TaskCommentDto> Comments,
     List<TaskAttachmentDto> Attachments,
-    List<TaskTimeEntryDto> TimeEntries,
     List<TaskDto> SubTasks,
     bool HasSubTasks,
     double AIOptimalAssigneeScore,
@@ -46,7 +45,6 @@ public record TaskDto(
             var dependencies = t.Dependencies ?? new List<TaskDependency>();
             var comments = t.Comments ?? new List<TaskComment>();
             var attachments = t.Attachments ?? new List<TaskAttachment>();
-            var timeEntries = t.TimeEntries ?? new List<TimeEntry>();
             var subTasks = t.SubTasks ?? new List<ProjectTask>();
 
             var hasSubTasks = subTasks.Count > 0;
@@ -95,9 +93,6 @@ public record TaskDto(
             .ToList(),
             Attachments: attachments
             .Select(a => TaskAttachmentDto.FromEntity(a))
-            .ToList(),
-            TimeEntries: timeEntries
-            .Select(e => TaskTimeEntryDto.FromEntity(e))
             .ToList(),
             SubTasks: subTasks
             .Select(st => FromEntity(st))
@@ -170,30 +165,6 @@ public record TaskDto(
             FileSizeBytes: a.FileSizeBytes,
             UploadedByUserId: a.UploadedByUserId,
             CreatedDate: a.CreatedDate
-        );
-    }
-    public record TaskTimeEntryDto(
-        Guid Id,
-        Guid TaskId,
-        string UserId,
-        string? UserName,
-        string? Description,
-        DateTime StartTime,
-        DateTime? EndTime,
-        double DurationMinutes,
-        bool IsBillable)
-    {
-        public static TaskTimeEntryDto FromEntity(TimeEntry e)
-        => new(
-            Id: e.Id,
-            TaskId: e.TaskId,
-            UserId: e.UserId.ToString(),
-            UserName: e.User?.FullName,
-            Description: e.Description,
-            StartTime: e.StartTime,
-            EndTime: e.EndTime,
-            DurationMinutes: e.Duration.TotalMinutes,
-            IsBillable: e.IsBillable
         );
     }
     public record TaskSummaryDto(
