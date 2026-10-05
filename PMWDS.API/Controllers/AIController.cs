@@ -27,7 +27,6 @@ public class AIController : BaseApiController
     private readonly ApplicationDbContext _db;
     private readonly IUnitOfWork _uow;
     private readonly RoleScopeService _scope;
-    private readonly ISensitiveDataProtector _sensitiveData;
 
     public AIController(
         IMediator mediator,
@@ -39,8 +38,7 @@ public class AIController : BaseApiController
         IOptions<AISettings> aiSettings,
         ApplicationDbContext db,
         IUnitOfWork uow,
-        RoleScopeService scope,
-        ISensitiveDataProtector sensitiveData) : base(mediator)
+        RoleScopeService scope) : base(mediator)
     {
         _recommendations = recommendations;
         _predictions = predictions;
@@ -51,7 +49,6 @@ public class AIController : BaseApiController
         _db = db;
         _uow = uow;
         _scope = scope;
-        _sensitiveData = sensitiveData;
     }
 
     [HttpGet("settings")]
@@ -116,7 +113,7 @@ public class AIController : BaseApiController
                     provider.Enabled,
                     provider.UseEnvironmentDefault,
                     provider.BaseUrl,
-                    string.IsNullOrWhiteSpace(provider.ApiKey) ? null : _sensitiveData.Protect(provider.ApiKey),
+                    null,
                     provider.DefaultModel);
                 existing.SetCreatedBy(User.Identity?.Name ?? "system");
                 await _db.AIProviderCredentials.AddAsync(existing, ct);
@@ -129,7 +126,7 @@ public class AIController : BaseApiController
                     provider.Enabled,
                     provider.UseEnvironmentDefault,
                     provider.BaseUrl,
-                    string.IsNullOrWhiteSpace(provider.ApiKey) ? null : _sensitiveData.Protect(provider.ApiKey),
+                    null,
                     provider.DefaultModel);
             }
         }
@@ -177,7 +174,7 @@ public class AIController : BaseApiController
                 UseEnvironmentDefault = credential.UseEnvironmentDefault,
                 BaseUrl = credential.BaseUrl,
                 ApiKey = "",
-                HasStoredKey = !string.IsNullOrWhiteSpace(credential.ApiKey),
+                HasStoredKey = false,
                 DefaultModel = credential.DefaultModel
             }
             : new AIProviderSettingsDto
@@ -188,7 +185,7 @@ public class AIController : BaseApiController
                 UseEnvironmentDefault = true,
                 BaseUrl = options.BaseUrl,
                 ApiKey = "",
-                HasStoredKey = !string.IsNullOrWhiteSpace(options.ApiKey),
+                HasStoredKey = false,
                 DefaultModel = options.DefaultModel
             };
 
