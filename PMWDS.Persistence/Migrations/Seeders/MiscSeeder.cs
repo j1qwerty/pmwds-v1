@@ -9,8 +9,7 @@ internal static class MiscSeeder
 {
     internal static async Task SeedAsync(
         ApplicationDbContext context,
-        CancellationToken ct,
-        IReadOnlyDictionary<string, string?>? aiProviderKeys = null)
+        CancellationToken ct)
     {
         await SeedSkillsAsync(context, ct);
         await SeedCollaborationAsync(context, ct);
@@ -18,7 +17,7 @@ internal static class MiscSeeder
         await SeedIntegrationsAsync(context, ct);
         await SeedKnowledgeAsync(context, ct);
         await SeedAiAsync(context, ct);
-        await SeedAiProviderCredentialsAsync(context, ct, aiProviderKeys);
+        await SeedAiProviderCredentialsAsync(context, ct);
         await SeedAiGlobalSettingsAsync(context, ct);
     }
 
@@ -343,8 +342,7 @@ internal static class MiscSeeder
 
     private static async Task SeedAiProviderCredentialsAsync(
         ApplicationDbContext context,
-        CancellationToken ct,
-        IReadOnlyDictionary<string, string?>? aiProviderKeys)
+        CancellationToken ct)
     {
         var specs = new[]
         {
@@ -354,18 +352,12 @@ internal static class MiscSeeder
 
         foreach (var spec in specs)
         {
-            var environmentKey = aiProviderKeys is not null &&
-                aiProviderKeys.TryGetValue(spec.Provider, out var configuredKey)
-                    ? configuredKey
-                    : null;
-            var hasEnvironmentKey = !string.IsNullOrWhiteSpace(environmentKey);
-
             var existing = await context.AIProviderCredentials.FirstOrDefaultAsync(p => p.Provider == spec.Provider, ct);
             if (existing != null)
             {
                 // Older databases were seeded with OpenRouter disabled, which made it
-                // unusable as the default provider. Enable it when a key is available.
-                var shouldEnable = hasEnvironmentKey || spec.Enabled;
+                // Older databases may have a disabled provider. Keep the seeded provider settings aligned with the current configuration.
+                var shouldEnable = spec.Enabled;
                 if (shouldEnable && !existing.Enabled)
                 {
                     existing.Update(

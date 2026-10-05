@@ -43,14 +43,21 @@ public class DataChangeNotifier : IDataChangeNotifier
 
         try
         {
-            await _hub.Clients.All.SendAsync(
-                "DataChanged",
-                new DataChangedNotification(
-                    scope,
-                    entityId,
-                    projectId,
-                    DateTime.UtcNow),
-                ct);
+            var payload = new DataChangedNotification(
+                scope,
+                entityId,
+                projectId,
+                DateTime.UtcNow);
+
+            if (projectId.HasValue)
+            {
+                await _hub.Clients.Group("dashboard-global").SendAsync("DataChanged", payload, ct);
+                await _hub.Clients.Group($"project-{projectId.Value}").SendAsync("DataChanged", payload, ct);
+            }
+            else
+            {
+                await _hub.Clients.All.SendAsync("DataChanged", payload, ct);
+            }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
