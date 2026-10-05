@@ -13,6 +13,7 @@ import type {
   BurnoutRiskRecord,
   ChatResponse,
   DashboardData,
+  ProjectDashboardData,
   DatabaseStatus,
   DashboardRecord,
   DelayPrediction,
@@ -214,7 +215,7 @@ export const api = {
     return request<void>("auth/logout", { method: "POST", token });
   },
   getDashboard(token: string, departmentId?: string | null) {
-    return request<DashboardData>("projects/dashboard", {
+    return request<ProjectDashboardData>("projects/dashboard", {
       token,
       query: { departmentId: departmentId ?? undefined },
     });
