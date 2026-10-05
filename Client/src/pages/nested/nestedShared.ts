@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
-import { onDataChanged } from "../../realtime";
+import { onDataChanged, subscribeToProject, unsubscribeFromProject } from "../../realtime";
 import { PROJECT_WORKSPACE_SCOPES } from "../../realtimeScopes";
 import type { Milestone, MilestoneDependency, Project, Task, User } from "../../types";
 import { projectBelongsToAnyDepartment } from "../shared";
@@ -97,6 +97,19 @@ export function useProjectWorkspace(): ProjectWorkspaceData {
 
   // Keep the workspace in sync with other sessions. Without this, an edit made in
   // another browser stayed invisible here until the tab was reloaded.
+  useEffect(() => {
+    if (!auth || !projectId) return;
+    let disposed = false;
+
+    void subscribeToProject(projectId).catch(() => undefined);
+
+    return () => {
+      disposed = true;
+      if (!disposed) return;
+      void unsubscribeFromProject(projectId).catch(() => undefined);
+    };
+  }, [auth, projectId]);
+
   useEffect(() => {
     if (!auth || !projectId) return;
 
