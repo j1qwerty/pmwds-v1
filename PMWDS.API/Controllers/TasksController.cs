@@ -731,7 +731,6 @@ public class TasksController : BaseApiController
             .Include(task => task.Attachments)
             .Include(task => task.Dependencies)
                 .ThenInclude(dependency => dependency.PredecessorTask)
-            .Include(task => task.TimeEntries)
             .Include(task => task.Project)
             .Include(task => task.Milestone);
         var totalCount = await query.CountAsync(ct);
