@@ -2,7 +2,7 @@ import { useState } from "react";
 import { FiMessageSquare, FiTrash2, FiCheck, FiCalendar, FiFlag, FiSave } from "react-icons/fi";
 import type { Task } from "../../../types";
 import { ModalOverlay, useToast } from "..";
-import { ProgressStatusEditor } from "../../nested/components/ProgressStatusEditor";
+import { ProgressStatusEditor } from "../../project/components/ProgressStatusEditor";
 import { priorities } from "../../constants";
 
 interface SubtaskEditModalProps {

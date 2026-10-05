@@ -1,7 +1,7 @@
 import { useCallback, type JSX } from 'react';
 import { getStatusColor } from '../colors';
 import type { Task, User } from '../../../types';
-import { TaskSubtaskCard } from '../../projectsK/components/TaskSubtaskCard';
+import { TaskSubtaskCard } from "../../project/components/TaskSubtaskCard";
 import { Icon } from "../../../components/ui/Icon";
 
 interface TaskBoardProps {

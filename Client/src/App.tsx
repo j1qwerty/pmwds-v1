@@ -13,11 +13,11 @@ import { DashboardPage } from "./pages/dashboard/dashboard";
 import { NotificationsPage } from "./pages/notifications/NotificationsPage";
 
 // Projects list + project workspace shell (Overview / Milestones / Tasks / Documents)
-import { ProjectsListPage } from "./pages/projects/ProjectsListPage";
-import { ProjectDetailShell } from "./pages/projects/ProjectDetailShell";
+import { ProjectsListPage } from "./pages/project/ProjectsListPage";
+import { ProjectDetailShell } from "./pages/project/ProjectDetailShell";
 
 // Project-nested views
-import { ProjectNotFound } from "./pages/nested/ProjectNotFound";
+import { ProjectNotFound } from "./pages/project/ProjectNotFound";
 
 // Team
 import { OrganizationStructurePage } from "./pages/organisations/OrganizationStructurePage";
@@ -49,7 +49,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 }
 
 const ROUTE_GUARDS = {
-  projectsK: PERMISSION_GROUPS.project.view,
+  project: PERMISSION_GROUPS.project.view,
   notificationsPage: PERMISSION_GROUPS.notification.view,
   organizationStructure: PERMISSION_GROUPS.organization.view,
   departmentsPage: PERMISSION_GROUPS.department.view,
@@ -88,15 +88,15 @@ function AppRoutes() {
                 {/* Projects list + project workspace shell (tabs) */}
                 <Route
                   path="/projects"
-                  element={<Guarded permission={ROUTE_GUARDS.projectsK}><ProjectsListPage /></Guarded>}
+                  element={<Guarded permission={ROUTE_GUARDS.project}><ProjectsListPage /></Guarded>}
                 />
                 <Route
                   path="/projects/:projectId"
-                  element={<Guarded permission={ROUTE_GUARDS.projectsK}><ProjectDetailShell /></Guarded>}
+                  element={<Guarded permission={ROUTE_GUARDS.project}><ProjectDetailShell /></Guarded>}
                 />
                 <Route
                   path="/projects/:projectId/:tab"
-                  element={<Guarded permission={ROUTE_GUARDS.projectsK}><ProjectDetailShell /></Guarded>}
+                  element={<Guarded permission={ROUTE_GUARDS.project}><ProjectDetailShell /></Guarded>}
                 />
                 <Route
                   path="/notificationsPage"

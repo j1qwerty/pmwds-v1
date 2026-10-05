@@ -3,8 +3,8 @@ import { FiAlertTriangle, FiCalendar, FiFlag, FiNavigation, FiTrash2, FiSave } f
 import type { Milestone, Project, Task, User } from "../../../types";
 import { ModalOverlay, useToast, AvatarStack, PriorityBadge } from "..";
 import { StatusBadgeMinimal } from "../../shared/StatusBadgeMinimal";
-import { ProgressStatusEditor } from "../../nested/components/ProgressStatusEditor";
-import { InfoChip } from "../../nested/components/InfoChip";
+import { ProgressStatusEditor } from "../../project/components/ProgressStatusEditor";
+import { InfoChip } from "../../project/components/InfoChip";
 import { priorities } from "../../constants";
 import { formatDate } from "../../../lib/formatters";
 
