@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
+import { useAppData } from "../../appData";
 import type {
   AiReportResponse,
   Project,
@@ -26,6 +27,7 @@ import { useReportGeneration } from "./ReportGenerationContext";
 export function ReportsPage() {
   const navigate = useNavigate();
   const { auth } = useAuth();
+  const { data: appData } = useAppData();
   const perm = usePermission();
   const canViewOrganizations = perm.hasAny(PERMISSION_GROUPS.system.manage, PERMISSION_GROUPS.organization.view);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -89,6 +91,9 @@ export function ReportsPage() {
   useEffect(() => {
     loadStoredReports();
   }, [loadStoredReports]);
+
+  const departments = appData.departments;
+  const organizations = appData.organizations;
 
   const visibleDepartments = useMemo(() => {
     return filters.organizationId
