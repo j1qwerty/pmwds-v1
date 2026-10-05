@@ -16,7 +16,6 @@ public class ApplicationDbContext : DbContext
     public DbSet<TaskAssignment> TaskAssignments { get; set; }
     public DbSet<TaskComment> TaskComments { get; set; }
     public DbSet<TaskAttachment> TaskAttachments { get; set; }
-    public DbSet<TimeEntry> TimeEntries { get; set; }
     public DbSet<ProjectDocument> ProjectDocuments { get; set; }
     public DbSet<UtilizationCertificate> UtilizationCertificates { get; set; }
     public DbSet<ApplicationUser> Users { get; set; }
