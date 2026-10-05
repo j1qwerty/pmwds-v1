@@ -1,4 +1,4 @@
-import { classNames } from "../../ui";
+import { classNames } from "../../lib/formatters";
 import { priorities } from "../constants";
 import { getPriorityColor } from "./colors";
 import { PERMISSION_GROUPS, usePermission } from "./RoleGate";

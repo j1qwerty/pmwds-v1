@@ -1,5 +1,5 @@
 import type { Project } from "../../types";
-import { formatMoney } from "../../ui";
+import { formatMoney } from "../../lib/formatters";
 import { useEffect, useState } from "react";
 
 interface OverallProgressRingProps {

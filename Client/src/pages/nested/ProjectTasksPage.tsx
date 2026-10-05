@@ -5,7 +5,7 @@ import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
 import { RoleKey, hasRoleKey } from "../../permissions";
 import type { Milestone, Task } from "../../types";
-import { formatDate } from "../../ui";
+import { formatDate } from "../../lib/formatters";
 import {
   AnimatedBackground,
   GlassCard,

@@ -6,7 +6,7 @@ import { StatusBadgeMinimal } from "../../shared/StatusBadgeMinimal";
 import { ProgressStatusEditor } from "../../nested/components/ProgressStatusEditor";
 import { InfoChip } from "../../nested/components/InfoChip";
 import { priorities } from "../../constants";
-import { formatDate } from "../../../ui";
+import { formatDate } from "../../../lib/formatters";
 
 interface TaskEditModalProps {
   task: Task;

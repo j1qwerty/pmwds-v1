@@ -4,7 +4,7 @@ import { api } from "../../api";
 import { useAuth } from "../../auth";
 import { useAppData } from "../../appData";
 import type { Department } from "../../types";
-import { lakhsToRupees } from "../../ui";
+import { lakhsToRupees } from "../../lib/formatters";
 import {
   GlassCard,
   useToast,

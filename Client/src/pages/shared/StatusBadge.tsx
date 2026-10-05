@@ -1,4 +1,4 @@
-import { classNames } from "../../ui";
+import { classNames } from "../../lib/formatters";
 import { projectStatuses, taskStatuses } from "../constants";
 import { getStatusColor } from "./colors";
 import { PERMISSION_GROUPS, usePermission } from "./RoleGate";

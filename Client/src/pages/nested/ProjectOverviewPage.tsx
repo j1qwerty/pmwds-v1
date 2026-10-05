@@ -23,7 +23,7 @@ import { Icon } from "../../components/ui/Icon";
 import { Avatark } from "../shared/Avatark";
 import { TaskStatusDonut, MilestoneTimeline, BudgetBar } from "./components/OverviewCharts";
 import { OverviewAIInsights } from "./components/OverviewAIInsights";
-import { formatLakhs } from "../../ui";
+import { formatLakhs } from "../../lib/formatters";
 
 function KpiCard({
   label,

@@ -42,7 +42,6 @@ import {
   RiGitRepositoryLine,
   RiBugLine,
 } from "react-icons/ri";
-import { SearchBar } from "./pages/shared/search";
 import { ProjectsGroup } from "./pages/shared/ProjectsGroup";
 
 

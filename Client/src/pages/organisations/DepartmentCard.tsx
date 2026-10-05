@@ -1,5 +1,5 @@
 import type { Department, User } from "../../types";
-import { formatPercent } from "../../ui";
+import { formatPercent } from "../../lib/formatters";
 import { Avatar, AvatarStack } from "../shared";
 
 interface DepartmentCardProps {

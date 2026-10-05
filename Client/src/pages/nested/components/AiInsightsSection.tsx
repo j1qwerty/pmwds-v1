@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FiChevronDown, FiBarChart2, FiClock } from "react-icons/fi";
-import { formatPercent } from "../../../ui";
+import { formatPercent } from "../../../lib/formatters";
 
 interface AiInsightsSectionProps {
   recommendation?: any;

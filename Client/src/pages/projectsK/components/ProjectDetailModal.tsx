@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import type { Milestone, MilestoneDependency, Project, User } from "../../../types";
 import { api } from "../../../api";
 import { ModalOverlay } from "../../shared";
-import { formatMoney } from "../../../ui";
+import { formatMoney } from "../../../lib/formatters";
 import { AIInsightsSection } from "./AIInsightsSection";
 import { DocumentsSection } from "./DocumentsSection";
 import { ProjectBasicDetails } from "./ProjectBasicDetails";

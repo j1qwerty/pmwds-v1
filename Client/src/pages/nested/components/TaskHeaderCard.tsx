@@ -2,7 +2,7 @@ import type { RefObject } from "react";
 import { motion } from "framer-motion";
 import { FiEdit, FiTrash2, FiAlertTriangle, FiCalendar, FiFlag, FiNavigation, FiX } from "react-icons/fi";
 import type { Milestone, Project, Task, User } from "../../../types";
-import { formatDate } from "../../../ui";
+import { formatDate } from "../../../lib/formatters";
 import { AvatarStack } from "../../shared";
 import { StatusBadgeMinimal } from "../../shared/StatusBadgeMinimal";
 import { PriorityBadge } from "../../shared";

@@ -13,7 +13,7 @@ import {
   ConfirmDeleteModal,
 } from "../projectsK/components";
 import { Icon } from "../../components/ui/Icon";
-import { formatLakhs } from "../../ui";
+import { formatLakhs } from "../../lib/formatters";
 import { Avatark } from "../shared/Avatark";
 
 const emptyProjectForm = (): ProjectFormState => ({

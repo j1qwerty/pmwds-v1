@@ -1,5 +1,5 @@
 import type { Project, ProjectHealth } from "../../types";
-import { formatPercent } from "../../ui";
+import { formatPercent } from "../../lib/formatters";
 import { GlassCard } from "../shared";
 import { Icon } from "../../components/ui/Icon";
 import { AIInfoHint } from "./AIInfoHint";

@@ -22,7 +22,7 @@ import { useUserOrganization } from "../shared/useUserOrganization";
 import { NewProjectPage } from "../NewProject/NewProjectPage";
 import { Avatark } from "../shared/Avatark";
 import { Icon } from "../../components/ui/Icon";
-import { formatLakhs } from "../../ui";
+import { formatLakhs } from "../../lib/formatters";
 
 type SortKey =
   | "newest"

@@ -10,7 +10,7 @@ import type {
 import { PERMISSION_GROUPS, usePermission } from "./RoleGate";
 import { useToast } from "./Toast";
 import { useAuth } from "../../auth";
-import { formatRupees } from "../../ui";
+import { formatRupees } from "../../lib/formatters";
 
 /**
  * Self-contained overlay, portalled to <body>.

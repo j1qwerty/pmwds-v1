@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Department, OrganizationRecord, User } from "../../types";
-import { formatPercent } from "../../ui";
+import { formatPercent } from "../../lib/formatters";
 import { Avatar, AvatarStack, GradientButton } from "../shared";
 import { useAuth } from "../../auth";
 import { api } from "../../api";

@@ -1,5 +1,5 @@
 import type { Project } from "../../../types";
-import { formatDate, formatLakhs } from "../../../ui";
+import { formatDate, formatLakhs } from "../../../lib/formatters";
 import { GlassCard, getStatusColor, getPriorityColor } from "../../shared";
 import { Avatark } from "../../shared/Avatark";
 import { 

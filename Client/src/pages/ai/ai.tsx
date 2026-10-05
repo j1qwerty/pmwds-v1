@@ -5,7 +5,7 @@ import { useAuth } from "../../auth";
 import { onDataChanged } from "../../realtime";
 import { REALTIME_SCOPES } from "../../realtimeScopes";
 import type { BurnoutRiskRecord, Project, ProjectHealth, Task } from "../../types";
-import { formatDate, formatPercent } from "../../ui";
+import { formatDate, formatPercent } from "../../lib/formatters";
 import {
   GlassCard,
   LoadingPage,

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { Milestone, MilestoneDependency, Project, Task, User } from "../../../types";
-import { formatDate } from "../../../ui";
+import { formatDate } from "../../../lib/formatters";
 import { ModalOverlay, getStatusColor } from "../../shared";
 import { TaskCard } from "./TaskCard";
 

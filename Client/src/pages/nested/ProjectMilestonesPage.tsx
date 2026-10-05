@@ -4,7 +4,7 @@ import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
 import { RoleKey, hasRoleKey } from "../../permissions";
 import type { Milestone, MilestoneDependency, Task } from "../../types";
-import { classNames } from "../../ui";
+import { classNames } from "../../lib/formatters";
 import {
   GlassCard,
   LoadingPage,

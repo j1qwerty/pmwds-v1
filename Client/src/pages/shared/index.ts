@@ -17,7 +17,6 @@ export { getProjectDepartmentIds, projectBelongsToDepartment, projectBelongsToAn
 export { LoadingPage, PageSkeleton, Skeleton } from "./Skeleton";
 export { NotificationList } from "./NotificationList";
 export { UtilizationCertificates } from "./UtilizationCertificates";
-export { WorkloadBars } from "./WorkloadBars";
 export { useToast } from "./Toast";
 export { StatusBadge } from "./StatusBadge";
 export { PriorityBadge } from "./PriorityBadge";
@@ -26,7 +25,6 @@ export { ScopedUserSelect } from "./ScopedUserSelect";
 export { Can, CanAny, CanAll, RoutePermissionGuard } from "./PermissionControls";
 export { NoAccessPage } from "./NoAccessPage";
 export { OverallProgressRing } from "./OverallProgressRing";
-export { resolveFlag, useResolvedFlag } from "./permissionProps";
 
 export {
   departmentColorPalette,

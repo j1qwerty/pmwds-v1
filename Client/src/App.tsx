@@ -98,8 +98,6 @@ function AppRoutes() {
                   path="/projects/:projectId/:tab"
                   element={<Guarded permission={ROUTE_GUARDS.projectsK}><ProjectDetailShell /></Guarded>}
                 />
-                {/* Legacy workspace route kept in code (ProjectsKPage) but no longer routed.
-                    Delete ProjectsKPage from this import if the old workspace is retired. */}
                 <Route
                   path="/notificationsPage"
                   element={<Guarded permission={ROUTE_GUARDS.notificationsPage}><NotificationsPage /></Guarded>}

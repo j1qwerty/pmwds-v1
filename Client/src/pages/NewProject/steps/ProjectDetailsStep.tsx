@@ -2,7 +2,7 @@ import { useState } from "react";
 import { priorities } from "../../constants";
 
 import type { Department } from "../../../types";
-import { BUDGET_INPUT_LABEL, formatRupees, lakhsToRupees } from "../../../ui";
+import { BUDGET_INPUT_LABEL, formatRupees, lakhsToRupees } from "../../../lib/formatters";
 
 interface ProjectDetailsStepProps {
   name: string;

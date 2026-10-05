@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import type { Department, OrganizationRecord, User } from "../../../types";
 import { priorities } from "../../constants";
 import { ModalOverlay, ScopedUserSelect } from "../../shared";
-import { BUDGET_INPUT_LABEL, formatRupees, lakhsToRupees, rupeesToLakhs } from "../../../ui";
+import { BUDGET_INPUT_LABEL, formatRupees, lakhsToRupees, rupeesToLakhs } from "../../../lib/formatters";
 
 export type ProjectFormState = {
   projectCode: string;

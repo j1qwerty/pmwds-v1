@@ -1,6 +1,6 @@
 import { Icon } from "../../../components/ui/Icon";
 import { getStatusColor } from "../../shared";
-import { formatLakhs } from "../../../ui";
+import { formatLakhs } from "../../../lib/formatters";
 
 const statusHexColors: Record<string, string> = {
   Planning: "#06b6d4",

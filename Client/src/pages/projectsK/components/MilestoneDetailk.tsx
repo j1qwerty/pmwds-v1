@@ -1,5 +1,5 @@
 import type { Milestone, Project, Task, User } from "../../../types";
-import { formatDate } from "../../../ui";
+import { formatDate } from "../../../lib/formatters";
 import { GlassCard, GradientButton, getStatusColor } from "../../shared";
 import { TaskCard } from "./TaskCard";
 import { Icon } from "../../../components/ui/Icon";
