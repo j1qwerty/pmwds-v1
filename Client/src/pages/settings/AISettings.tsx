@@ -267,7 +267,7 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
           enabled: p.enabled,
           baseUrl: p.baseUrl,
           defaultModel: p.defaultModel,
-          useEnvironmentDefault: p.useEnvironmentDefault,
+          useEnvironmentDefault: true,
         })),
       });
       onSaveComplete(result.message || "Settings saved.");
