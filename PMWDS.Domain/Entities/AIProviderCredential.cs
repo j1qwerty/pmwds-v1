@@ -9,7 +9,6 @@ public class AIProviderCredential : AuditableEntity
     public bool Enabled { get; private set; }
     public bool UseEnvironmentDefault { get; private set; } = true;
     public string BaseUrl { get; private set; } = string.Empty;
-    public string? ApiKey { get; private set; }
     public string DefaultModel { get; private set; } = string.Empty;
 
     protected AIProviderCredential() { }
@@ -20,11 +19,10 @@ public class AIProviderCredential : AuditableEntity
         bool enabled,
         bool useEnvironmentDefault,
         string baseUrl,
-        string? apiKey,
         string defaultModel)
     {
         var credential = new AIProviderCredential();
-        credential.Update(provider, displayName, enabled, useEnvironmentDefault, baseUrl, apiKey, defaultModel);
+        credential.Update(provider, displayName, enabled, useEnvironmentDefault, baseUrl, defaultModel);
         return credential;
     }
 
@@ -34,7 +32,6 @@ public class AIProviderCredential : AuditableEntity
         bool enabled,
         bool useEnvironmentDefault,
         string baseUrl,
-        string? apiKey,
         string defaultModel)
     {
         if (string.IsNullOrWhiteSpace(provider))
@@ -47,7 +44,6 @@ public class AIProviderCredential : AuditableEntity
         Enabled = enabled;
         UseEnvironmentDefault = useEnvironmentDefault;
         BaseUrl = baseUrl.Trim();
-        // Provider credentials never persist API keys. Secrets are loaded from environment configuration only.\n        ApiKey = null;
         DefaultModel = defaultModel.Trim();
     }
 }
