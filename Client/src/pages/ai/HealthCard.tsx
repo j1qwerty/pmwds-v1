@@ -36,7 +36,7 @@ export function HealthCard({ project, health, fallbackHealth }: HealthCardProps)
           <div className="mb-4">
             <div className="flex justify-between text-xs mb-1.5">
               <span className="text-slate-500">Overall Health Score</span>
-              <span className="font-bold text-emerald-600">{formatPercent(healthData.overallHealthScore)}</span>
+              <span className="font-bold text-emerald-600">{formatPercent(healthData.overallHealthScore * 100)}</span>
             </div>
             <div className="w-full h-2.5 rounded-full bg-slate-200 overflow-hidden">
               <div className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all duration-500" style={{ width: Math.min(healthData.overallHealthScore * 100, 100) + "%" }} />
@@ -44,9 +44,9 @@ export function HealthCard({ project, health, fallbackHealth }: HealthCardProps)
           </div>
 
           <div className="grid grid-cols-3 gap-3 mb-4">
-            <MiniHealthMetric label="Schedule" value={formatPercent(healthData.scheduleHealth)} color="indigo" subtext={healthData.scheduleHealth > 0.8 ? "On Track" : healthData.scheduleHealth > 0.6 ? "At Risk" : "Delayed"} />
-            <MiniHealthMetric label="Budget" value={formatPercent(healthData.budgetHealth)} color="emerald" subtext={healthData.budgetHealth > 0.8 ? "Within Budget" : healthData.budgetHealth > 0.6 ? "Warning" : "Over Budget"} />
-            <MiniHealthMetric label="Team" value={formatPercent(healthData.teamHealth)} color="violet" subtext={healthData.teamHealth > 0.8 ? "Strong" : healthData.teamHealth > 0.6 ? "Stable" : "Stressed"} />
+            <MiniHealthMetric label="Schedule" value={formatPercent(healthData.scheduleHealth * 100)} color="indigo" subtext={healthData.scheduleHealth > 0.8 ? "On Track" : healthData.scheduleHealth > 0.6 ? "At Risk" : "Delayed"} />
+            <MiniHealthMetric label="Budget" value={formatPercent(healthData.budgetHealth * 100)} color="emerald" subtext={healthData.budgetHealth > 0.8 ? "Within Budget" : healthData.budgetHealth > 0.6 ? "Warning" : "Over Budget"} />
+            <MiniHealthMetric label="Team" value={formatPercent(healthData.teamHealth * 100)} color="violet" subtext={healthData.teamHealth > 0.8 ? "Strong" : healthData.teamHealth > 0.6 ? "Stable" : "Stressed"} />
           </div>
 
           <div className="space-y-2">
