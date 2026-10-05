@@ -266,7 +266,6 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
           displayName: p.displayName,
           enabled: p.enabled,
           baseUrl: p.baseUrl,
-          apiKey: p.apiKey || "",
           defaultModel: p.defaultModel,
           useEnvironmentDefault: p.useEnvironmentDefault,
         })),
@@ -393,27 +392,11 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">API Key</label>
-                  <div className="flex items-center gap-2 mb-1">
-                    <label className="flex items-center gap-1.5 text-[10px] text-slate-500 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={provider.useEnvironmentDefault}
-                        onChange={e => updateProvider(provider.provider, "useEnvironmentDefault", e.target.checked)}
-                        disabled={!provider.enabled}
-                        className="w-3 h-3 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                      .env key
-                    </label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Credential source</label>
+                  <div className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs flex items-center bg-slate-50 text-slate-500">
+                    Server environment
                   </div>
-                  <input
-                    type="password"
-                    value={provider.apiKey}
-                    onChange={e => updateProvider(provider.provider, "apiKey", e.target.value)}
-                    placeholder={provider.hasStoredKey ? "Replace stored key" : "Enter API key"}
-                    disabled={!provider.enabled || provider.useEnvironmentDefault}
-                    className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs outline-none bg-white focus:border-indigo-300 transition-all disabled:bg-slate-50"
-                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Provider API keys are configured on the server and are never sent to the browser.</p>
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Default Model</label>
