@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using PMWDS.Application.DTOs.AI;
 using PMWDS.Application.Interfaces.Services;
+using PMWDS.Application.Security;
 using PMWDS.Infrastructure.Settings;
 using PMWDS.Persistence.Context;
 
@@ -91,8 +92,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
     {
         try
         {
-            // Resolve through the database so credentials saved from the Settings
-            // page are honoured, not just environment configuration.
+            // Provider selection can be stored in the database, but secrets always come from environment configuration.
             return IsUsableProvider(await ResolveProviderAsync(provider, ct));
         }
         catch
