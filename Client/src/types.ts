@@ -813,6 +813,24 @@ export interface ProjectHealth {
   generatedAt: string;
 }
 
+export interface AISettingsRequest {
+  defaultProvider: string;
+  defaultModel: string;
+  riskThreshold: number;
+  useLocalModel: boolean;
+  mlModelPath: string;
+  providers: AIProviderConfigRequest[];
+}
+
+export interface AIProviderConfigRequest {
+  provider: string;
+  displayName: string;
+  enabled: boolean;
+  useEnvironmentDefault: boolean;
+  baseUrl: string;
+  defaultModel: string;
+}
+
 export interface AISettingsResponse {
   defaultProvider: string;
   defaultModel: string;
@@ -961,3 +979,248 @@ export interface UtilizationCertificateCapabilities {
 }
 
 
+
+
+export interface DatabaseStatus {
+  provider: string;
+  providerKey: string;
+  connectionName: string;
+  dataSource: string;
+  isFallback: boolean;
+  attempts: string[];
+}
+
+// ─── Pages API (single-request all-data endpoint) ────────────────
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+}
+
+export interface PageOrganizationDto {
+  id: string;
+  name: string;
+  taxId: string;
+  contactEmail: string;
+  contactPhone: string;
+  departmentCount: number;
+}
+
+export interface PageDepartmentDto {
+  id: string;
+  name: string;
+  code: string;
+  description: string | null;
+  organizationId: string | null;
+  organizationName: string | null;
+  departmentHeadUserId: string | null;
+  maxCapacity: number;
+}
+
+export interface ProjectDto {
+  id: string;
+  projectCode: string;
+  name: string;
+  status: string;
+  priority: string;
+  departmentId: string;
+  departmentName: string | null;
+  departmentIds?: string[];
+  departments?: ProjectDepartmentAssignment[];
+  projectManagerId: string;
+  projectManagerName: string | null;
+  progressPercentage: number;
+  totalTasks: number;
+  completedTasks: number;
+  overdueTasks: number;
+  totalMilestones?: number;
+  completedMilestones?: number;
+  plannedStartDate: string;
+  plannedEndDate: string;
+}
+
+export interface MilestoneDto {
+  id: string;
+  projectId: string;
+  departmentId?: string | null;
+  departmentName?: string | null;
+  name: string;
+  description: string;
+  order: number;
+  dueDate: string;
+  status: string;
+  isCritical: boolean;
+  progressPercentage: number;
+  hasTasks?: boolean;
+}
+
+export interface TaskDto {
+  id: string;
+  title: string;
+  status: string;
+  priority: string;
+  dueDate: string;
+  progressPercentage: number;
+  projectId: string;
+  projectName: string | null;
+  milestoneId: string | null;
+  milestoneName: string | null;
+  assignedToUserId: string | null;
+  assignedToUserName: string | null;
+  isEscalated: boolean;
+  parentTaskId?: string | null;
+  createdDate: string;
+  escalationLevel?: number;
+  aiDelayProbability?: number;
+  aiRiskFactors?: string | null;
+  isOverdue?: boolean;
+  hasSubTasks?: boolean;
+  assignedToDepartmentId?: string | null;
+}
+
+export interface PageUserDto {
+  id: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  email: string;
+  profilePictureUrl: string | null;
+  jobTitle: string | null;
+  organizationId: string | null;
+  departmentId: string | null;
+  departmentName: string | null;
+  departments: UserDepartmentAssignment[];
+  isActive: boolean;
+  roles: string[];
+  roleKeys?: RoleKey[];
+  skills: { skillId: string; skillName: string; proficiencyLevel: number }[];
+}
+
+export interface PageRoleDto {
+  id: string;
+  key: RoleKey | string;
+  name: string;
+  description: string;
+  permissionLevel: number;
+  paginationPageSize: number;
+  permissionCodes: string[];
+}
+
+export interface PagePermissionDto {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  module: string;
+  isGlobal: boolean;
+}
+
+export interface PageNotificationDto {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  priority: string;
+  isRead: boolean;
+  createdDate: string;
+}
+
+export interface PageNotificationTemplateDto {
+  id: string;
+  templateType: string;
+  subjectTemplate: string;
+  bodyTemplate: string;
+  variables: string[];
+  supportedChannels: string[];
+}
+
+export interface PageAlertRuleDto {
+  id: string;
+  name: string;
+  conditionType: string;
+  isEnabled: boolean;
+}
+
+export interface PageSkillDto {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  organizationId: string | null;
+  organizationName: string | null;
+}
+
+export interface PageReportDto {
+  id: string;
+  name: string;
+  reportType: string;
+  generatedDate: string;
+  format: string;
+  dataLength: number;
+}
+
+export interface PageIntegrationDto {
+  id: string;
+  integrationType: string;
+  name: string;
+  isActive: boolean;
+  status: string;
+}
+
+export interface PageKnowledgeArticleDto {
+  id: string;
+  projectId: string | null;
+  projectName: string | null;
+  title: string;
+  category: string;
+  tags: string[];
+  viewCount: number;
+  relevanceScore: number;
+}
+
+export interface PageLessonLearnedDto {
+  id: string;
+  projectId: string;
+  projectName: string | null;
+  title: string;
+  category: string;
+  impact: string;
+}
+
+export interface PageActivityLogDto {
+  id: string;
+  userId: string;
+  userName: string | null;
+  activityType: string;
+  description: string;
+  timestamp: string;
+}
+
+export interface PagesDataResponse {
+  page: number;
+  userPageSize: number;
+  returnedPageSize: number;
+  generatedAt: string;
+  currentUser: PageUserDto;
+  organizations: PaginatedResponse<PageOrganizationDto>;
+  departments: PaginatedResponse<PageDepartmentDto>;
+  projects: PaginatedResponse<ProjectDto>;
+  milestones: PaginatedResponse<MilestoneDto>;
+  tasks: PaginatedResponse<TaskDto>;
+  subtasks: PaginatedResponse<TaskDto>;
+  users: PaginatedResponse<PageUserDto>;
+  roles: PaginatedResponse<PageRoleDto>;
+  permissions: PaginatedResponse<PagePermissionDto>;
+  notifications: PaginatedResponse<PageNotificationDto>;
+  notificationTemplates: PaginatedResponse<PageNotificationTemplateDto>;
+  alertRules: PaginatedResponse<PageAlertRuleDto>;
+  skills: PaginatedResponse<PageSkillDto>;
+  reports: PaginatedResponse<PageReportDto>;
+  integrations: PaginatedResponse<PageIntegrationDto>;
+  knowledgeArticles: PaginatedResponse<PageKnowledgeArticleDto>;
+  lessonsLearned: PaginatedResponse<PageLessonLearnedDto>;
+  activityLogs: PaginatedResponse<PageActivityLogDto>;
+}
