@@ -1,52 +1,43 @@
 import { GlassCard } from "../shared";
 import { Icon } from "../../components/ui/Icon";
+import { AIInfoHint } from "./AIInfoHint";
 
-const RECOMMENDATIONS = [
-  {
-    id: 1,
-    title: "Optimize Resource Allocation",
-    description: "Reassign 2 developers from Project B to Vanguard for 2-week sprint",
-    icon: "lightbulb",
-    color: "text-indigo-500",
-  },
-  {
-    id: 2,
-    title: "Address Budget Variance",
-    description: "15% variance detected in Q3 forecast. Review immediately.",
-    icon: "priority_high",
-    color: "text-red-500",
-  },
-  {
-    id: 3,
-    title: "Extend Milestone Delta",
-    description: "7-day extension recommended based on velocity analysis",
-    icon: "schedule",
-    color: "text-emerald-500",
-  },
-];
+interface AIRecommendationsProps {
+  recommendations: string[];
+  fallback: boolean;
+}
 
-export function AIRecommendations() {
+export function AIRecommendations({ recommendations, fallback }: AIRecommendationsProps) {
   return (
     <GlassCard className="p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <Icon name="auto_awesome" size={20} className="text-indigo-500" />
-        <h3 className="text-sm font-bold text-slate-800">AI Recommendations</h3>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Icon name="auto_awesome" size={20} className="text-indigo-500" />
+          <h3 className="text-sm font-bold text-slate-800">AI Recommendations</h3>
+        </div>
+        <AIInfoHint title="Recommendations">
+          Recommendations come from the selected project's health risks and current delivery data. When an AI provider is unavailable, the page uses rule-based suggestions from the same live inputs.
+        </AIInfoHint>
       </div>
 
-      <div className="space-y-2">
-        {RECOMMENDATIONS.map((rec) => (
-          <div
-            key={rec.id}
-            className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
-          >
-            <span className={`material-symbols-outlined text-lg ${rec.color} mt-0.5`}>{rec.icon}</span>
-            <div>
-              <span className="text-xs font-semibold text-slate-700 block">{rec.title}</span>
-              <span className="text-[11px] text-slate-500 leading-relaxed">{rec.description}</span>
+      {recommendations.length === 0 ? (
+        <div className="py-10 text-center text-xs text-slate-400">No actions are currently suggested.</div>
+      ) : (
+        <div className="space-y-2">
+          {recommendations.slice(0, 5).map((recommendation) => (
+            <div key={recommendation} className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors">
+              <span className="material-symbols-outlined text-lg text-indigo-500 mt-0.5">lightbulb</span>
+              <div>
+                <span className="text-xs font-semibold text-slate-700 block">Recommended action</span>
+                <span className="text-[11px] text-slate-500 leading-relaxed">{recommendation}</span>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
+      {fallback && recommendations.length > 0 && (
+        <p className="text-[9px] text-amber-500 mt-3">Using live-data fallback rules because AI recommendations are unavailable.</p>
+      )}
     </GlassCard>
   );
 }
