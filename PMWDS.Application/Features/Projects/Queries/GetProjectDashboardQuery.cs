@@ -10,13 +10,16 @@ public record ProjectDashboardDto(
   int TotalProjects,
   int ActiveProjects,
   int CompletedProjects,
+  int OnHoldProjects,
+  int DelayedProjects,
   int OverdueProjects,
   int HighRiskProjects,
   double AverageHealthScore,
   decimal TotalBudget,
   decimal TotalActualCost,
   List<ProjectSummaryDto> RecentProjects,
-  List<ProjectSummaryDto> AtRiskProjects
+  List<ProjectSummaryDto> AtRiskProjects,
+  List<ProjectSummaryDto> RecentProjectPreviews
 );
 public class GetProjectDashboardQueryHandler
  : IRequestHandler<GetProjectDashboardQuery,
