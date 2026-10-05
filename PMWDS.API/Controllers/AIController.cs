@@ -173,8 +173,6 @@ public class AIController : BaseApiController
                 Enabled = credential.Enabled,
                 UseEnvironmentDefault = credential.UseEnvironmentDefault,
                 BaseUrl = credential.BaseUrl,
-                ApiKey = "",
-                HasStoredKey = false,
                 DefaultModel = credential.DefaultModel
             }
             : new AIProviderSettingsDto
@@ -184,8 +182,6 @@ public class AIController : BaseApiController
                 Enabled = options.Enabled,
                 UseEnvironmentDefault = true,
                 BaseUrl = options.BaseUrl,
-                ApiKey = "",
-                HasStoredKey = false,
                 DefaultModel = options.DefaultModel
             };
 
