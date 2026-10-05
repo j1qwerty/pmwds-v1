@@ -99,13 +99,9 @@ export function useProjectWorkspace(): ProjectWorkspaceData {
   // another browser stayed invisible here until the tab was reloaded.
   useEffect(() => {
     if (!auth || !projectId) return;
-    let disposed = false;
-
     void subscribeToProject(projectId).catch(() => undefined);
 
     return () => {
-      disposed = true;
-      if (!disposed) return;
       void unsubscribeFromProject(projectId).catch(() => undefined);
     };
   }, [auth, projectId]);
