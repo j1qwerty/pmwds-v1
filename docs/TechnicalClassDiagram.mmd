@@ -196,10 +196,8 @@ classDiagram
  +RemoveDependency(taskId: Guid): void
  +AssignToUser(userId: Guid, assignerId: Guid): void
  +Complete(): void
- +CalculateTimeRemaining(): TimeSpan
  +IsOverdue(): bool
  +GetSubTasks(): List~Task~
- +AddTimeEntry(entry: TimeEntry): void
  }
  
  class SubTask {
@@ -224,20 +222,6 @@ classDiagram
  +Validate(): bool
  +GetCriticalPath(): List~Guid~
  }
- 
- class TimeEntry {
- +Guid TimeEntryId
- +Guid TaskId
- +Guid UserId
- +DateTime StartTime
- +DateTime? EndTime
- +string Description
- +bool IsBillable
- +CalculateDuration(): TimeSpan
- +StopTimer(): void
- +UpdateDescription(description: string): void
- }
-
  %% ======================
  %% 4. AI & ML DOMAIN
  %% ======================
@@ -685,7 +669,6 @@ classDiagram
  Milestone "1" -- "*" Task : groups
  Task "1" -- "*" SubTask : has
  Task "1" -- "*" TaskDependency : depends on
- Task "1" -- "*" TimeEntry : tracks time for
 
  AIModel <|-- TaskAllocationModel : inherits
  AIModel <|-- DelayPredictionModel : inherits
