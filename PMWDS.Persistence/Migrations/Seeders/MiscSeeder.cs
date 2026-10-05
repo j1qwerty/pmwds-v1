@@ -9,8 +9,7 @@ internal static class MiscSeeder
 {
     internal static async Task SeedAsync(
         ApplicationDbContext context,
-        CancellationToken ct,
-        IReadOnlyDictionary<string, string?>? aiProviderKeys = null)
+        CancellationToken ct)
     {
         await SeedSkillsAsync(context, ct);
         await SeedCollaborationAsync(context, ct);
@@ -18,7 +17,7 @@ internal static class MiscSeeder
         await SeedIntegrationsAsync(context, ct);
         await SeedKnowledgeAsync(context, ct);
         await SeedAiAsync(context, ct);
-        await SeedAiProviderCredentialsAsync(context, ct, aiProviderKeys);
+        await SeedAiProviderCredentialsAsync(context, ct);
         await SeedAiGlobalSettingsAsync(context, ct);
     }
 
@@ -327,8 +326,7 @@ internal static class MiscSeeder
 
     private static async Task SeedAiProviderCredentialsAsync(
         ApplicationDbContext context,
-        CancellationToken ct,
-        IReadOnlyDictionary<string, string?>? aiProviderKeys)
+        CancellationToken ct)
     {
         var specs = new[]
         {
@@ -338,12 +336,6 @@ internal static class MiscSeeder
 
         foreach (var spec in specs)
         {
-            var environmentKey = aiProviderKeys is not null &&
-                aiProviderKeys.TryGetValue(spec.Provider, out var configuredKey)
-                    ? configuredKey
-                    : null;
-            var hasEnvironmentKey = !string.IsNullOrWhiteSpace(environmentKey);
-
             var existing = await context.AIProviderCredentials.FirstOrDefaultAsync(p => p.Provider == spec.Provider, ct);
             if (existing != null)
             {
@@ -358,7 +350,6 @@ internal static class MiscSeeder
                         enabled: true,
                         existing.UseEnvironmentDefault,
                         existing.BaseUrl,
-                        apiKey: null,
                         existing.DefaultModel);
                     existing.SetModified(SeedConstants.SeedUser);
                 }
@@ -372,7 +363,6 @@ internal static class MiscSeeder
                 spec.Enabled,
                 useEnvironmentDefault: true,
                 spec.BaseUrl,
-                apiKey: null,
                 spec.DefaultModel);
             credential.SetCreatedBy(SeedConstants.SeedUser);
             await context.AIProviderCredentials.AddAsync(credential, ct);
