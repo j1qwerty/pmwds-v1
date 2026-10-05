@@ -4,8 +4,6 @@ import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type {
   AiReportResponse,
-  Department,
-  OrganizationRecord,
   Project,
   StoredReportRecord,
 } from "../../types";
@@ -31,11 +29,9 @@ export function ReportsPage() {
   const perm = usePermission();
   const canViewOrganizations = perm.hasAny(PERMISSION_GROUPS.system.manage, PERMISSION_GROUPS.organization.view);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [storedReports, setStoredReports] = useState<StoredReportRecord[]>([]);
   const [storedReportsLoading, setStoredReportsLoading] = useState(true);
-  const { generate, isGeneratingType, pendingReportType } = useReportGeneration();
+  const { generate, isGeneratingType, pendingReportType, generationError } = useReportGeneration();
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -55,19 +51,31 @@ export function ReportsPage() {
 
   useEffect(() => {
     if (!auth) return;
-    setLoading(true);
-    Promise.all([
-      api.getProjects(auth.token),
-      api.getDepartments(auth.token),
-      canViewOrganizations ? api.getOrganizations(auth.token) : Promise.resolve([]),
-    ]).then(([projectData, departmentData, organizationData]) => {
-      setProjects(projectData);
-      setDepartments(departmentData);
-      setOrganizations(organizationData);
-      if (projectData[0]) setFilters((current) => ({ ...current, projectId: projectData[0].id }));
-      if (departmentData[0]) setFilters((current) => ({ ...current, departmentId: departmentData[0].id }));
-    }).finally(() => setLoading(false));
-  }, [auth, canViewOrganizations]);
+    let disposed = false;
+
+    const load = async () => {
+      setLoading(true);
+      try {
+        const projectData = await api.getProjects(auth.token);
+        if (disposed) return;
+        setProjects(projectData);
+        setFilters((current) => ({
+          ...current,
+          projectId: current.projectId || projectData[0]?.id || "",
+          departmentId: current.departmentId || appData.departments[0]?.id || "",
+        }));
+      } catch (cause) {
+        if (!disposed) addToast(cause instanceof Error ? cause.message : "Failed to load reports", "error");
+      } finally {
+        if (!disposed) setLoading(false);
+      }
+    };
+
+    void load();
+    return () => {
+      disposed = true;
+    };
+  }, [auth, appData.departments, addToast]);
 
   const loadStoredReports = useCallback(() => {
     if (!auth) return;
@@ -137,33 +145,6 @@ export function ReportsPage() {
       addToast(`${label} report generated successfully.`);
     } catch (e) {
       addToast(e instanceof Error ? e.message : "Generation failed", "error");
-    }
-  };
-
-  const handleDownloadPdf = async (reportType: string) => {
-    if (!auth) return;
-    try {
-      const needsProject = reportType === "project-status" || reportType === "budget-variance";
-      const path = needsProject && filters.projectId
-        ? `reports/${reportType}/${filters.projectId}`
-        : `reports/${reportType}`;
-      const body = needsProject
-        ? null
-        : reportType === "department-workload"
-          ? { departmentId: filters.departmentId, startDate: filters.startDate || new Date().toISOString(), endDate: filters.endDate || new Date().toISOString() }
-          : reportFilterPayload();
-      const blob = await api.downloadReport(auth.token, path, {
-        method: needsProject ? "GET" : "POST",
-        body: body as Record<string, unknown> | undefined,
-      });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = `${reportType}.pdf`;
-      anchor.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      addToast(`Error: ${e instanceof Error ? e.message : "Download failed"}`, "error");
     }
   };
 
