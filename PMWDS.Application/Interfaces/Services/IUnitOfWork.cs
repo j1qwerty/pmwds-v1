@@ -40,7 +40,6 @@ public interface IUnitOfWork : IDisposable
     IRepository<Domain.Entities.TaskAttachment> TaskAttachments { get; }
     IRepository<Domain.Entities.TaskDependency> TaskDependencies { get; }
     IRepository<Domain.Entities.MilestoneDependency> MilestoneDependencies { get; }
-    IRepository<Domain.Entities.TimeEntry> TimeEntries { get; }
     Task<int> SaveChangesAsync(CancellationToken ct = default);
     Task BeginTransactionAsync(CancellationToken ct = default);
     Task CommitTransactionAsync(CancellationToken ct = default);
