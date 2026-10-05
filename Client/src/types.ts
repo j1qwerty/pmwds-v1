@@ -828,8 +828,6 @@ export interface AIProviderConfig {
   enabled: boolean;
   useEnvironmentDefault: boolean;
   baseUrl: string;
-  apiKey: string;
-  hasStoredKey: boolean;
   defaultModel: string;
 }
 
