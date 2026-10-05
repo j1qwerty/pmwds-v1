@@ -1,4 +1,4 @@
-const MAX_CONCURRENT_READS = 3;
+const MAX_CONCURRENT_READS = 2;
 
 type QueueJob<T> = {
   run: () => Promise<T>;
@@ -26,15 +26,10 @@ function drainQueue() {
   }
 }
 
-/**
- * Coalesces identical GET/HEAD requests and caps read concurrency.
- * Mutations are intentionally handled outside this coordinator.
- */
+/** Coalesces identical reads and caps total GET/HEAD concurrency. */
 export function runCoordinatedRead<T>(key: string, run: () => Promise<T>): Promise<T> {
   const existing = inFlight.get(key);
-  if (existing) {
-    return existing as Promise<T>;
-  }
+  if (existing) return existing as Promise<T>;
 
   const promise = new Promise<T>((resolve, reject) => {
     queue.push({ run, resolve, reject } as QueueJob<unknown>);

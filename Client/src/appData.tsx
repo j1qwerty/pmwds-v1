@@ -16,7 +16,7 @@ import {
   onDataChanged,
   startRealtime,
 } from "./realtime";
-import { GLOBAL_SCOPES } from "./realtimeScopes";
+import { REALTIME_SCOPES } from "./realtimeScopes";
 import type {
   ActivityLogRecord,
   AlertRuleRecord,
@@ -30,6 +30,7 @@ import type {
   RoleRecord,
   Task,
   User,
+  WorkspaceBootstrap,
 } from "./types";
 
 const REALTIME_DEBOUNCE_MS = 250;
@@ -81,70 +82,8 @@ const emptyData: AppData = {
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
 
-function mapWorkspaceSnapshot(snapshot: Awaited<ReturnType<typeof api.getWorkspaceSnapshot>>): AppData {
-  const permissions = snapshot.permissions.map((code) => ({
-    id: code,
-    code,
-    name: code,
-    description: "",
-    module: code.split("_")[0] ?? "",
-    isGlobal: false,
-  }));
-
-  const organizations = snapshot.organizations.map((organization) => ({
-    id: organization.id,
-    name: organization.name,
-    taxId: organization.taxId ?? "",
-    address: organization.address ?? "",
-    contactEmail: organization.contactEmail ?? "",
-    contactPhone: organization.contactPhone ?? "",
-    foundedDate: organization.foundedDate ?? "",
-    director: null,
-    departments: [],
-    departmentCount: organization.departmentCount,
-  }));
-
-  const departments = snapshot.departments.map((department) => ({
-    id: department.id,
-    name: department.name,
-    code: department.code,
-    description: department.description,
-    organizationId: department.organizationId,
-    parentDepartmentId: department.parentDepartmentId,
-    departmentHeadUserId: department.departmentHeadUserId,
-    maxCapacity: department.maxCapacity,
-    capacityUtilization: department.capacityUtilization,
-  }));
-
-  const users = snapshot.users.map((user) => ({
-    id: user.id,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    fullName: user.fullName,
-    email: user.email,
-    profilePictureUrl: user.profilePictureUrl,
-    jobTitle: user.jobTitle,
-    organizationId: user.organizationId ?? null,
-    department: user.department ?? null,
-    departmentId: user.departmentId ?? null,
-    departments: [],
-    profileId: null,
-    bio: null,
-    availabilityStatus: "Available",
-    availabilityPercentage: user.availabilityPercentage,
-    aiWorkloadScore: user.aiWorkloadScore,
-    aiBurnoutRiskScore: user.aiBurnoutRiskScore,
-    aiPerformanceScore: user.aiPerformanceScore,
-    activeTaskCount: user.activeTaskCount,
-    isActive: user.isActive,
-    lastLoginDate: null,
-    roles: user.roles,
-    roleKeys: user.roleKeys,
-    skills: [],
-    skillDetails: [],
-  }));
-
-  const projects = snapshot.projects.map((project) => ({
+function mapBootstrapProjects(bootstrap: WorkspaceBootstrap): Project[] {
+  return bootstrap.projects.map((project) => ({
     id: project.id,
     projectCode: project.projectCode,
     name: project.name,
@@ -182,17 +121,63 @@ function mapWorkspaceSnapshot(snapshot: Awaited<ReturnType<typeof api.getWorkspa
     createdDate: project.createdDate,
     isNewForCurrentUser: project.isNewForCurrentUser,
   }));
+}
 
-  const currentUser = snapshot.currentUser;
-  const usersWithCurrentUser = users.some((user) => user.id === currentUser.id)
-    ? users
-    : [currentUser, ...users];
+function mapReferenceData(
+  bootstrap: WorkspaceBootstrap | null,
+  organizations: OrganizationRecord[],
+  departments: Department[],
+  users: User[],
+): AppData {
+  const permissions: PermissionRecord[] = (bootstrap?.permissions ?? []).map((code) => ({
+    id: code,
+    code,
+    name: code,
+    description: "",
+    module: code.split("_")[0] ?? "",
+    isGlobal: false,
+  }));
+
+  const currentUser = bootstrap?.currentUser;
+  const currentUserMapped = currentUser
+    ? {
+        id: currentUser.id,
+        firstName: currentUser.firstName,
+        lastName: currentUser.lastName,
+        fullName: currentUser.fullName,
+        email: currentUser.email,
+        profilePictureUrl: currentUser.profilePictureUrl,
+        jobTitle: currentUser.jobTitle,
+        organizationId: currentUser.organizationId ?? null,
+        department: currentUser.department ?? null,
+        departmentId: currentUser.departmentId ?? null,
+        departments: [],
+        profileId: null,
+        bio: null,
+        availabilityStatus: "Available",
+        availabilityPercentage: currentUser.availabilityPercentage,
+        aiWorkloadScore: currentUser.aiWorkloadScore,
+        aiBurnoutRiskScore: currentUser.aiBurnoutRiskScore,
+        aiPerformanceScore: currentUser.aiPerformanceScore,
+        activeTaskCount: currentUser.activeTaskCount,
+        isActive: currentUser.isActive,
+        lastLoginDate: null,
+        roles: currentUser.roles,
+        roleKeys: currentUser.roleKeys,
+        skills: [],
+        skillDetails: [],
+      } satisfies User
+    : null;
+
+  const usersWithCurrentUser = currentUserMapped && !users.some((user) => user.id === currentUserMapped.id)
+    ? [currentUserMapped, ...users]
+    : users;
 
   return {
     ...emptyData,
     organizations,
     departments,
-    projects,
+    projects: bootstrap ? mapBootstrapProjects(bootstrap) : [],
     users: usersWithCurrentUser,
     permissions,
   };
@@ -200,15 +185,22 @@ function mapWorkspaceSnapshot(snapshot: Awaited<ReturnType<typeof api.getWorkspa
 
 export function AppDataProvider({ children }: PropsWithChildren) {
   const { auth, logout } = useAuth();
-  const [snapshot, setSnapshot] = useState<Awaited<ReturnType<typeof api.getWorkspaceSnapshot>> | null>(null);
+  const [bootstrap, setBootstrap] = useState<WorkspaceBootstrap | null>(null);
+  const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState("");
   const inFlightRef = useRef(false);
+  const referenceLoadRef = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!auth) {
-      setSnapshot(null);
+      setBootstrap(null);
+      setOrganizations([]);
+      setDepartments([]);
+      setUsers([]);
       setInitialized(false);
       setError("");
       return;
@@ -220,16 +212,17 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     setError("");
 
     try {
-      const response = await api.getWorkspaceSnapshot(auth.token);
-      setSnapshot(response);
+      // Keep the navigation/auth bootstrap small. Detail/reference collections are loaded
+      // independently so a single page never has to hydrate the whole workspace first.
+      const response = await api.getWorkspaceBootstrap(auth.token);
+      setBootstrap(response);
       setInitialized(true);
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 401) {
         logout();
         return;
       }
-
-      setError(cause instanceof Error ? cause.message : "Failed to load workspace data.");
+      setError(cause instanceof Error ? cause.message : "Failed to load workspace bootstrap.");
     } finally {
       inFlightRef.current = false;
       setLoading(false);
@@ -237,8 +230,56 @@ export function AppDataProvider({ children }: PropsWithChildren) {
   }, [auth, logout]);
 
   useEffect(() => {
-    void refresh();
+    const timer = window.setTimeout(() => {
+      void refresh();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [refresh]);
+
+  const refreshReferenceData = useCallback(async (scope?: string) => {
+    if (!auth) return;
+
+    try {
+      // Reference collections are refreshed one at a time. A realtime burst should never
+      // fan out into three independent queries per event.
+      if (!scope || scope === "organizations") {
+        setOrganizations(await api.getOrganizations(auth.token));
+      }
+      if (!scope || scope === "departments") {
+        setDepartments(await api.getDepartments(auth.token));
+      }
+      if (!scope || scope === "users") {
+        setUsers(await api.getUsers(auth.token));
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Reference data could not be loaded.");
+    }
+  }, [auth]);
+
+  useEffect(() => {
+    if (!auth) {
+      referenceLoadRef.current = null;
+      return;
+    }
+
+    if (referenceLoadRef.current === auth.userId) return;
+    referenceLoadRef.current = auth.userId;
+    let disposed = false;
+
+    const loadInitialReferenceData = async () => {
+      try {
+        await refreshReferenceData();
+      } catch {
+        // refreshReferenceData records a user-visible error. Keep bootstrap usable.
+      }
+    };
+
+    if (!disposed) void loadInitialReferenceData();
+    return () => {
+      disposed = true;
+    };
+  }, [auth, refreshReferenceData]);
 
   useEffect(() => {
     if (!auth) return;
@@ -256,8 +297,17 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     };
 
     const stopListening = onDataChanged((notification) => {
-      if (GLOBAL_SCOPES.includes(notification.scope)) {
+      if (notification.scope === REALTIME_SCOPES.projects || notification.scope === REALTIME_SCOPES.roles) {
         scheduleRefresh(REALTIME_DEBOUNCE_MS);
+        return;
+      }
+
+      if (
+        notification.scope === REALTIME_SCOPES.organizations ||
+        notification.scope === REALTIME_SCOPES.departments ||
+        notification.scope === REALTIME_SCOPES.users
+      ) {
+        void refreshReferenceData(notification.scope);
       }
     });
 
@@ -326,8 +376,8 @@ export function AppDataProvider({ children }: PropsWithChildren) {
   }, [auth]);
 
   const data = useMemo(
-    () => (snapshot ? mapWorkspaceSnapshot(snapshot) : emptyData),
-    [snapshot],
+    () => mapReferenceData(bootstrap, organizations, departments, users),
+    [bootstrap, organizations, departments, users],
   );
 
   const value = useMemo(

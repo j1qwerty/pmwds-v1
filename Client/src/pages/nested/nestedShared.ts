@@ -5,7 +5,7 @@ import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
 import { onDataChanged } from "../../realtime";
 import { PROJECT_WORKSPACE_SCOPES } from "../../realtimeScopes";
-import type { Department, Milestone, MilestoneDependency, Project, Task, User } from "../../types";
+import type { Milestone, MilestoneDependency, Project, Task, User } from "../../types";
 import { projectBelongsToAnyDepartment } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 
@@ -28,12 +28,9 @@ export function useProjectWorkspace(): ProjectWorkspaceData {
   const { projectId } = useParams<{ projectId: string }>();
   const { auth } = useAuth();
   const { data } = useAppData();
-  const [users, setUsers] = useState<User[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(
-    users.length ? users : data.users,
-    departments.length ? departments : data.departments,
-  );
+  const users = data.users;
+  const departments = data.departments;
+  const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
 
   const [project, setProject] = useState<Project | null>(null);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
@@ -61,22 +58,28 @@ export function useProjectWorkspace(): ProjectWorkspaceData {
     setLoading(true);
     setError("");
     try {
-      const [projectData, milestoneData, taskData, dependencyData, userData, departmentData] = await Promise.all([
-        api.getProject(auth.token, projectId).catch(() => {
-          return data.projects.find((p) => p.id === projectId) ?? null;
-        }),
+      const projectData = await api.getProject(auth.token, projectId).catch(() => {
+        return data.projects.find((p) => p.id === projectId) ?? null;
+      });
+      if (!projectData) {
+        setProject(null);
+        setMilestones([]);
+        setTasks([]);
+        setDependencies([]);
+        return;
+      }
+
+      // Project data is the critical request. Related collections are still fetched
+      // independently so the request coordinator can bound database pressure.
+      const [milestoneData, taskData, dependencyData] = await Promise.all([
         api.getMilestonesByProject(auth.token, projectId),
         api.getTasksByProject(auth.token, projectId),
         api.getMilestoneDependencies(auth.token, projectId),
-        api.getUsers(auth.token).catch(() => data.users),
-        api.getDepartments(auth.token).catch(() => data.departments),
       ]);
       setProject(projectData);
       setMilestones(milestoneData);
       setTasks(taskData);
       setDependencies(dependencyData);
-      setUsers(userData);
-      setDepartments(departmentData);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load project data.");
     } finally {
