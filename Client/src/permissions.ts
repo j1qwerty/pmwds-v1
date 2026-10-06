@@ -491,6 +491,11 @@ function scopeManageVariant(code: string): string | null {
 
 function scopedVariants(requested: string): string[] {
   const variants = [requested];
+  const legacy = requested.match(/^(DEPARTMENT|PROJECT|MILESTONE|TASK|SUBTASK|USER|NOTIFICATION|REPORT|ACTIVITY_LOG|DOCUMENT|UTILIZATION_CERTIFICATE)_(VIEW|CREATE|EDIT|DELETE|MANAGE|ASSIGN|COMMENT_CREATE|ATTACHMENT_CREATE)$/);
+  if (legacy) {
+    const [, module, action] = legacy;
+    variants.push(`${module}_OWN_${action}`, `${module}_ALL_${action}`);
+  }
   if (/_OWN_/.test(requested)) {
     variants.push(requested.replace("_OWN_", "_ALL_"));
   }
@@ -501,7 +506,6 @@ function scopedVariants(requested: string): string[] {
   }
   return Array.from(new Set(variants));
 }
-
 export function coversManagedPermission(
   userPermissions: readonly string[] | undefined | null,
   requested: string,
