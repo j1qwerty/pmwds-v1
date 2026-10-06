@@ -982,6 +982,12 @@ export type UpdateUtilizationCertificatePayload = Omit<
   "projectId"
 >;
 
+export interface UtilizationCertificateUploadCapabilities {
+  canUploadProject: boolean;
+  canUploadMilestone: boolean;
+  canUploadTask: boolean;
+}
+
 export interface UtilizationCertificateCapabilities {
   /** Resolved server-side, so the UI never disagrees with the API. */
   canEdit: boolean;
