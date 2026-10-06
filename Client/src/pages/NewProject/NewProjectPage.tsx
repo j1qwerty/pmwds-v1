@@ -11,7 +11,7 @@ import {
   LoadingPage,
 } from "../shared";
 import { Icon } from "../../components/ui/Icon";
-import { RoleKey, hasRoleKey } from "../../permissions";
+import { Permission, RoleKey, hasRoleKey } from "../../permissions";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { ProjectDetailsStep } from "./steps/ProjectDetailsStep";
 import { DepartmentsStep } from "./steps/DepartmentsStep";
@@ -150,6 +150,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const isSuperAdmin = hasRoleKey(auth?.roleKeys, RoleKey.SuperAdmin);
   const isDirector = hasRoleKey(auth?.roleKeys, RoleKey.Director);
   const isDepartmentHead = hasRoleKey(auth?.roleKeys, RoleKey.DepartmentHead);
+  const canManagePrimaryDepartment = auth ? usePermission().has(Permission.ProjectPrimaryDepartmentManage) : false;
   const usesExecutiveFlow = isSuperAdmin || isDirector || isDepartmentHead;
   const steps = usesExecutiveFlow ? EXECUTIVE_STEPS : LEGACY_STEPS;
   const currentStepKey = steps[currentStep]?.key ?? "details";
@@ -170,7 +171,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
       const dept = data.departments.find(d => d.departmentHeadUserId === auth.userId);
       if (dept) setPrimaryDepartmentId(dept.id);
     }
-  }, [isDepartmentHead, auth, data.departments, primaryDepartmentId]);
+  }, [isDepartmentHead, canManagePrimaryDepartment, auth, data.departments, primaryDepartmentId]);
 
   const handleDetailsChange = (field: string, value: string | number) => {
     switch (field) {
@@ -473,6 +474,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
               onDepartmentsChange={setSelectedDepartmentIds}
               departments={scopedDepartments}
               organizations={data.organizations}
+              showOrganization={isSuperAdmin}
               users={data.users}
               onRefresh={refresh}
             />
