@@ -125,6 +125,11 @@ public sealed partial class FullRoleBusinessFlowTests
             new { progressPercentage = 50d }))
             .Status.Should().Be(HttpStatusCode.OK);
 
+        // The PWD milestone created by ProjectManager brings the PWD Viewer into the
+        // project scope without granting the viewer access to PWDC-owned work.
+        (await viewer.GetAsync<JsonElement>($"/api/v1/projects/{projectId}"))
+            .Status.Should().Be(HttpStatusCode.OK);
+
         var forbiddenTask = await teamMember.PostAsync<JsonElement>("/api/v1/tasks", new
         {
             title = "Team member must not create sibling task",
@@ -144,6 +149,7 @@ public sealed partial class FullRoleBusinessFlowTests
     private async Task ExecuteDocumentFlowAsync(
         Guid projectId,
         Guid milestoneId,
+        Guid managementMilestoneId,
         Guid taskId,
         ApiClient projectManager,
         ApiClient departmentHead,
@@ -173,13 +179,17 @@ public sealed partial class FullRoleBusinessFlowTests
         milestoneDocument.Status.Should().Be(HttpStatusCode.OK);
         var milestoneDocumentId = milestoneDocument.Data.GetGuid("id");
 
+        var managementDocument = await projectManager.PostFormAsync<JsonElement>(
+            $"/api/v1/projects/{projectId}/documents", PdfForm("management-evidence.pdf", managementMilestoneId));
+        managementDocument.Status.Should().Be(HttpStatusCode.OK);
+
         var taskDocument = await teamMember.PostFormAsync<JsonElement>(
             $"/api/v1/projects/{projectId}/documents", PdfForm("task-evidence.pdf", milestoneId, taskId));
         taskDocument.Status.Should().Be(HttpStatusCode.OK);
 
         var all = await projectManager.GetAsync<JsonElement>($"/api/v1/projects/{projectId}/documents");
         all.Status.Should().Be(HttpStatusCode.OK);
-        all.Data.GetArrayLength().Should().Be(3);
+        all.Data.GetArrayLength().Should().Be(4);
 
         var head = await departmentHead.GetAsync<JsonElement>($"/api/v1/projects/{projectId}/documents");
         head.Status.Should().Be(HttpStatusCode.OK);
@@ -188,8 +198,8 @@ public sealed partial class FullRoleBusinessFlowTests
 
         var visibleToViewer = await viewer.GetAsync<JsonElement>($"/api/v1/projects/{projectId}/documents");
         visibleToViewer.Status.Should().Be(HttpStatusCode.OK);
-        visibleToViewer.Data.EnumerateArray()
-            .Should().OnlyContain(doc => doc.GetString("level") == "Project");
+        visibleToViewer.Data.GetArrayLength().Should().Be(1);
+        visibleToViewer.Data[0].GetString("title").Should().Be("management-evidence.pdf");
 
         (await projectManager.PutAsync<JsonElement>(
             $"/api/v1/projects/{projectId}/documents/{projectDocumentId}",
