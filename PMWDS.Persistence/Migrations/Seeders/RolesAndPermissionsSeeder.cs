@@ -15,7 +15,7 @@ internal static class RolesAndPermissionsSeeder
 
     private static async Task SeedPermissionsAsync(ApplicationDbContext context, CancellationToken ct)
     {
-        var specs = new[]
+        var specs = new List<(string Code, string Name, string Description, string Module, bool IsGlobal)>
         {
             (PermissionCodes.AuthManage, "Manage Authentication", "Manage authentication and access policies.", "Authentication", true),
             (PermissionCodes.SystemAdmin, "System Administration", "Full system administration access.", "System", true),
@@ -102,12 +102,76 @@ internal static class RolesAndPermissionsSeeder
             (PermissionCodes.UtilizationCertificateManage, "Manage Utilization Certificates", "Full control over utilization certificates, including review and deletion.", "Utilization Certificates", true)
         };
 
+        AddScopedCrudSpecs(specs, "Departments", PermissionCodes.DepartmentOwnManage, PermissionCodes.DepartmentOwnView, PermissionCodes.DepartmentOwnCreate, PermissionCodes.DepartmentOwnEdit, PermissionCodes.DepartmentOwnDelete, PermissionCodes.DepartmentAllManage, PermissionCodes.DepartmentAllView, PermissionCodes.DepartmentAllCreate, PermissionCodes.DepartmentAllEdit, PermissionCodes.DepartmentAllDelete);
+        AddScopedCrudSpecs(specs, "Projects", PermissionCodes.ProjectOwnManage, PermissionCodes.ProjectOwnView, PermissionCodes.ProjectOwnCreate, PermissionCodes.ProjectOwnEdit, PermissionCodes.ProjectOwnDelete, PermissionCodes.ProjectAllManage, PermissionCodes.ProjectAllView, PermissionCodes.ProjectAllCreate, PermissionCodes.ProjectAllEdit, PermissionCodes.ProjectAllDelete);
+        AddScopedCrudSpecs(specs, "Milestones", PermissionCodes.MilestoneOwnManage, PermissionCodes.MilestoneOwnView, PermissionCodes.MilestoneOwnCreate, PermissionCodes.MilestoneOwnEdit, PermissionCodes.MilestoneOwnDelete, PermissionCodes.MilestoneAllManage, PermissionCodes.MilestoneAllView, PermissionCodes.MilestoneAllCreate, PermissionCodes.MilestoneAllEdit, PermissionCodes.MilestoneAllDelete);
+        AddScopedCrudSpecs(specs, "Tasks", PermissionCodes.TaskOwnManage, PermissionCodes.TaskOwnView, PermissionCodes.TaskOwnCreate, PermissionCodes.TaskOwnEdit, PermissionCodes.TaskOwnDelete, PermissionCodes.TaskAllManage, PermissionCodes.TaskAllView, PermissionCodes.TaskAllCreate, PermissionCodes.TaskAllEdit, PermissionCodes.TaskAllDelete);
+        specs.AddRange(new[]
+        {
+            Scoped("Tasks", PermissionCodes.TaskOwnAssign, "Assign Tasks · Own Department", "Assign task ownership within the user's departments."),
+            Scoped("Tasks", PermissionCodes.TaskAllAssign, "Assign Tasks · All Departments", "Assign task ownership across accessible departments."),
+            Scoped("Tasks", PermissionCodes.TaskOwnCommentCreate, "Create Task Comments · Own Department", "Add comments to tasks in the user's departments."),
+            Scoped("Tasks", PermissionCodes.TaskAllCommentCreate, "Create Task Comments · All Departments", "Add comments to tasks across accessible departments."),
+            Scoped("Tasks", PermissionCodes.TaskOwnAttachmentCreate, "Upload Task Attachments · Own Department", "Upload task attachments for the user's departments."),
+            Scoped("Tasks", PermissionCodes.TaskAllAttachmentCreate, "Upload Task Attachments · All Departments", "Upload task attachments across accessible departments.")
+        });
+        AddScopedCrudSpecs(specs, "Subtasks", PermissionCodes.SubtaskOwnManage, PermissionCodes.SubtaskOwnView, PermissionCodes.SubtaskOwnCreate, PermissionCodes.SubtaskOwnEdit, PermissionCodes.SubtaskOwnDelete, PermissionCodes.SubtaskAllManage, PermissionCodes.SubtaskAllView, PermissionCodes.SubtaskAllCreate, PermissionCodes.SubtaskAllEdit, PermissionCodes.SubtaskAllDelete);
+        AddScopedCrudSpecs(specs, "Users", PermissionCodes.UserOwnManage, PermissionCodes.UserOwnView, PermissionCodes.UserOwnCreate, PermissionCodes.UserOwnEdit, PermissionCodes.UserOwnDelete, PermissionCodes.UserAllManage, PermissionCodes.UserAllView, PermissionCodes.UserAllCreate, PermissionCodes.UserAllEdit, PermissionCodes.UserAllDelete);
+        AddScopedCrudSpecs(specs, "Notifications", PermissionCodes.NotificationOwnManage, PermissionCodes.NotificationOwnView, PermissionCodes.NotificationOwnCreate, PermissionCodes.NotificationOwnEdit, PermissionCodes.NotificationOwnDelete, PermissionCodes.NotificationAllManage, PermissionCodes.NotificationAllView, PermissionCodes.NotificationAllCreate, PermissionCodes.NotificationAllEdit, PermissionCodes.NotificationAllDelete);
+        AddScopedCrudSpecs(specs, "Reports", PermissionCodes.ReportOwnManage, PermissionCodes.ReportOwnView, PermissionCodes.ReportOwnCreate, PermissionCodes.ReportOwnEdit, PermissionCodes.ReportOwnDelete, PermissionCodes.ReportAllManage, PermissionCodes.ReportAllView, PermissionCodes.ReportAllCreate, PermissionCodes.ReportAllEdit, PermissionCodes.ReportAllDelete);
+        specs.AddRange(new[]
+        {
+            Scoped("Audit", PermissionCodes.ActivityLogOwnManage, "Manage Audit Logs · Own Department", "Manage audit entries for the user's departments."),
+            Scoped("Audit", PermissionCodes.ActivityLogOwnView, "View Audit Logs · Own Department", "View audit entries for the user's departments."),
+            Scoped("Audit", PermissionCodes.ActivityLogOwnCreate, "Create Audit Logs · Own Department", "Create audit entries for the user's departments."),
+            Scoped("Audit", PermissionCodes.ActivityLogAllManage, "Manage Audit Logs · All Departments", "Manage audit entries across accessible departments."),
+            Scoped("Audit", PermissionCodes.ActivityLogAllView, "View Audit Logs · All Departments", "View audit entries across accessible departments."),
+            Scoped("Audit", PermissionCodes.ActivityLogAllCreate, "Create Audit Logs · All Departments", "Create audit entries across accessible departments."),
+            Scoped("Documents", PermissionCodes.DocumentOwnManage, "Manage Documents · Own Department", "Manage document CRUD and uploads for the user's departments."),
+            Scoped("Documents", PermissionCodes.DocumentOwnView, "View Documents · Own Department", "View documents belonging to the user's departments."),
+            Scoped("Documents", PermissionCodes.DocumentOwnCreate, "Create Documents · Own Department", "Create documents belonging to the user's departments."),
+            Scoped("Documents", PermissionCodes.DocumentOwnEdit, "Edit Documents · Own Department", "Edit document metadata for the user's departments."),
+            Scoped("Documents", PermissionCodes.DocumentOwnDelete, "Delete Documents · Own Department", "Delete documents belonging to the user's departments."),
+            Scoped("Documents", PermissionCodes.DocumentAllManage, "Manage Documents · All Departments", "Manage document CRUD and uploads across accessible departments."),
+            Scoped("Documents", PermissionCodes.DocumentAllView, "View Documents · All Departments", "View documents across accessible departments."),
+            Scoped("Documents", PermissionCodes.DocumentAllCreate, "Create Documents · All Departments", "Create documents across accessible departments."),
+            Scoped("Documents", PermissionCodes.DocumentAllEdit, "Edit Documents · All Departments", "Edit document metadata across accessible departments."),
+            Scoped("Documents", PermissionCodes.DocumentAllDelete, "Delete Documents · All Departments", "Delete documents across accessible departments."),
+            Scoped("Documents", PermissionCodes.DocumentOwnProjectUpload, "Upload Project Documents · Own Department", "Upload documents directly to projects owned by the user's department."),
+            Scoped("Documents", PermissionCodes.DocumentOwnMilestoneUpload, "Upload Milestone Documents · Own Department", "Upload documents to milestones owned by the user's department."),
+            Scoped("Documents", PermissionCodes.DocumentOwnTaskUpload, "Upload Task Documents · Own Department", "Upload documents to tasks belonging to the user's department."),
+            Scoped("Documents", PermissionCodes.DocumentAllProjectUpload, "Upload Project Documents · All Departments", "Upload documents to project level across accessible departments."),
+            Scoped("Documents", PermissionCodes.DocumentAllMilestoneUpload, "Upload Milestone Documents · All Departments", "Upload documents to milestones across accessible departments."),
+            Scoped("Documents", PermissionCodes.DocumentAllTaskUpload, "Upload Task Documents · All Departments", "Upload documents to tasks across accessible departments."),
+        });
+        specs.AddRange(new[]
+        {
+            Scoped("Utilization Certificates", PermissionCodes.UtilizationCertificateOwnManage, "Manage Utilization Certificates · Own Department", "Manage UC records and uploads for the user's departments."),
+            Scoped("Utilization Certificates", PermissionCodes.UtilizationCertificateOwnView, "View Utilization Certificates · Own Department", "View UC records for the user's departments."),
+            Scoped("Utilization Certificates", PermissionCodes.UtilizationCertificateOwnCreate, "Create Utilization Certificates · Own Department", "Create UC records for the user's departments."),
+            Scoped("Utilization Certificates", PermissionCodes.UtilizationCertificateOwnEdit, "Edit Utilization Certificates · Own Department", "Edit UC records for the user's departments."),
+            Scoped("Utilization Certificates", PermissionCodes.UtilizationCertificateOwnDelete, "Delete Utilization Certificates · Own Department", "Delete UC records for the user's departments."),
+            Scoped("Utilization Certificates", PermissionCodes.UtilizationCertificateOwnReview, "Review Utilization Certificates · Own Department", "Review UC records within the user's departments."),
+            Scoped("Utilization Certificates", PermissionCodes.UtilizationCertificateAllManage, "Manage Utilization Certificates · All Departments", "Manage UC records and uploads across accessible departments."),
+            Scoped("Utilization Certificates", PermissionCodes.UtilizationCertificateAllView, "View Utilization Certificates · All Departments", "View UC records across accessible departments."),
+            Scoped("Utilization Certificates", PermissionCodes.UtilizationCertificateAllCreate, "Create Utilization Certificates · All Departments", "Create UC records across accessible departments."),
+            Scoped("Utilization Certificates", PermissionCodes.UtilizationCertificateAllEdit, "Edit Utilization Certificates · All Departments", "Edit UC records across accessible departments."),
+            Scoped("Utilization Certificates", PermissionCodes.UtilizationCertificateAllDelete, "Delete Utilization Certificates · All Departments", "Delete UC records across accessible departments."),
+            Scoped("Utilization Certificates", PermissionCodes.UtilizationCertificateAllReview, "Review Utilization Certificates · All Departments", "Review UC records across accessible departments."),
+            Scoped("Utilization Certificates", PermissionCodes.UtilizationCertificateOwnProjectUpload, "Upload Project UC · Own Department", "Upload UC files at project level for the user's department."),
+            Scoped("Utilization Certificates", PermissionCodes.UtilizationCertificateOwnMilestoneUpload, "Upload Milestone UC · Own Department", "Upload UC files at milestone level for the user's department."),
+            Scoped("Utilization Certificates", PermissionCodes.UtilizationCertificateOwnTaskUpload, "Upload Task UC · Own Department", "Upload UC files at task level for the user's department."),
+            Scoped("Utilization Certificates", PermissionCodes.UtilizationCertificateAllProjectUpload, "Upload Project UC · All Departments", "Upload UC files at project level across accessible departments."),
+            Scoped("Utilization Certificates", PermissionCodes.UtilizationCertificateAllMilestoneUpload, "Upload Milestone UC · All Departments", "Upload UC files at milestone level across accessible departments."),
+            Scoped("Utilization Certificates", PermissionCodes.UtilizationCertificateAllTaskUpload, "Upload Task UC · All Departments", "Upload UC files at task level across accessible departments.")
+        });
+
         foreach (var spec in specs)
         {
-            if (await context.Permissions.AnyAsync(p => p.Code == spec.Item1, ct))
+            if (await context.Permissions.AnyAsync(p => p.Code == spec.Code, ct))
                 continue;
 
-            var permission = Permission.Create(spec.Item1, spec.Item2, spec.Item3, spec.Item4, spec.Item5);
+            var permission = Permission.Create(spec.Code, spec.Name, spec.Description, spec.Module, spec.IsGlobal);
             permission.SetCreatedBy(SeedConstants.SeedUser);
             await context.Permissions.AddAsync(permission, ct);
         }
@@ -207,87 +271,125 @@ internal static class RolesAndPermissionsSeeder
         context.Permissions.RemoveRange(retired);
     }
 
+    private static (string Code, string Name, string Description, string Module, bool IsGlobal) Scoped(
+        string module, string code, string name, string description)
+        => (code, name, description, module, false);
+
+    private static void AddScopedCrudSpecs(
+        List<(string Code, string Name, string Description, string Module, bool IsGlobal)> specs,
+        string module,
+        string ownManage, string ownView, string ownCreate, string ownEdit, string ownDelete,
+        string allManage, string allView, string allCreate, string allEdit, string allDelete)
+    {
+        specs.AddRange(new[]
+        {
+            Scoped(module, ownManage, $"Manage {module} · Own Department", $"Manage {module.ToLowerInvariant()} CRUD inside the user's departments."),
+            Scoped(module, ownView, $"View {module} · Own Department", $"View {module.ToLowerInvariant()} data inside the user's departments."),
+            Scoped(module, ownCreate, $"Create {module} · Own Department", $"Create {module.ToLowerInvariant()} data inside the user's departments."),
+            Scoped(module, ownEdit, $"Edit {module} · Own Department", $"Edit {module.ToLowerInvariant()} data inside the user's departments."),
+            Scoped(module, ownDelete, $"Delete {module} · Own Department", $"Delete {module.ToLowerInvariant()} data inside the user's departments."),
+            Scoped(module, allManage, $"Manage {module} · All Departments", $"Manage {module.ToLowerInvariant()} CRUD across accessible departments."),
+            Scoped(module, allView, $"View {module} · All Departments", $"View {module.ToLowerInvariant()} data across accessible departments."),
+            Scoped(module, allCreate, $"Create {module} · All Departments", $"Create {module.ToLowerInvariant()} data across accessible departments."),
+            Scoped(module, allEdit, $"Edit {module} · All Departments", $"Edit {module.ToLowerInvariant()} data across accessible departments."),
+            Scoped(module, allDelete, $"Delete {module} · All Departments", $"Delete {module.ToLowerInvariant()} data across accessible departments.")
+        });
+    }
+
     private static async Task SeedRolesAsync(ApplicationDbContext context, CancellationToken ct)
     {
         var permissions = await context.Permissions.ToDictionaryAsync(p => p.Code, ct);
         var allPermissionCodes = permissions.Keys.ToArray();
         var directorPermissionCodes = new[]
         {
-            PermissionCodes.DepartmentManage,
-            PermissionCodes.ProjectManage,
+            PermissionCodes.DepartmentAllManage,
+            PermissionCodes.ProjectAllManage,
             PermissionCodes.ProjectPrimaryDepartmentManage,
-            PermissionCodes.MilestoneManage,
-            PermissionCodes.TaskManage,
-            PermissionCodes.SubtaskManage,
-            PermissionCodes.UserManage,
-            PermissionCodes.NotificationManage,
-            PermissionCodes.ActivityLogManage,
-            PermissionCodes.ReportManage,
+            PermissionCodes.MilestoneAllManage,
+            PermissionCodes.TaskAllManage,
+            PermissionCodes.SubtaskAllManage,
+            PermissionCodes.UserAllManage,
+            PermissionCodes.NotificationAllManage,
+            PermissionCodes.ActivityLogAllManage,
+            PermissionCodes.ReportAllManage,
+            PermissionCodes.DocumentAllManage,
+            PermissionCodes.UtilizationCertificateAllManage,
             PermissionCodes.RoleManage,
             PermissionCodes.PermissionManage,
             PermissionCodes.AiView,
-            PermissionCodes.AiManage,
-            PermissionCodes.UtilizationCertificateManage
+            PermissionCodes.AiManage
         };
         var projectManagerPermissionCodes = new[]
         {
-            PermissionCodes.DepartmentView,
-            PermissionCodes.ProjectManage,
+            PermissionCodes.DepartmentOwnView,
+            PermissionCodes.ProjectAllManage,
             PermissionCodes.ProjectPrimaryDepartmentManage,
-            PermissionCodes.MilestoneManage,
-            PermissionCodes.TaskManage,
-            PermissionCodes.SubtaskManage,
-            PermissionCodes.UserView,
-            PermissionCodes.NotificationView,
-            PermissionCodes.ActivityLogCreate,
-            PermissionCodes.UtilizationCertificateView,
-            PermissionCodes.UtilizationCertificateCreate,
-            PermissionCodes.UtilizationCertificateEdit
+            PermissionCodes.MilestoneAllManage,
+            PermissionCodes.TaskAllManage,
+            PermissionCodes.SubtaskAllManage,
+            PermissionCodes.UserAllView,
+            PermissionCodes.NotificationOwnView,
+            PermissionCodes.ActivityLogOwnCreate,
+            PermissionCodes.DocumentAllManage,
+            PermissionCodes.UtilizationCertificateAllManage
         };
         var departmentHeadPermissionCodes = new[]
         {
-            PermissionCodes.DepartmentManage,
-            PermissionCodes.ProjectManage,
+            PermissionCodes.DepartmentOwnManage,
+            PermissionCodes.ProjectOwnManage,
+            PermissionCodes.ProjectOwnCreate,
             PermissionCodes.ProjectPrimaryDepartmentManage,
-            PermissionCodes.MilestoneManage,
-            PermissionCodes.TaskManage,
-            PermissionCodes.SubtaskManage,
-            PermissionCodes.UserManage,
-            PermissionCodes.NotificationView,
-            PermissionCodes.ActivityLogView,
-            PermissionCodes.ActivityLogCreate,
-            PermissionCodes.UtilizationCertificateView,
-            PermissionCodes.UtilizationCertificateCreate,
-            PermissionCodes.UtilizationCertificateEdit,
-            // A department head owns their department's projects (they are the
-            // primary department), so they carry the same finance sign-off
-            // authority as a Director for those projects.
-            PermissionCodes.UtilizationCertificateReview,
-            PermissionCodes.UtilizationCertificateDelete
+            PermissionCodes.MilestoneOwnManage,
+            PermissionCodes.TaskOwnManage,
+            PermissionCodes.SubtaskOwnManage,
+            PermissionCodes.UserOwnManage,
+            PermissionCodes.NotificationOwnView,
+            PermissionCodes.ActivityLogOwnView,
+            PermissionCodes.ActivityLogOwnCreate,
+            PermissionCodes.DocumentOwnView,
+            PermissionCodes.DocumentOwnCreate,
+            PermissionCodes.DocumentOwnEdit,
+            PermissionCodes.DocumentOwnMilestoneUpload,
+            PermissionCodes.DocumentOwnTaskUpload,
+            PermissionCodes.UtilizationCertificateOwnView,
+            PermissionCodes.UtilizationCertificateOwnCreate,
+            PermissionCodes.UtilizationCertificateOwnEdit,
+            PermissionCodes.UtilizationCertificateOwnReview,
+            PermissionCodes.UtilizationCertificateOwnMilestoneUpload,
+            PermissionCodes.UtilizationCertificateOwnTaskUpload
         };
         var teamMemberPermissionCodes = new[]
         {
-            PermissionCodes.ProjectView,
-            PermissionCodes.MilestoneView,
-            PermissionCodes.TaskView, PermissionCodes.TaskEdit, PermissionCodes.TaskCommentCreate, PermissionCodes.TaskAttachmentCreate,
-            PermissionCodes.SubtaskView, PermissionCodes.SubtaskCreate, PermissionCodes.SubtaskEdit,
-            PermissionCodes.NotificationView,
-            PermissionCodes.ActivityLogCreate,
-            PermissionCodes.UtilizationCertificateView,
-            PermissionCodes.UtilizationCertificateCreate,
-            PermissionCodes.UtilizationCertificateEdit
+            PermissionCodes.ProjectOwnView,
+            PermissionCodes.MilestoneOwnView,
+            PermissionCodes.TaskOwnView,
+            PermissionCodes.TaskOwnEdit,
+            PermissionCodes.TaskOwnCommentCreate,
+            PermissionCodes.TaskOwnAttachmentCreate,
+            PermissionCodes.SubtaskOwnView,
+            PermissionCodes.SubtaskOwnCreate,
+            PermissionCodes.SubtaskOwnEdit,
+            PermissionCodes.NotificationOwnView,
+            PermissionCodes.ActivityLogOwnCreate,
+            PermissionCodes.DocumentOwnView,
+            PermissionCodes.DocumentOwnTaskUpload,
+            PermissionCodes.UtilizationCertificateOwnView,
+            PermissionCodes.UtilizationCertificateOwnCreate,
+            PermissionCodes.UtilizationCertificateOwnEdit,
+            PermissionCodes.UtilizationCertificateOwnTaskUpload
         };
         var viewerPermissionCodes = new[]
         {
             PermissionCodes.OrganizationView,
-            PermissionCodes.DepartmentView,
-            PermissionCodes.ProjectView,
-            PermissionCodes.MilestoneView,
-            PermissionCodes.TaskView,
-            PermissionCodes.SubtaskView,
-            PermissionCodes.NotificationView,
-            PermissionCodes.ActivityLogView,
-            PermissionCodes.UtilizationCertificateView
+            PermissionCodes.DepartmentOwnView,
+            PermissionCodes.ProjectOwnView,
+            PermissionCodes.MilestoneOwnView,
+            PermissionCodes.TaskOwnView,
+            PermissionCodes.SubtaskOwnView,
+            PermissionCodes.NotificationOwnView,
+            PermissionCodes.ActivityLogOwnView,
+            PermissionCodes.DocumentOwnView,
+            PermissionCodes.UtilizationCertificateOwnView
         };
         var specs = new[]
         {
