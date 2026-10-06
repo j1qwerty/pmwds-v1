@@ -41,24 +41,49 @@ public static class PermissionPolicyRegistry
             PermissionCodes.SubtaskEdit));
 
         AddCrud(options, "Organizations", PermissionCodes.OrganizationManage, PermissionCodes.OrganizationView, PermissionCodes.OrganizationCreate, PermissionCodes.OrganizationEdit, PermissionCodes.OrganizationDelete);
-        AddCrud(options, "Departments", PermissionCodes.DepartmentManage, PermissionCodes.DepartmentView, PermissionCodes.DepartmentCreate, PermissionCodes.DepartmentEdit, PermissionCodes.DepartmentDelete);
-        AddCrud(options, "Projects", PermissionCodes.ProjectManage, PermissionCodes.ProjectView, PermissionCodes.ProjectCreate, PermissionCodes.ProjectEdit, PermissionCodes.ProjectDelete);
-        AddCrud(options, "Milestones", PermissionCodes.MilestoneManage, PermissionCodes.MilestoneView, PermissionCodes.MilestoneCreate, PermissionCodes.MilestoneEdit, PermissionCodes.MilestoneDelete);
-        AddCrud(options, "Tasks", PermissionCodes.TaskManage, PermissionCodes.TaskView, PermissionCodes.TaskCreate, PermissionCodes.TaskEdit, PermissionCodes.TaskDelete);
-        AddCrud(options, "Subtasks", PermissionCodes.SubtaskManage, PermissionCodes.SubtaskView, PermissionCodes.SubtaskCreate, PermissionCodes.SubtaskEdit, PermissionCodes.SubtaskDelete);
-        AddCrud(options, "Users", PermissionCodes.UserManage, PermissionCodes.UserView, PermissionCodes.UserCreate, PermissionCodes.UserEdit, PermissionCodes.UserDelete);
-        AddCrud(options, "Roles", PermissionCodes.RoleManage, PermissionCodes.RoleView, PermissionCodes.RoleCreate, PermissionCodes.RoleEdit, PermissionCodes.RoleDelete);
-        AddCrud(options, "Permissions", PermissionCodes.PermissionManage, PermissionCodes.PermissionView, PermissionCodes.PermissionCreate, PermissionCodes.PermissionEdit, PermissionCodes.PermissionDelete);
-        AddCrud(options, "Notifications", PermissionCodes.NotificationManage, PermissionCodes.NotificationView, PermissionCodes.NotificationBroadcast, PermissionCodes.NotificationTemplateManage, PermissionCodes.NotificationRuleManage);
-        AddCrud(options, "UtilizationCertificates", PermissionCodes.UtilizationCertificateManage, PermissionCodes.UtilizationCertificateView, PermissionCodes.UtilizationCertificateCreate, PermissionCodes.UtilizationCertificateEdit, PermissionCodes.UtilizationCertificateDelete);
 
-        // Review is deliberately NOT part of AddCrud: a contributor must never be able
-        // to approve their own utilization certificate.
-        options.AddPolicy(AuthorizationPolicies.UtilizationCertificateReview, policy => RequireAny(
-            policy,
-            PermissionCodes.SystemAdmin,
-            PermissionCodes.UtilizationCertificateManage,
-            PermissionCodes.UtilizationCertificateReview));
+        AddScopedCrud(options, "Departments",
+            PermissionCodes.DepartmentOwnManage, PermissionCodes.DepartmentOwnView, PermissionCodes.DepartmentOwnCreate, PermissionCodes.DepartmentOwnEdit, PermissionCodes.DepartmentOwnDelete,
+            PermissionCodes.DepartmentAllManage, PermissionCodes.DepartmentAllView, PermissionCodes.DepartmentAllCreate, PermissionCodes.DepartmentAllEdit, PermissionCodes.DepartmentAllDelete);
+
+        AddScopedCrud(options, "Projects",
+            PermissionCodes.ProjectOwnManage, PermissionCodes.ProjectOwnView, PermissionCodes.ProjectOwnCreate, PermissionCodes.ProjectOwnEdit, PermissionCodes.ProjectOwnDelete,
+            PermissionCodes.ProjectAllManage, PermissionCodes.ProjectAllView, PermissionCodes.ProjectAllCreate, PermissionCodes.ProjectAllEdit, PermissionCodes.ProjectAllDelete);
+
+        AddScopedCrud(options, "Milestones",
+            PermissionCodes.MilestoneOwnManage, PermissionCodes.MilestoneOwnView, PermissionCodes.MilestoneOwnCreate, PermissionCodes.MilestoneOwnEdit, PermissionCodes.MilestoneOwnDelete,
+            PermissionCodes.MilestoneAllManage, PermissionCodes.MilestoneAllView, PermissionCodes.MilestoneAllCreate, PermissionCodes.MilestoneAllEdit, PermissionCodes.MilestoneAllDelete);
+
+        AddScopedCrud(options, "Tasks",
+            PermissionCodes.TaskOwnManage, PermissionCodes.TaskOwnView, PermissionCodes.TaskOwnCreate, PermissionCodes.TaskOwnEdit, PermissionCodes.TaskOwnDelete,
+            PermissionCodes.TaskAllManage, PermissionCodes.TaskAllView, PermissionCodes.TaskAllCreate, PermissionCodes.TaskAllEdit, PermissionCodes.TaskAllDelete);
+        options.AddPolicy("Tasks.Assign", policy => RequireAny(policy, PermissionCodes.SystemAdmin, PermissionCodes.TaskOwnAssign, PermissionCodes.TaskAllAssign));
+        options.AddPolicy("Tasks.Comments", policy => RequireAny(policy, PermissionCodes.SystemAdmin, PermissionCodes.TaskOwnCommentCreate, PermissionCodes.TaskAllCommentCreate));
+        options.AddPolicy("Tasks.Attachments", policy => RequireAny(policy, PermissionCodes.SystemAdmin, PermissionCodes.TaskOwnAttachmentCreate, PermissionCodes.TaskAllAttachmentCreate));
+
+        AddScopedCrud(options, "Subtasks",
+            PermissionCodes.SubtaskOwnManage, PermissionCodes.SubtaskOwnView, PermissionCodes.SubtaskOwnCreate, PermissionCodes.SubtaskOwnEdit, PermissionCodes.SubtaskOwnDelete,
+            PermissionCodes.SubtaskAllManage, PermissionCodes.SubtaskAllView, PermissionCodes.SubtaskAllCreate, PermissionCodes.SubtaskAllEdit, PermissionCodes.SubtaskAllDelete);
+
+        AddScopedCrud(options, "Users",
+            PermissionCodes.UserOwnManage, PermissionCodes.UserOwnView, PermissionCodes.UserOwnCreate, PermissionCodes.UserOwnEdit, PermissionCodes.UserOwnDelete,
+            PermissionCodes.UserAllManage, PermissionCodes.UserAllView, PermissionCodes.UserAllCreate, PermissionCodes.UserAllEdit, PermissionCodes.UserAllDelete);
+
+        AddScopedCrud(options, "Notifications",
+            PermissionCodes.NotificationOwnManage, PermissionCodes.NotificationOwnView, PermissionCodes.NotificationOwnCreate, PermissionCodes.NotificationOwnEdit, PermissionCodes.NotificationOwnDelete,
+            PermissionCodes.NotificationAllManage, PermissionCodes.NotificationAllView, PermissionCodes.NotificationAllCreate, PermissionCodes.NotificationAllEdit, PermissionCodes.NotificationAllDelete);
+
+        AddScopedCrud(options, "Reports",
+            PermissionCodes.ReportOwnManage, PermissionCodes.ReportOwnView, PermissionCodes.ReportOwnCreate, PermissionCodes.ReportOwnEdit, PermissionCodes.ReportOwnDelete,
+            PermissionCodes.ReportAllManage, PermissionCodes.ReportAllView, PermissionCodes.ReportAllCreate, PermissionCodes.ReportAllEdit, PermissionCodes.ReportAllDelete);
+
+        AddScopedCrud(options, "Documents",
+            PermissionCodes.DocumentOwnManage, PermissionCodes.DocumentOwnView, PermissionCodes.DocumentOwnCreate, PermissionCodes.DocumentOwnEdit, PermissionCodes.DocumentOwnDelete,
+            PermissionCodes.DocumentAllManage, PermissionCodes.DocumentAllView, PermissionCodes.DocumentAllCreate, PermissionCodes.DocumentAllEdit, PermissionCodes.DocumentAllDelete);
+
+        AddScopedCrud(options, "UtilizationCertificates",
+            PermissionCodes.UtilizationCertificateOwnManage, PermissionCodes.UtilizationCertificateOwnView, PermissionCodes.UtilizationCertificateOwnCreate, PermissionCodes.UtilizationCertificateOwnEdit, PermissionCodes.UtilizationCertificateOwnDelete,
+            PermissionCodes.UtilizationCertificateAllManage, PermissionCodes.UtilizationCertificateAllView, PermissionCodes.UtilizationCertificateAllCreate, PermissionCodes.UtilizationCertificateAllEdit, PermissionCodes.UtilizationCertificateAllDelete);
 
         options.AddPolicy(AuthorizationPolicies.ActivityLogsView, policy => RequireAny(policy, PermissionCodes.SystemAdmin, PermissionCodes.ActivityLogManage, PermissionCodes.ActivityLogView));
         options.AddPolicy(AuthorizationPolicies.ActivityLogsCreate, policy => RequireAny(policy, PermissionCodes.SystemAdmin, PermissionCodes.ActivityLogManage, PermissionCodes.ActivityLogCreate));
@@ -79,6 +104,19 @@ public static class PermissionPolicyRegistry
         options.AddPolicy($"{prefix}.Edit", policy => RequireAny(policy, PermissionCodes.SystemAdmin, manage, edit));
         options.AddPolicy($"{prefix}.Delete", policy => RequireAny(policy, PermissionCodes.SystemAdmin, manage, delete));
         options.AddPolicy($"{prefix}.Manage", policy => RequireAny(policy, PermissionCodes.SystemAdmin, manage));
+    }
+
+    private static void AddScopedCrud(
+        AuthorizationOptions options,
+        string prefix,
+        string ownManage, string ownView, string ownCreate, string ownEdit, string ownDelete,
+        string allManage, string allView, string allCreate, string allEdit, string allDelete)
+    {
+        options.AddPolicy($"{prefix}.View", policy => RequireAny(policy, PermissionCodes.SystemAdmin, ownManage, ownView, allManage, allView));
+        options.AddPolicy($"{prefix}.Create", policy => RequireAny(policy, PermissionCodes.SystemAdmin, ownManage, ownCreate, allManage, allCreate));
+        options.AddPolicy($"{prefix}.Edit", policy => RequireAny(policy, PermissionCodes.SystemAdmin, ownManage, ownEdit, allManage, allEdit));
+        options.AddPolicy($"{prefix}.Delete", policy => RequireAny(policy, PermissionCodes.SystemAdmin, ownManage, ownDelete, allManage, allDelete));
+        options.AddPolicy($"{prefix}.Manage", policy => RequireAny(policy, PermissionCodes.SystemAdmin, ownManage, allManage));
     }
 
     private static void RequireAny(AuthorizationPolicyBuilder policy, params string[] permissionCodes)
