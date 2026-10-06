@@ -133,6 +133,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const [budget, setBudget] = useState(0);
   const [startDate, setStartDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [endDate, setEndDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [projectDocumentFile, setProjectDocumentFile] = useState<File | null>(null);
 
   // Primary department (creator) - for exec flow
   const [primaryDepartmentId, setPrimaryDepartmentId] = useState("");
@@ -153,6 +154,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const isDirector = hasRoleKey(auth?.roleKeys, RoleKey.Director);
   const isDepartmentHead = hasRoleKey(auth?.roleKeys, RoleKey.DepartmentHead);
   const canManagePrimaryDepartment = perm.has(Permission.ProjectPrimaryDepartmentManage);
+  const canUploadProjectDocument = perm.has(Permission.DocumentOwnProjectUpload) || perm.has(Permission.DocumentAllProjectUpload);
   const usesExecutiveFlow = isSuperAdmin || isDirector || isDepartmentHead;
   const steps = usesExecutiveFlow ? EXECUTIVE_STEPS : LEGACY_STEPS;
   const currentStepKey = steps[currentStep]?.key ?? "details";
@@ -266,6 +268,19 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
       });
 
       const projectId = project.id;
+      if (projectDocumentFile) {
+        try {
+          await api.uploadProjectDocument(auth.token, projectId, projectDocumentFile);
+        } catch (error) {
+          addToast(
+            error instanceof Error
+              ? `Project created, but the document upload failed: ${error.message}`
+              : "Project created, but the document upload failed.",
+            "error",
+          );
+        }
+      }
+
 
       // Create milestones sequentially, collecting real IDs
       const createdMilestoneIds: Record<string, string> = {};
@@ -480,6 +495,10 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
               onChange={handleDetailsChange}
               primaryDepartmentId={primaryDepartmentId}
               departments={primaryDepartmentOptions}
+              primaryDepartmentLocked={!isSuperAdmin && canManagePrimaryDepartment}
+              projectDocumentFile={projectDocumentFile}
+              onProjectDocumentChange={setProjectDocumentFile}
+              canUploadProjectDocument={canUploadProjectDocument}
               onPrimaryDepartmentChange={primaryDepartmentOptions.length > 0 ? setPrimaryDepartmentId : undefined}
             />
           )}
@@ -489,7 +508,6 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
               onDepartmentsChange={setSelectedDepartmentIds}
               departments={scopedDepartments}
               organizations={data.organizations}
-              showOrganization={isSuperAdmin}
               users={data.users}
               onRefresh={refresh}
             />
