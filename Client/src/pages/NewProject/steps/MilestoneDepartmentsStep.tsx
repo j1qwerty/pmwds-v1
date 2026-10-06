@@ -14,6 +14,7 @@ interface MilestoneDepartmentsStepProps {
   milestones: MilestoneEntry[];
   departments: Department[];
   organizations?: OrganizationRecord[];
+  showOrganization?: boolean;
   loading?: boolean;
   onChange: (milestones: MilestoneEntry[]) => void;
 }
@@ -22,6 +23,7 @@ export function MilestoneDepartmentsStep({
   milestones,
   departments,
   organizations = [],
+  showOrganization = false,
   loading = false,
   onChange,
 }: MilestoneDepartmentsStepProps) {
@@ -115,7 +117,7 @@ export function MilestoneDepartmentsStep({
                 const orgName = department.organizationId
                   ? orgNameById.get(department.organizationId)
                   : undefined;
-                const label = orgName
+                const label = showOrganization && orgName
                   ? `${department.name} (${department.code} · ${orgName})`
                   : department.code
                     ? `${department.name} (${department.code})`
