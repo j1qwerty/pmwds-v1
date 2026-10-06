@@ -314,7 +314,6 @@ internal static class RolesAndPermissionsSeeder
             PermissionCodes.ReportAllManage,
             PermissionCodes.DocumentAllManage,
             PermissionCodes.KnowledgeAllManage,
-            PermissionCodes.KnowledgeAllManage,
             PermissionCodes.UtilizationCertificateAllManage,
             PermissionCodes.RoleManage,
             PermissionCodes.PermissionManage,
@@ -333,6 +332,7 @@ internal static class RolesAndPermissionsSeeder
             PermissionCodes.NotificationOwnView,
             PermissionCodes.ActivityLogOwnCreate,
             PermissionCodes.DocumentAllManage,
+            PermissionCodes.KnowledgeAllManage,
             PermissionCodes.UtilizationCertificateAllManage
         };
         var departmentHeadPermissionCodes = new[]
