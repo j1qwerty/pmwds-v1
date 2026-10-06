@@ -334,11 +334,21 @@ public class RolesController : BaseApiController
         if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var parsedId))
             return new HashSet<string>();
 
-        var codes = await _context.Users
-            .Where(u => u.Id == parsedId)
-            .SelectMany(u => u.Roles.SelectMany(r => r.Permissions.Select(p => p.Code)))
-            .Distinct()
+        // Roles and permissions are two many-to-many hops. Flattening them with a nested
+        // collection-correlated SelectMany made EF emit SQL Server's APPLY, which SQLite cannot
+        // generate. Crossing each hop separately keeps every clause translatable: the Users.Any
+        // filter is a correlated EXISTS, and the collection in the projection compiles to an
+        // aggregating subquery on both providers.
+        var codesByRole = await _context.Roles
+            .AsNoTracking()
+            .Where(role => role.Users.Any(user => user.Id == parsedId))
+            .Select(role => role.Permissions.Select(permission => permission.Code).ToList())
             .ToListAsync(ct);
+
+        var codes = codesByRole
+            .SelectMany(roleCodes => roleCodes)
+            .Distinct()
+            .ToList();
 
         var expanded = new HashSet<string>(codes, StringComparer.OrdinalIgnoreCase);
         foreach (var manageCode in codes)

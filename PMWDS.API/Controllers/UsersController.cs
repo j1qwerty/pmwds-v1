@@ -98,16 +98,26 @@ public class UsersController : BaseApiController
 
         var userIds = rows.Select(row => row.Id).ToList();
 
-        var roleRows = await _db.Users
+        // Project the roles collection inline rather than flattening it with a collection-
+        // correlated SelectMany. The SelectMany form made EF emit SQL Server's APPLY, which
+        // SQLite cannot generate, so the whole users list returned 500 whenever the application
+        // ran on its SQLite fallback. A collection inside the projection compiles to an
+        // aggregating subquery (STRING_AGG / GROUP_CONCAT), which every provider translates.
+        var userRoleRows = await _db.Users
             .AsNoTracking()
-            .Where(u => userIds.Contains(u.Id))
-            .SelectMany(u => u.Roles.Select(role => new
+            .Where(user => userIds.Contains(user.Id))
+            .Select(user => new
             {
-                UserId = u.Id,
-                role.Name,
-                role.Key
-            }))
+                UserId = user.Id,
+                Names = user.Roles.Select(role => role.Name).ToList(),
+                Keys = user.Roles.Select(role => role.Key).ToList()
+            })
             .ToListAsync(ct);
+
+        var roleRows = userRoleRows
+            .SelectMany(row => row.Names
+                .Select((name, index) => new { row.UserId, Name = name, Key = row.Keys[index] }))
+            .ToList();
 
         var departmentRows = await _db.UserDepartments
             .AsNoTracking()

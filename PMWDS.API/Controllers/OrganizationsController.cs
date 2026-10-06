@@ -272,7 +272,11 @@ public class OrganizationsController : BaseApiController
             return new Dictionary<Guid, OrganizationDirectorResponse>();
         }
 
-        var rows = await _db.Users
+        // Two flat queries rather than one SelectMany over a collection navigation.
+        // The collection-correlated SelectMany translated to SQL Server's APPLY, which SQLite
+        // cannot generate, so the whole organizations list failed whenever the app ran on its
+        // SQLite fallback. Splitting it keeps every query translatable on both providers.
+        var directors = await _db.Users
             .AsNoTracking()
             .Where(user =>
                 user.Roles.Any(role => role.Key == RoleKeys.Director) &&
@@ -280,29 +284,48 @@ public class OrganizationsController : BaseApiController
                     assignment.Department != null &&
                     assignment.Department.OrganizationId.HasValue &&
                     organizationIds.Contains(assignment.Department.OrganizationId.Value)))
-            .SelectMany(user => user.DepartmentAssignments
-                .Where(assignment =>
-                    assignment.Department != null &&
-                    assignment.Department.OrganizationId.HasValue &&
-                    organizationIds.Contains(assignment.Department.OrganizationId.Value))
-                .Select(assignment => new
-                {
-                    OrganizationId = assignment.Department!.OrganizationId!.Value,
-                    user.Id,
-                    user.FirstName,
-                    user.LastName,
-                    user.Email,
-                    user.ProfilePictureUrl
-                }))
+            .Select(user => new
+            {
+                user.Id,
+                user.FirstName,
+                user.LastName,
+                user.Email,
+                user.ProfilePictureUrl
+            })
             .ToListAsync(ct);
 
-        return rows
-            .GroupBy(row => row.OrganizationId)
+        if (directors.Count == 0)
+        {
+            return new Dictionary<Guid, OrganizationDirectorResponse>();
+        }
+
+        var directorById = directors.ToDictionary(director => director.Id);
+        // A List<Guid>.Contains translates to IN. Dictionary.ContainsKey does not - EF turns it
+        // into an APPLY, which is exactly the construct SQLite cannot generate.
+        var directorIds = directorById.Keys.ToList();
+
+        var assignments = await _db.UserDepartments
+            .AsNoTracking()
+            .Where(assignment =>
+                assignment.Department != null &&
+                assignment.Department.OrganizationId.HasValue &&
+                organizationIds.Contains(assignment.Department.OrganizationId.Value) &&
+                directorIds.Contains(assignment.UserId))
+            .Select(assignment => new
+            {
+                OrganizationId = assignment.Department!.OrganizationId!.Value,
+                assignment.UserId
+            })
+            .ToListAsync(ct);
+
+        return assignments
+            .Where(assignment => directorById.ContainsKey(assignment.UserId))
+            .GroupBy(assignment => assignment.OrganizationId)
             .ToDictionary(
                 group => group.Key,
                 group =>
                 {
-                    var director = group.First();
+                    var director = directorById[group.First().UserId];
                     return new OrganizationDirectorResponse(
                         director.Id,
                         director.FirstName + " " + director.LastName,

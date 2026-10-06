@@ -53,15 +53,22 @@ public class WorkspaceController : BaseApiController
         }
 
         var roleNames = currentUser.Roles.Select(role => role.Name).ToList();
-        var permissions = await _db.Users
+        // Cross the user -> roles -> permissions hops separately. Flattening them with nested
+        // collection-correlated SelectMany calls made EF emit SQL Server's APPLY, which SQLite
+        // cannot generate, so the bootstrap payload 500'd on the SQLite fallback. The Users.Any
+        // filter is a correlated EXISTS and the projected collection compiles to an aggregating
+        // subquery, both of which every provider translates.
+        var permissionsByRole = await _db.Roles
             .AsNoTracking()
-            .Where(user => user.Id == currentUserId && user.IsActive)
-            .SelectMany(user => user.Roles)
-            .SelectMany(role => role.Permissions)
-            .Select(permission => permission.Code)
+            .Where(role => role.Users.Any(user => user.Id == currentUserId && user.IsActive))
+            .Select(role => role.Permissions.Select(permission => permission.Code).ToList())
+            .ToListAsync(ct);
+
+        var permissions = permissionsByRole
+            .SelectMany(roleCodes => roleCodes)
             .Distinct()
             .OrderBy(code => code)
-            .ToListAsync(ct);
+            .ToList();
 
         var userPageSize = ResolveUserPageSize(currentUser);
 
