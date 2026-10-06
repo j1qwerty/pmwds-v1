@@ -34,6 +34,7 @@ import type {
   PermissionRecord,
   Project,
   ProjectDocument,
+  ProjectDocumentCapabilities,
   ProjectHealth,
   PredictionResultRecord,
   ReportScheduleRecord,
@@ -259,13 +260,41 @@ export const api = {
       method: "POST",
     });
   },
-  uploadProjectDocument(token: string, id: string, file: File) {
+  uploadProjectDocument(
+    token: string,
+    id: string,
+    file: File,
+    options: { milestoneId?: string | null; taskId?: string | null; category?: string } = {},
+  ) {
     const form = new FormData();
     form.set("file", file);
-    return request<void>(`projects/${id}/documents`, { token, method: "POST", body: form });
+    if (options.milestoneId) form.set("milestoneId", options.milestoneId);
+    if (options.taskId) form.set("taskId", options.taskId);
+    if (options.category) form.set("category", options.category);
+    return request<ProjectDocument>(`projects/${id}/documents`, {
+      token,
+      method: "POST",
+      body: form,
+    });
+  },
+  getProjectDocumentCapabilities(token: string, id: string) {
+    return request<ProjectDocumentCapabilities>(`projects/${id}/documents/capabilities`, { token });
   },
   getProjectDocuments(token: string, id: string) {
     return request<ProjectDocument[]>(`projects/${id}/documents`, { token });
+  },
+  updateProjectDocument(token: string, id: string, docId: string, payload: { title: string; description?: string | null; category: string }) {
+    return request<ProjectDocument>(`projects/${id}/documents/${docId}`, {
+      token,
+      method: "PUT",
+      body: payload,
+    });
+  },
+  deleteProjectDocument(token: string, id: string, docId: string) {
+    return request<void>(`projects/${id}/documents/${docId}`, {
+      token,
+      method: "DELETE",
+    });
   },
   downloadProjectDocument(token: string, id: string, docId: string) {
     return request<Blob>(`projects/${id}/documents/${docId}/download`, { token });
