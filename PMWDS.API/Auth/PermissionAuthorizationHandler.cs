@@ -66,10 +66,7 @@ public sealed class PermissionAuthorizationHandler : AuthorizationHandler<Permis
                 result.Add(alias);
             }
 
-            if (permission.Contains("_ALL_"))
-            {
-                result.Add(permission.Replace("_ALL_", "_OWN_", StringComparison.Ordinal));
-            }
+
         }
         foreach (var permission in permissions)
         {
