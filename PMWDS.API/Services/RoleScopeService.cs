@@ -297,8 +297,20 @@ public class RoleScopeService
             .Any(permissions.Contains);
         if (hasAll)
         {
-            return (project.OrganizationId.HasValue && await CanAccessOrganizationAsync(project.OrganizationId.Value, ct)) ||
-                project.AssignedOrganizationIds.Any(id => organizationAccess(organizationIds: id, ct).GetAwaiter().GetResult());
+            if (project.OrganizationId.HasValue && await CanAccessOrganizationAsync(project.OrganizationId.Value, ct))
+            {
+                return true;
+            }
+
+            foreach (var organizationId in project.AssignedOrganizationIds)
+            {
+                if (await CanAccessOrganizationAsync(organizationId, ct))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         var departmentIds = await GetDepartmentIdsAsync(ct);
@@ -316,9 +328,6 @@ public class RoleScopeService
         }
 
         return false;
-
-        async Task<bool> organizationAccess(Guid organizationIds, CancellationToken token)
-            => await CanAccessOrganizationAsync(organizationIds, token);
     }
 
 
