@@ -325,19 +325,6 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
     }
   };
 
-  const primaryDepartmentOptions = useMemo(() => {
-    if (isSuperAdmin || perm.has(Permission.ProjectAllCreate) || perm.has(Permission.ProjectAllManage)) {
-      return scopedDepartments;
-    }
-    if (!auth || !perm.has(Permission.ProjectPrimaryDepartmentManage)) {
-      return [];
-    }
-    const headed = scopedDepartments.filter((department) => department.departmentHeadUserId === auth.userId);
-    return headed.length > 0
-      ? headed
-      : scopedDepartments.filter((department) => department.id === data.users.find((user) => user.id === auth.userId)?.departmentId);
-  }, [auth, data.users, isSuperAdmin, perm, scopedDepartments]);
-
   const scopedDepartments = useMemo(() => {
     let filtered = allDepartments;
     if (shouldFilterByOrg && userOrganizationId) {
@@ -351,6 +338,19 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
     }
     return filtered;
   }, [allDepartments, shouldFilterByOrg, userOrganizationId]);
+
+  const primaryDepartmentOptions = useMemo(() => {
+    if (isSuperAdmin || perm.has(Permission.ProjectAllCreate) || perm.has(Permission.ProjectAllManage)) {
+      return scopedDepartments;
+    }
+    if (!auth || !perm.has(Permission.ProjectPrimaryDepartmentManage)) {
+      return [];
+    }
+    const headed = scopedDepartments.filter((department) => department.departmentHeadUserId === auth.userId);
+    return headed.length > 0
+      ? headed
+      : scopedDepartments.filter((department) => department.id === data.users.find((user) => user.id === auth.userId)?.departmentId);
+  }, [auth, data.users, isSuperAdmin, perm, scopedDepartments]);
 
   const departmentUsers = useMemo(() => {
     const effectiveDepartmentIds = usesExecutiveFlow
