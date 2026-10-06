@@ -371,6 +371,7 @@ internal static class RolesAndPermissionsSeeder
         };
         var teamMemberPermissionCodes = new[]
         {
+            PermissionCodes.ProjectView, // hidden legacy compatibility alias
             PermissionCodes.ProjectOwnView,
             PermissionCodes.MilestoneOwnView,
             PermissionCodes.TaskOwnView,
