@@ -27,6 +27,9 @@ jobs:
       - name: Restore
         run: dotnet restore PMWDS.slnx
 
+      - name: Build Debug
+        run: dotnet build PMWDS.slnx --configuration Debug --no-restore
+
       - name: Generate migration
         run: dotnet ef migrations add AddDocumentHierarchy --project PMWDS.Persistence --startup-project PMWDS.API --context ApplicationDbContext --output-dir Migrations --no-build
 
