@@ -9,6 +9,7 @@ import {
   GlassCard,
   useToast,
   LoadingPage,
+  usePermission,
 } from "../shared";
 import { Icon } from "../../components/ui/Icon";
 import { Permission, RoleKey, hasRoleKey } from "../../permissions";
@@ -80,6 +81,7 @@ const EXECUTIVE_STEPS: StepConfig[] = [
 export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const navigate = useNavigate();
   const { auth } = useAuth();
+  const perm = usePermission();
   const { data, refresh } = useAppData();
   const { addToast } = useToast();
   const [liveDepartments, setLiveDepartments] = useState<Department[] | null>(null);
@@ -150,7 +152,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const isSuperAdmin = hasRoleKey(auth?.roleKeys, RoleKey.SuperAdmin);
   const isDirector = hasRoleKey(auth?.roleKeys, RoleKey.Director);
   const isDepartmentHead = hasRoleKey(auth?.roleKeys, RoleKey.DepartmentHead);
-  const canManagePrimaryDepartment = auth ? usePermission().has(Permission.ProjectPrimaryDepartmentManage) : false;
+  const canManagePrimaryDepartment = perm.has(Permission.ProjectPrimaryDepartmentManage);
   const usesExecutiveFlow = isSuperAdmin || isDirector || isDepartmentHead;
   const steps = usesExecutiveFlow ? EXECUTIVE_STEPS : LEGACY_STEPS;
   const currentStepKey = steps[currentStep]?.key ?? "details";
