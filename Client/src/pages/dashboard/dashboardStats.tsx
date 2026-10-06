@@ -11,10 +11,26 @@ interface DashboardStatsProps {
 
 const PREVIEW_LIMIT = 10;
 
+function isDelayedProject(project: {
+  status: string;
+  progressPercentage: number;
+  plannedEndDate?: string;
+  actualEndDate?: string | null;
+}) {
+  if (project.status === "Delayed") return true;
+  if (project.status === "Completed" || project.progressPercentage >= 100) return false;
+  return Boolean(project.plannedEndDate && new Date(project.plannedEndDate).getTime() < Date.now());
+}
+
 function recentProjects(
   dashboard: ProjectDashboardData | null | undefined,
   projects: Project[],
-  predicate: (project: { status: string; progressPercentage: number }) => boolean,
+  predicate: (project: {
+    status: string;
+    progressPercentage: number;
+    plannedEndDate?: string;
+    actualEndDate?: string | null;
+  }) => boolean,
 ): MetricStatDetail[] {
   const source = dashboard?.recentProjectPreviews?.length ? dashboard.recentProjectPreviews : projects;
   return source
@@ -69,7 +85,7 @@ export default function DashboardStats({ projects = [], dashboard }: DashboardSt
       value: dashboard?.delayedProjects ?? projects.filter((p) => p.status === "Delayed").length,
       label: "Delayed",
       statusKey: "Delayed",
-      details: recentProjects(dashboard, projects, (p) => p.status === "Delayed"),
+      details: recentProjects(dashboard, projects, isDelayedProject),
     },
   ];
 
