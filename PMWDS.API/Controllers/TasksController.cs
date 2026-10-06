@@ -414,7 +414,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpPost("{id:guid}/assign")]
-    [Authorize(Policy = AuthorizationPolicies.TasksEdit)]
+    [Authorize(Policy = "Tasks.Assign")]
     public async Task<IActionResult> Assign(Guid id, [FromBody] AssignTaskRequest req, CancellationToken ct)
     {
         var assigneeIds = req.AssigneeIds?.Where(value => !string.IsNullOrWhiteSpace(value)).Distinct().ToList();
@@ -532,7 +532,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpGet("{id:guid}/ai/recommend-assignee")]
-    [Authorize(Policy = AuthorizationPolicies.TasksDelete)]
+    [Authorize(Policy = AuthorizationPolicies.TasksView)]
     public async Task<IActionResult> GetAIAssignee(Guid id, CancellationToken ct)
         => Ok(await Mediator.Send(new GetAIAssigneeRecommendationQuery(id), ct));
 
@@ -645,7 +645,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpGet("overdue")]
-    [Authorize(Policy = AuthorizationPolicies.TasksEdit)]
+    [Authorize(Policy = AuthorizationPolicies.TasksView)]
     public async Task<IActionResult> GetOverdue([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         var allowedProjectIds = await _taskWorkflow.GetAccessibleProjectIdsAsync(ct);
@@ -684,7 +684,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpGet("escalated")]
-    [Authorize(Policy = AuthorizationPolicies.TasksEdit)]
+    [Authorize(Policy = AuthorizationPolicies.TasksView)]
     public async Task<IActionResult> GetEscalated([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         var allowedProjectIds = await _taskWorkflow.GetAccessibleProjectIdsAsync(ct);
@@ -705,7 +705,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpGet("unassigned")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.TasksView)]
     public async Task<IActionResult> GetUnassigned([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         var allowedProjectIds = await _taskWorkflow.GetAccessibleProjectIdsAsync(ct);
@@ -819,7 +819,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpPut("subtasks/{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.TaskEditor)]
+    [Authorize(Policy = AuthorizationPolicies.SubtasksEdit)]
     public async Task<IActionResult> UpdateSubtask(Guid id, [FromBody] UpdateTaskDto dto, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
@@ -900,7 +900,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpPost("subtasks/{id:guid}/assign")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.SubtasksEdit)]
     public async Task<IActionResult> AssignSubtask(Guid id, [FromBody] AssignTaskRequest req, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(req.AssigneeId))
@@ -925,7 +925,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpDelete("subtasks/{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.SubtasksDelete)]
     public async Task<IActionResult> DeleteSubtask(Guid id, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
@@ -977,7 +977,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.TasksDelete)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
