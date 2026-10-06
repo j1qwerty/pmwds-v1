@@ -68,6 +68,8 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.x'
+      - name: Install EF CLI
+        run: dotnet tool install --global dotnet-ef --version 10.0.7
       - run: dotnet restore PMWDS.slnx
       - run: dotnet build PMWDS.slnx --configuration Release --no-restore
       - run: dotnet test PMWDS.slnx --configuration Release --no-build
