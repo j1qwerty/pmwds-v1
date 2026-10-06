@@ -462,6 +462,35 @@ public class RoleScopeService
             .FirstOrDefaultAsync(ct);
     }
 
+    public async Task<bool> CanAccessKnowledgeAsync(Guid? projectId, CancellationToken ct)
+    {
+        if (IsSuperAdmin ||
+            await HasAnyPermissionAsync(
+                ct,
+                PermissionCodes.KnowledgeAllView,
+                PermissionCodes.KnowledgeAllManage,
+                PermissionCodes.KnowledgeAllCreate,
+                PermissionCodes.KnowledgeAllEdit,
+                PermissionCodes.KnowledgeAllDelete))
+        {
+            return !projectId.HasValue || await CanAccessProjectAsync(projectId.Value, ct);
+        }
+
+        if (!projectId.HasValue)
+        {
+            return false;
+        }
+
+        return await CanAccessProjectDataAsync(
+            projectId.Value,
+            null,
+            ct,
+            PermissionCodes.KnowledgeOwnView,
+            PermissionCodes.KnowledgeAllView,
+            PermissionCodes.KnowledgeOwnManage,
+            PermissionCodes.KnowledgeAllManage);
+    }
+
     public async Task<bool> CanAccessProjectDataAsync(
         Guid projectId,
         Guid? departmentId,
