@@ -527,7 +527,7 @@ function scopeManageVariant(code: string): string | null {
 
 function scopedVariants(requested: string): string[] {
   const variants = [requested];
-  const legacy = requested.match(/^(DEPARTMENT|PROJECT|MILESTONE|TASK|SUBTASK|USER|NOTIFICATION|REPORT|ACTIVITY_LOG|DOCUMENT|UTILIZATION_CERTIFICATE)_(VIEW|CREATE|EDIT|DELETE|MANAGE|ASSIGN|COMMENT_CREATE|ATTACHMENT_CREATE)$/);
+  const legacy = requested.match(/^(DEPARTMENT|PROJECT|MILESTONE|TASK|SUBTASK|USER|NOTIFICATION|REPORT|ACTIVITY_LOG|DOCUMENT|UTILIZATION_CERTIFICATE|KNOWLEDGE)_(VIEW|CREATE|EDIT|DELETE|MANAGE|ASSIGN|COMMENT_CREATE|ATTACHMENT_CREATE)$/);
   if (legacy) {
     const [, module, action] = legacy;
     variants.push(`${module}_ALL_${action}`);
