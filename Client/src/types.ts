@@ -893,9 +893,25 @@ export type DocumentCategory =
   | "Financial"
   | "UtilizationCertificate";
 
+export type ProjectDocumentLevel = "Project" | "Milestone" | "Task";
+
+export interface ProjectDocumentCapabilities {
+  canUploadProject: boolean;
+  canUploadMilestone: boolean;
+  canUploadTask: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+}
+
 export interface ProjectDocument {
   id: string;
   projectId: string;
+  projectName?: string | null;
+  milestoneId?: string | null;
+  milestoneName?: string | null;
+  taskId?: string | null;
+  taskTitle?: string | null;
+  level: ProjectDocumentLevel;
   title: string;
   filePath: string;
   contentType: string;
