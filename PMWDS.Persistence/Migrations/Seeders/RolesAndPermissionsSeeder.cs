@@ -314,7 +314,6 @@ internal static class RolesAndPermissionsSeeder
             PermissionCodes.ReportAllManage,
             PermissionCodes.DocumentAllManage,
             PermissionCodes.KnowledgeAllManage,
-            PermissionCodes.KnowledgeAllManage,
             PermissionCodes.DocumentAllProjectUpload,
             PermissionCodes.DocumentAllMilestoneUpload,
             PermissionCodes.DocumentAllTaskUpload,
