@@ -44,6 +44,7 @@ import type {
   StoredReportDetailRecord,
   StoredReportRecord,
   Task,
+  TaskDashboardStats,
   TaskDependency,
   TrainingDataPointRecord,
   ActivityLogRecord,
@@ -371,6 +372,9 @@ export const api = {
   },
   getTasks(token: string, query: TaskListQuery = {}) {
     return request<PaginatedResponse<Task>>("tasks", { token, query });
+  },
+  getTaskDashboardSummary(token: string) {
+    return request<TaskDashboardStats>("tasks/dashboard-summary", { token });
   },
   /**
    * Every task the caller can see, for portfolio-level counts on the dashboard.
