@@ -193,13 +193,15 @@ public sealed partial class FullRoleBusinessFlowTests
 
         var head = await departmentHead.GetAsync<JsonElement>($"/api/v1/projects/{projectId}/documents");
         head.Status.Should().Be(HttpStatusCode.OK);
+        head.Data.GetArrayLength().Should().Be(2);
         head.Data.EnumerateArray().Should().OnlyContain(
             doc => doc.GetString("level") == "Milestone" || doc.GetString("level") == "Task");
 
         var visibleToViewer = await viewer.GetAsync<JsonElement>($"/api/v1/projects/{projectId}/documents");
         visibleToViewer.Status.Should().Be(HttpStatusCode.OK);
-        visibleToViewer.Data.GetArrayLength().Should().Be(1);
-        visibleToViewer.Data[0].GetString("title").Should().Be("management-evidence.pdf");
+        visibleToViewer.Data.GetArrayLength().Should().Be(2);
+        visibleToViewer.Data.EnumerateArray().Select(doc => doc.GetString("title")!).Should()
+            .BeEquivalentTo("project-plan.pdf", "management-evidence.pdf");
 
         (await projectManager.PutAsync<JsonElement>(
             $"/api/v1/projects/{projectId}/documents/{projectDocumentId}",
