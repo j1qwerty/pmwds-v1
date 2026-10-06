@@ -94,6 +94,15 @@ public class ProjectDocument : BaseEntity
     /// <summary>A Utilization Certificate carries a finance approval lifecycle.</summary>
     public bool IsUtilizationCertificate() => Category == DocumentCategory.UtilizationCertificate;
 
+    public void UpdateMetadata(string title, string? description, DocumentCategory category)
+    {
+        Title = SanitizeTitle(title);
+        Description = description;
+        Category = category == DocumentCategory.UtilizationCertificate
+            ? DocumentCategory.General
+            : category;
+    }
+
     public void BumpVersion(string newVersion)
     => Version = newVersion;
 }
