@@ -143,20 +143,58 @@ public sealed class TaskWorkflowService : ITaskWorkflowService
 
     public async Task<bool> CanAccessTaskAsync(Guid taskId, CancellationToken ct)
     {
-        var projectId = await _db.Tasks
-            .Where(task => task.Id == taskId)
-            .Select(task => task.ProjectId)
+        var task = await _db.Tasks
+            .Where(item => item.Id == taskId)
+            .Select(item => new { item.ProjectId, item.MilestoneId })
             .FirstOrDefaultAsync(ct);
-        return projectId != Guid.Empty && await _scope.CanAccessProjectAsync(projectId, ct);
+        if (task == null) return false;
+
+        var departmentId = task.MilestoneId.HasValue
+            ? await _db.Milestones
+                .Where(milestone => milestone.Id == task.MilestoneId.Value)
+                .Select(milestone => milestone.DepartmentId)
+                .FirstOrDefaultAsync(ct)
+            : await _db.Projects
+                .Where(project => project.Id == task.ProjectId)
+                .Select(project => (Guid?)project.DepartmentId)
+                .FirstOrDefaultAsync(ct);
+
+        return await _scope.CanAccessProjectDataAsync(
+            task.ProjectId,
+            departmentId,
+            ct,
+            PMWDS.Application.Security.PermissionCodes.TaskOwnView,
+            PMWDS.Application.Security.PermissionCodes.TaskAllView,
+            PMWDS.Application.Security.PermissionCodes.TaskOwnManage,
+            PMWDS.Application.Security.PermissionCodes.TaskAllManage);
     }
 
     public async Task<bool> CanManageTaskAsync(Guid taskId, CancellationToken ct)
     {
-        var projectId = await _db.Tasks
-            .Where(task => task.Id == taskId)
-            .Select(task => task.ProjectId)
+        var task = await _db.Tasks
+            .Where(item => item.Id == taskId)
+            .Select(item => new { item.ProjectId, item.MilestoneId })
             .FirstOrDefaultAsync(ct);
-        return projectId != Guid.Empty && await _scope.CanManageProjectAsync(projectId, ct);
+        if (task == null) return false;
+
+        var departmentId = task.MilestoneId.HasValue
+            ? await _db.Milestones
+                .Where(milestone => milestone.Id == task.MilestoneId.Value)
+                .Select(milestone => milestone.DepartmentId)
+                .FirstOrDefaultAsync(ct)
+            : await _db.Projects
+                .Where(project => project.Id == task.ProjectId)
+                .Select(project => (Guid?)project.DepartmentId)
+                .FirstOrDefaultAsync(ct);
+
+        return await _scope.CanAccessProjectDataAsync(
+            task.ProjectId,
+            departmentId,
+            ct,
+            PMWDS.Application.Security.PermissionCodes.TaskOwnEdit,
+            PMWDS.Application.Security.PermissionCodes.TaskAllEdit,
+            PMWDS.Application.Security.PermissionCodes.TaskOwnManage,
+            PMWDS.Application.Security.PermissionCodes.TaskAllManage);
     }
 
     public async Task<bool> CanWorkOnTaskAsync(Guid taskId, CancellationToken ct)
