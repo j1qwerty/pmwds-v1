@@ -14,6 +14,10 @@ public class ProjectDocument : BaseEntity
     public long FileSizeBytes { get; private set; }
     public string UploadedByUserId { get; private set; } = string.Empty;
     public string? Description { get; private set; }
+    public Project? Project { get; private set; }
+    public Milestone? Milestone { get; private set; }
+    public ProjectTask? Task { get; private set; }
+
     public string Version { get; private set; } = "1.0";
 
     /// <summary>
