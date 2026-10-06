@@ -299,6 +299,12 @@ export const api = {
   downloadProjectDocument(token: string, id: string, docId: string) {
     return request<Blob>(`projects/${id}/documents/${docId}/download`, { token });
   },
+  getUtilizationCertificateUploadCapabilities(token: string, projectId: string) {
+    return request<UtilizationCertificateUploadCapabilities>(
+      `utilization-certificates/project/${projectId}/capabilities`,
+      { token },
+    );
+  },
   getProjectUtilizationCertificates(token: string, projectId: string) {
     return request<UtilizationCertificate[]>(`utilization-certificates/project/${projectId}`, { token });
   },
