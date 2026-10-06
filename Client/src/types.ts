@@ -565,6 +565,31 @@ export interface ProjectDashboardData {
   recentProjectPreviews: ProjectSummary[];
 }
 
+export interface TaskDashboardPreview {
+  id: string;
+  title: string;
+  status: string;
+  projectId: string;
+  projectName?: string | null;
+  milestoneId?: string | null;
+  milestoneName?: string | null;
+  progressPercentage: number;
+  createdDate: string;
+}
+
+export interface TaskDashboardStats {
+  totalTasks: number;
+  inProgressTasks: number;
+  onHoldTasks: number;
+  completedTasks: number;
+  delayedTasks: number;
+  recentTasks: TaskDashboardPreview[];
+  recentInProgressTasks: TaskDashboardPreview[];
+  recentOnHoldTasks: TaskDashboardPreview[];
+  recentCompletedTasks: TaskDashboardPreview[];
+  recentDelayedTasks: TaskDashboardPreview[];
+}
+
 export interface DashboardData {
   totalProjects: number;
   activeProjects: number;
