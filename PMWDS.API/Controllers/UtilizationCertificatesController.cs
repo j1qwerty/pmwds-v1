@@ -203,16 +203,17 @@ public class UtilizationCertificatesController : ControllerBase
         var visibleDepartmentIds = documentScope == DepartmentDataScope.OwnDepartment
             ? await _scope.GetDepartmentIdsAsync(ct)
             : [];
+        var primaryDepartmentId = await _db.Projects
+            .Where(project => project.Id == projectId)
+            .Select(project => (Guid?)project.DepartmentId)
+            .FirstOrDefaultAsync(ct);
         if (documentScope == DepartmentDataScope.OwnDepartment)
         {
             certificates = certificates.Where(certificate =>
             {
                 var targetDepartmentId = certificate.Task?.Milestone?.DepartmentId
                     ?? certificate.Milestone?.DepartmentId
-                    ?? _db.Projects
-                        .Where(project => project.Id == certificate.ProjectId)
-                        .Select(project => (Guid?)project.DepartmentId)
-                        .FirstOrDefault();
+                    ?? primaryDepartmentId;
                 return targetDepartmentId.HasValue && visibleDepartmentIds.Contains(targetDepartmentId.Value);
             }).ToList();
         }
