@@ -517,7 +517,7 @@ function scopedVariants(requested: string): string[] {
   const legacy = requested.match(/^(DEPARTMENT|PROJECT|MILESTONE|TASK|SUBTASK|USER|NOTIFICATION|REPORT|ACTIVITY_LOG|DOCUMENT|UTILIZATION_CERTIFICATE)_(VIEW|CREATE|EDIT|DELETE|MANAGE|ASSIGN|COMMENT_CREATE|ATTACHMENT_CREATE)$/);
   if (legacy) {
     const [, module, action] = legacy;
-    variants.push(`${module}_OWN_${action}`, `${module}_ALL_${action}`);
+    variants.push(`${module}_ALL_${action}`);
   }
   if (/_OWN_/.test(requested)) {
     variants.push(requested.replace("_OWN_", "_ALL_"));
@@ -570,12 +570,7 @@ export function expandPermissions(userPermissions: readonly string[] | undefined
     for (const scoped of PERMISSION_COVERAGE[perm] ?? []) {
       set.add(scoped);
     }
-    if (/_ALL_/.test(perm)) {
-      set.add(perm.replace("_ALL_", "_OWN_"));
-      for (const covered of PERMISSION_COVERAGE[perm] ?? []) {
-        if (/_ALL_/.test(covered)) set.add(covered.replace("_ALL_", "_OWN_"));
-      }
-    }
+
   }
   return Array.from(set);
 }
