@@ -59,6 +59,8 @@ public static class AuthorizationPolicies
     public const string DocumentsCreate = "Documents.Create";
     public const string DocumentsEdit = "Documents.Edit";
     public const string DocumentsDelete = "Documents.Delete";
+    public const string DocumentsUpload = "Documents.Upload";
+    public const string UtilizationCertificatesUpload = "UtilizationCertificates.Upload";
     public const string UtilizationCertificateView = "UtilizationCertificates.View";
     public const string UtilizationCertificateCreate = "UtilizationCertificates.Create";
     public const string UtilizationCertificateEdit = "UtilizationCertificates.Edit";
