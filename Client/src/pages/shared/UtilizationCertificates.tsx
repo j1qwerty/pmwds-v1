@@ -7,7 +7,7 @@ import type {
   UtilizationCertificate,
   UtilizationCertificateStatus,
 } from "../../types";
-import { PERMISSION_GROUPS, usePermission } from "./RoleGate";
+import { Permission, usePermission } from "./RoleGate";
 import { useToast } from "./Toast";
 import { useAuth } from "../../auth";
 import { formatRupees } from "../../lib/formatters";
@@ -145,6 +145,11 @@ export function UtilizationCertificates({
   const { addToast } = useToast();
 
   const [certificates, setCertificates] = useState<UtilizationCertificate[]>([]);
+  const [uploadCapabilities, setUploadCapabilities] = useState<{
+    canUploadProject: boolean;
+    canUploadMilestone: boolean;
+    canUploadTask: boolean;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -164,8 +169,12 @@ export function UtilizationCertificates({
   // Only the two coarse gates stay client-side: whether the section is visible at
   // all, and whether to offer the "Submit UC" button. Per-certificate actions
   // come from the server via `capabilities` instead.
-  const canView = perm.has(PERMISSION_GROUPS.utilizationCertificate.view);
-  const canSubmit = perm.has(PERMISSION_GROUPS.utilizationCertificate.create);
+  const canView = perm.has(Permission.UtilizationCertificateOwnView) || perm.has(Permission.UtilizationCertificateAllView);
+  const canSubmit = Boolean(
+    uploadCapabilities?.canUploadProject ||
+    uploadCapabilities?.canUploadMilestone ||
+    uploadCapabilities?.canUploadTask,
+  );
 
   const load = useCallback(async () => {
     if (!auth?.token || !projectId || !canView) {
@@ -174,9 +183,15 @@ export function UtilizationCertificates({
     }
     setLoading(true);
     try {
-      setCertificates(await api.getProjectUtilizationCertificates(auth.token, projectId));
+      const [items, capabilities] = await Promise.all([
+        api.getProjectUtilizationCertificates(auth.token, projectId),
+        api.getUtilizationCertificateUploadCapabilities(auth.token, projectId),
+      ]);
+      setCertificates(items);
+      setUploadCapabilities(capabilities);
     } catch {
       setCertificates([]);
+      setUploadCapabilities(null);
     } finally {
       setLoading(false);
     }
@@ -220,8 +235,24 @@ export function UtilizationCertificates({
     return [];
   }, [form.linkType, milestones, tasks]);
 
+  const firstUploadLevel = (): FormState["linkType"] => {
+    if (uploadCapabilities?.canUploadProject) return "none";
+    if (uploadCapabilities?.canUploadMilestone) return "milestone";
+    if (uploadCapabilities?.canUploadTask) return "task";
+    return "none";
+  };
+
+  const allowedLinkTypes = useMemo<FormState["linkType"][]>(() => {
+    if (!uploadCapabilities) return [];
+    return [
+      uploadCapabilities.canUploadProject ? "none" : null,
+      uploadCapabilities.canUploadMilestone ? "milestone" : null,
+      uploadCapabilities.canUploadTask ? "task" : null,
+    ].filter((value): value is FormState["linkType"] => Boolean(value));
+  }, [uploadCapabilities]);
+
   const resetForm = () => {
-    setForm(EMPTY_FORM);
+    setForm({ ...EMPTY_FORM, linkType: firstUploadLevel() });
     setFile(null);
     setFormError(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -243,6 +274,7 @@ export function UtilizationCertificates({
     if (utilized > claimed) return "Amount utilized cannot exceed the amount claimed.";
     if (!form.periodStart || !form.periodEnd) return "The accounting period is required.";
     if (form.periodEnd < form.periodStart) return "Period end cannot be before period start.";
+    if (!allowedLinkTypes.includes(form.linkType)) return "You do not have permission to upload a UC at this level.";
     if (form.linkType !== "none" && !form.linkId) return "Select the milestone or task being certified.";
     return null;
   };
@@ -706,7 +738,7 @@ export function UtilizationCertificates({
               </div>
 
               <div className="grid sm:grid-cols-2 gap-4">
-                <Field label="Certifies which work?">
+                <Field label="UC document level" required>
                   <select
                     value={form.linkType}
                     onChange={(e) =>
@@ -718,17 +750,18 @@ export function UtilizationCertificates({
                     }
                     className={fieldClass}
                   >
-                    <option value="none">Not linked</option>
-                    <option value="milestone" disabled={milestones.length === 0}>
-                      A milestone
-                    </option>
-                    <option value="task" disabled={tasks.length === 0}>
-                      A task
-                    </option>
+                    {allowedLinkTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type === "none" ? "Project level" : type === "milestone" ? "Milestone level" : "Task level"}
+                      </option>
+                    ))}
                   </select>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Only levels granted to your role are available.
+                  </p>
                 </Field>
                 {form.linkType !== "none" && (
-                  <Field label="Select" required>
+                  <Field label="Link to work item" required>
                     <select
                       value={form.linkId}
                       onChange={(e) => setForm({ ...form, linkId: e.target.value })}

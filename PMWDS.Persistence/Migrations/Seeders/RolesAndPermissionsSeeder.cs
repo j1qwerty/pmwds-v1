@@ -304,20 +304,23 @@ internal static class RolesAndPermissionsSeeder
         {
             PermissionCodes.DepartmentAllManage,
             PermissionCodes.ProjectAllManage,
-            PermissionCodes.ProjectManage, // hidden legacy compatibility alias
             PermissionCodes.ProjectPrimaryDepartmentManage,
             PermissionCodes.MilestoneAllManage,
-            PermissionCodes.MilestoneManage, // hidden legacy compatibility alias
             PermissionCodes.TaskAllManage,
             PermissionCodes.SubtaskAllManage,
             PermissionCodes.UserAllManage,
             PermissionCodes.NotificationAllManage,
             PermissionCodes.ActivityLogAllManage,
-            PermissionCodes.ActivityLogManage, // hidden legacy compatibility alias
             PermissionCodes.ReportAllManage,
             PermissionCodes.DocumentAllManage,
             PermissionCodes.KnowledgeAllManage,
+            PermissionCodes.DocumentAllProjectUpload,
+            PermissionCodes.DocumentAllMilestoneUpload,
+            PermissionCodes.DocumentAllTaskUpload,
             PermissionCodes.UtilizationCertificateAllManage,
+            PermissionCodes.UtilizationCertificateAllProjectUpload,
+            PermissionCodes.UtilizationCertificateAllMilestoneUpload,
+            PermissionCodes.UtilizationCertificateAllTaskUpload,
             PermissionCodes.RoleManage,
             PermissionCodes.PermissionManage,
             PermissionCodes.AiView,
@@ -327,7 +330,6 @@ internal static class RolesAndPermissionsSeeder
         {
             PermissionCodes.DepartmentOwnView,
             PermissionCodes.ProjectAllManage,
-            PermissionCodes.ProjectManage, // hidden legacy compatibility alias
             PermissionCodes.ProjectPrimaryDepartmentManage,
             PermissionCodes.MilestoneAllManage,
             PermissionCodes.TaskAllManage,
@@ -336,18 +338,21 @@ internal static class RolesAndPermissionsSeeder
             PermissionCodes.NotificationOwnView,
             PermissionCodes.ActivityLogOwnCreate,
             PermissionCodes.DocumentAllManage,
-            PermissionCodes.KnowledgeAllManage,
-            PermissionCodes.UtilizationCertificateAllManage
+            PermissionCodes.DocumentAllProjectUpload,
+            PermissionCodes.DocumentAllMilestoneUpload,
+            PermissionCodes.DocumentAllTaskUpload,
+            PermissionCodes.UtilizationCertificateAllManage,
+            PermissionCodes.UtilizationCertificateAllProjectUpload,
+            PermissionCodes.UtilizationCertificateAllMilestoneUpload,
+            PermissionCodes.UtilizationCertificateAllTaskUpload
         };
         var departmentHeadPermissionCodes = new[]
         {
             PermissionCodes.DepartmentOwnManage,
             PermissionCodes.ProjectOwnManage,
-            PermissionCodes.ProjectManage, // hidden legacy compatibility alias
             PermissionCodes.ProjectOwnCreate,
             PermissionCodes.ProjectPrimaryDepartmentManage,
             PermissionCodes.MilestoneOwnManage,
-            PermissionCodes.MilestoneManage, // hidden legacy compatibility alias
             PermissionCodes.TaskOwnManage,
             PermissionCodes.SubtaskOwnManage,
             PermissionCodes.UserOwnManage,
@@ -371,7 +376,6 @@ internal static class RolesAndPermissionsSeeder
         };
         var teamMemberPermissionCodes = new[]
         {
-            PermissionCodes.ProjectView, // hidden legacy compatibility alias
             PermissionCodes.ProjectOwnView,
             PermissionCodes.MilestoneOwnView,
             PermissionCodes.TaskOwnView,

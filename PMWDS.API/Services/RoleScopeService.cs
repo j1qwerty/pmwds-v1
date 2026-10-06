@@ -7,6 +7,13 @@ using PMWDS.Persistence.Context;
 
 namespace PMWDS.API.Services;
 
+public enum DepartmentDataScope
+{
+    None,
+    OwnDepartment,
+    AllDepartments
+}
+
 public class RoleScopeService
 {
     private readonly ApplicationDbContext _db;
@@ -334,6 +341,60 @@ public class RoleScopeService
         }
 
         if (!await HasAnyPermissionAsync(ct, ownViewPermission, ownManagePermission))
+        {
+            return false;
+        }
+
+        var departmentId = await ResolveWorkItemDepartmentIdAsync(projectId, milestoneId, taskId, ct);
+        return departmentId.HasValue &&
+            (await GetDepartmentIdsAsync(ct)).Contains(departmentId.Value);
+    }
+
+    public async Task<DepartmentDataScope> GetProjectDocumentAccessScopeAsync(
+        Guid projectId,
+        CancellationToken ct,
+        string ownViewPermission,
+        string allViewPermission,
+        string ownManagePermission,
+        string allManagePermission)
+    {
+        if (!await CanAccessProjectAsync(projectId, ct))
+        {
+            return DepartmentDataScope.None;
+        }
+
+        if (await CanSeeFullProjectDetailsAsync(projectId, ct) ||
+            await HasAnyPermissionAsync(ct, allViewPermission, allManagePermission))
+        {
+            return DepartmentDataScope.AllDepartments;
+        }
+
+        return await HasAnyPermissionAsync(ct, ownViewPermission, ownManagePermission)
+            ? DepartmentDataScope.OwnDepartment
+            : DepartmentDataScope.None;
+    }
+
+    public async Task<bool> CanModifyProjectDocumentAsync(
+        Guid projectId,
+        Guid? milestoneId,
+        Guid? taskId,
+        CancellationToken ct,
+        string ownPermission,
+        string allPermission,
+        string ownManagePermission,
+        string allManagePermission)
+    {
+        if (!await CanAccessProjectAsync(projectId, ct))
+        {
+            return false;
+        }
+
+        if (await HasAnyPermissionAsync(ct, allPermission, allManagePermission))
+        {
+            return true;
+        }
+
+        if (!await HasAnyPermissionAsync(ct, ownPermission, ownManagePermission))
         {
             return false;
         }

@@ -93,6 +93,25 @@ public class UtilizationCertificatesController : ControllerBase
         if (!await ValidateWorkItemLinksAsync(dto.ProjectId, dto.MilestoneId, dto.TaskId, ct))
             return BadRequest(new { message = "The linked milestone or task does not belong to this project." });
 
+        var resolvedMilestoneId = await ResolveMilestoneIdAsync(dto.ProjectId, dto.MilestoneId, dto.TaskId, ct);
+        var levelUploadAllowed = dto.TaskId.HasValue
+            ? await _scope.CanUploadProjectDocumentAsync(
+                dto.ProjectId, resolvedMilestoneId, dto.TaskId, ct,
+                PermissionCodes.UtilizationCertificateOwnTaskUpload,
+                PermissionCodes.UtilizationCertificateAllTaskUpload)
+            : resolvedMilestoneId.HasValue
+                ? await _scope.CanUploadProjectDocumentAsync(
+                    dto.ProjectId, resolvedMilestoneId, null, ct,
+                    PermissionCodes.UtilizationCertificateOwnMilestoneUpload,
+                    PermissionCodes.UtilizationCertificateAllMilestoneUpload)
+                : await _scope.CanUploadProjectDocumentAsync(
+                    dto.ProjectId, null, null, ct,
+                    PermissionCodes.UtilizationCertificateOwnProjectUpload,
+                    PermissionCodes.UtilizationCertificateAllProjectUpload);
+
+        if (!levelUploadAllowed)
+            return Forbid();
+
         await using var stream = file.OpenReadStream();
         var extension = Path.GetExtension(file.FileName);
         var filePath = await _localFiles.UploadDocumentAsync(
@@ -108,8 +127,11 @@ public class UtilizationCertificatesController : ControllerBase
             file.Length,
             _currentUser.UserId ?? "system",
             dto.Description,
-            DocumentCategory.UtilizationCertificate);
+            DocumentCategory.UtilizationCertificate,
+            milestoneId: resolvedMilestoneId,
+            taskId: dto.TaskId);
         document.SetCreatedBy(_currentUser.UserId ?? "system");
+        document.ValidateHierarchy();
         await _uow.ProjectDocuments.AddAsync(document, ct);
 
         var certificate = UtilizationCertificate.Create(
@@ -122,7 +144,7 @@ public class UtilizationCertificatesController : ControllerBase
             dto.PeriodStart,
             dto.PeriodEnd,
             _currentUser.UserId ?? "system",
-            dto.MilestoneId,
+            resolvedMilestoneId,
             dto.TaskId,
             dto.Purpose);
         certificate.SetCreatedBy(_currentUser.UserId ?? "system");
@@ -148,6 +170,28 @@ public class UtilizationCertificatesController : ControllerBase
         return Ok(await ToDtoAsync(new LoadedCertificate(certificate, document), ct));
     }
 
+    [HttpGet("project/{projectId:guid}/capabilities")]
+    [Authorize(Policy = AuthorizationPolicies.UtilizationCertificateView)]
+    public async Task<IActionResult> GetProjectUploadCapabilities(Guid projectId, CancellationToken ct)
+    {
+        if (!await _scope.CanAccessProjectAsync(projectId, ct))
+            return Forbid();
+
+        return Ok(new UtilizationCertificateUploadCapabilitiesDto(
+            await _scope.HasAnyPermissionAsync(
+                ct,
+                PermissionCodes.UtilizationCertificateOwnProjectUpload,
+                PermissionCodes.UtilizationCertificateAllProjectUpload),
+            await _scope.HasAnyPermissionAsync(
+                ct,
+                PermissionCodes.UtilizationCertificateOwnMilestoneUpload,
+                PermissionCodes.UtilizationCertificateAllMilestoneUpload),
+            await _scope.HasAnyPermissionAsync(
+                ct,
+                PermissionCodes.UtilizationCertificateOwnTaskUpload,
+                PermissionCodes.UtilizationCertificateAllTaskUpload)));
+    }
+
     /// <summary>All certificates raised against a project.</summary>
     [HttpGet("project/{projectId:guid}")]
     [Authorize(Policy = AuthorizationPolicies.UtilizationCertificateView)]
@@ -168,14 +212,40 @@ public class UtilizationCertificatesController : ControllerBase
             .OrderByDescending(c => c.CreatedDate)
             .ToListAsync(ct);
 
-        var canManageProject = await _scope.CanManageProjectAsync(projectId, ct);
-        var canReviewProject = await CanReviewProjectCertificatesAsync(projectId, ct);
+        var documentScope = await _scope.GetProjectDocumentAccessScopeAsync(
+            projectId,
+            ct,
+            PermissionCodes.UtilizationCertificateOwnView,
+            PermissionCodes.UtilizationCertificateAllView,
+            PermissionCodes.UtilizationCertificateOwnManage,
+            PermissionCodes.UtilizationCertificateAllManage);
+        if (documentScope == DepartmentDataScope.None)
+            return Forbid();
+
+        var visibleDepartmentIds = documentScope == DepartmentDataScope.OwnDepartment
+            ? await _scope.GetDepartmentIdsAsync(ct)
+            : [];
+        var primaryDepartmentId = await _db.Projects
+            .Where(project => project.Id == projectId)
+            .Select(project => (Guid?)project.DepartmentId)
+            .FirstOrDefaultAsync(ct);
+        if (documentScope == DepartmentDataScope.OwnDepartment)
+        {
+            certificates = certificates.Where(certificate =>
+            {
+                var targetDepartmentId = certificate.Task?.Milestone?.DepartmentId
+                    ?? certificate.Milestone?.DepartmentId
+                    ?? primaryDepartmentId;
+                return targetDepartmentId.HasValue && visibleDepartmentIds.Contains(targetDepartmentId.Value);
+            }).ToList();
+        }
+
         var result = new List<UtilizationCertificateDto>(certificates.Count);
         foreach (var certificate in certificates)
         {
             result.Add(UtilizationCertificateDto.FromEntity(
                 certificate,
-                await ResolveCapabilitiesAsync(certificate, canManageProject, canReviewProject, ct),
+                await ResolveCapabilitiesAsync(certificate, ct),
                 certificate.Document,
                 certificate.Milestone?.Name,
                 certificate.Task?.Title));
@@ -357,33 +427,41 @@ public class UtilizationCertificatesController : ControllerBase
     /// </summary>
     private async Task<UtilizationCertificateCapabilities> ResolveCapabilitiesAsync(
         UtilizationCertificate certificate,
-        bool canManageProject,
-        bool canReviewProject,
         CancellationToken ct)
     {
-        var rolePermissions = await ResolveRolePermissionsAsync(ct);
-
         var isOwner = !string.IsNullOrWhiteSpace(certificate.SubmittedByUserId) &&
             certificate.SubmittedByUserId.Equals(_currentUser.UserId, StringComparison.OrdinalIgnoreCase);
 
-        // The owner always has a say in their own certificate; a project manager
-        // (including a department head whose department owns the project) can act on any.
-        var canModify = isOwner || canManageProject;
-        var isEditable = certificate.IsEditable();
+        var canEdit = await _scope.CanModifyProjectDocumentAsync(
+            certificate.ProjectId,
+            certificate.MilestoneId,
+            certificate.TaskId,
+            ct,
+            PermissionCodes.UtilizationCertificateOwnEdit,
+            PermissionCodes.UtilizationCertificateAllEdit,
+            PermissionCodes.UtilizationCertificateOwnManage,
+            PermissionCodes.UtilizationCertificateAllManage);
+
+        var canDelete = await _scope.CanModifyProjectDocumentAsync(
+            certificate.ProjectId,
+            certificate.MilestoneId,
+            certificate.TaskId,
+            ct,
+            PermissionCodes.UtilizationCertificateOwnDelete,
+            PermissionCodes.UtilizationCertificateAllDelete,
+            PermissionCodes.UtilizationCertificateOwnManage,
+            PermissionCodes.UtilizationCertificateAllManage);
+
+        var canReview = await CanReviewProjectCertificatesAsync(certificate.ProjectId, ct);
 
         return new UtilizationCertificateCapabilities(
-            CanEdit: rolePermissions.CanEdit && canModify && isEditable,
-            CanSubmitForReview: rolePermissions.CanEdit && canModify && isEditable,
-            // Reviewing is a finance sign-off, so it is limited to a SuperAdmin, a
-            // Director of the owning organization, and the head of the project's
-            // primary (creating) department. An approver who also raised the
-            // certificate reviews it in their approver capacity.
-            CanReview: rolePermissions.CanReview &&
-                canReviewProject &&
-                certificate.Status == UtilizationCertificateStatus.Submitted,
-            CanDelete: rolePermissions.CanDelete && canModify && isEditable,
+            CanEdit: canEdit && certificate.IsEditable(),
+            CanSubmitForReview: canEdit && certificate.IsEditable(),
+            CanReview: canReview && certificate.Status == UtilizationCertificateStatus.Submitted,
+            CanDelete: canDelete && certificate.IsEditable(),
             IsOwner: isOwner);
     }
+
 
     /// <summary>
     /// Who may sign off a utilization certificate on this project: a SuperAdmin, a
@@ -402,45 +480,30 @@ public class UtilizationCertificatesController : ControllerBase
             return true;
         }
 
-        // Must hold review authority before any of the scoping below matters.
+        if (await _scope.HasAnyPermissionAsync(
+            ct,
+            PermissionCodes.UtilizationCertificateAllReview,
+            PermissionCodes.UtilizationCertificateAllManage))
+        {
+            return await _scope.CanAccessProjectAsync(projectId, ct);
+        }
+
         if (!await _scope.HasAnyPermissionAsync(
-                ct, PermissionCodes.UtilizationCertificateReview, PermissionCodes.UtilizationCertificateManage))
+            ct,
+            PermissionCodes.UtilizationCertificateOwnReview,
+            PermissionCodes.UtilizationCertificateOwnManage))
         {
             return false;
         }
 
-        var userId = _currentUser.UserId;
-        if (string.IsNullOrWhiteSpace(userId))
-        {
-            return false;
-        }
-
-        var project = await _db.Projects
-            .Where(p => p.Id == projectId)
-            .Select(p => new
-            {
-                p.DepartmentId,
-                OrganizationId = p.Department != null ? p.Department.OrganizationId : null
-            })
-            .FirstOrDefaultAsync(ct);
-
-        if (project == null)
-        {
-            return false;
-        }
-
-        if (_scope.IsDirector && project.OrganizationId.HasValue &&
-            await _scope.CanAccessOrganizationAsync(project.OrganizationId.Value, ct))
-        {
-            return true;
-        }
-
-        // Head of the primary department that owns this project.
-        return await _db.Departments
-            .AnyAsync(d => d.Id == project.DepartmentId && d.DepartmentHeadUserId == userId, ct);
+        var departmentIds = await _scope.GetDepartmentIdsAsync(ct);
+        return await _db.Projects
+            .Where(project => project.Id == projectId)
+            .Select(project => project.DepartmentId)
+            .AnyAsync(departmentId => departmentIds.Contains(departmentId), ct);
     }
 
-    /// <summary>Reads the caller's UC permissions once per request, straight from the database.</summary>
+
     private async Task<(bool CanEdit, bool CanReview, bool CanDelete)> ResolveRolePermissionsAsync(CancellationToken ct)
     {
         var canEdit = await _scope.HasAnyPermissionAsync(
@@ -458,11 +521,9 @@ public class UtilizationCertificatesController : ControllerBase
         CancellationToken ct)
     {
         var projectId = loaded.Certificate.ProjectId;
-        var canManageProject = await _scope.CanManageProjectAsync(projectId, ct);
-        var canReviewProject = await CanReviewProjectCertificatesAsync(projectId, ct);
         return UtilizationCertificateDto.FromEntity(
             loaded.Certificate,
-            await ResolveCapabilitiesAsync(loaded.Certificate, canManageProject, canReviewProject, ct),
+            await ResolveCapabilitiesAsync(loaded.Certificate, ct),
             loaded.Document,
             loaded.Certificate.Milestone?.Name,
             loaded.Certificate.Task?.Title);
@@ -491,12 +552,34 @@ public class UtilizationCertificatesController : ControllerBase
     /// <summary>The owner may edit their own certificate; a project manager may edit any.</summary>
     private async Task<bool> CanModifyCertificateAsync(UtilizationCertificate certificate, CancellationToken ct)
     {
-        if (!string.IsNullOrWhiteSpace(certificate.SubmittedByUserId) &&
-            certificate.SubmittedByUserId.Equals(_currentUser.UserId, StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        return await _scope.CanManageProjectAsync(certificate.ProjectId, ct);
+        return await _scope.CanModifyProjectDocumentAsync(
+            certificate.ProjectId,
+            certificate.MilestoneId,
+            certificate.TaskId,
+            ct,
+            PermissionCodes.UtilizationCertificateOwnEdit,
+            PermissionCodes.UtilizationCertificateAllEdit,
+            PermissionCodes.UtilizationCertificateOwnManage,
+            PermissionCodes.UtilizationCertificateAllManage);
     }
+
+    private async Task<Guid?> ResolveMilestoneIdAsync(
+        Guid projectId,
+        Guid? milestoneId,
+        Guid? taskId,
+        CancellationToken ct)
+    {
+        if (taskId.HasValue)
+        {
+            return await _db.Tasks
+                .Where(task => task.Id == taskId.Value && task.ProjectId == projectId)
+                .Select(task => task.MilestoneId)
+                .FirstOrDefaultAsync(ct);
+        }
+
+        return milestoneId;
+    }
+
 
     private async Task<bool> ValidateWorkItemLinksAsync(
         Guid projectId,
@@ -508,10 +591,21 @@ public class UtilizationCertificatesController : ControllerBase
             !await _db.Milestones.AnyAsync(m => m.Id == milestoneId.Value && m.ProjectId == projectId, ct))
             return false;
 
-        if (taskId.HasValue &&
-            !await _db.Tasks.AnyAsync(t => t.Id == taskId.Value && t.ProjectId == projectId, ct))
-            return false;
+        if (taskId.HasValue)
+        {
+            var task = await _db.Tasks
+                .Where(t => t.Id == taskId.Value && t.ProjectId == projectId)
+                .Select(t => new { t.MilestoneId })
+                .FirstOrDefaultAsync(ct);
+
+            if (task == null)
+                return false;
+
+            if (milestoneId.HasValue && task.MilestoneId != milestoneId)
+                return false;
+        }
 
         return true;
     }
+
 }
