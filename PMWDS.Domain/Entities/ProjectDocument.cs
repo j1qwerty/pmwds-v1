@@ -39,7 +39,9 @@ public class ProjectDocument : BaseEntity
     string filePath, string contentType,
     long sizeBytes, string userId,
     string? description = null,
-    DocumentCategory category = DocumentCategory.General)
+    DocumentCategory category = DocumentCategory.General,
+    Guid? milestoneId = null,
+    Guid? taskId = null)
     {
         return new ProjectDocument
         {
