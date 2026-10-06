@@ -61,6 +61,18 @@ public sealed class PermissionAuthorizationHandler : AuthorizationHandler<Permis
         var result = permissions.ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var permission in permissions)
         {
+            foreach (var alias in PermissionCatalog.GetScopedAliases(permission))
+            {
+                result.Add(alias);
+            }
+
+            if (permission.Contains("_ALL_"))
+            {
+                result.Add(permission.Replace("_ALL_", "_OWN_", StringComparison.Ordinal));
+            }
+        }
+        foreach (var permission in permissions)
+        {
             if (!PermissionCatalog.ManagePermissionCoverage.TryGetValue(permission, out var covered))
             {
                 continue;
