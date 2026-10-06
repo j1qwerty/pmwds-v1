@@ -49,7 +49,7 @@ public class ProjectConfiguration
         .HasForeignKey(t => t.ProjectId)
         .OnDelete(DeleteBehavior.Cascade);
         b.HasMany(e => e.Documents)
-        .WithOne()
+        .WithOne(d => d.Project)
         .HasForeignKey(d => d.ProjectId)
         .OnDelete(DeleteBehavior.Cascade);
         b.HasOne<ApplicationUser>()
