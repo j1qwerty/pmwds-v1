@@ -1,10 +1,3 @@
-public enum DepartmentDataScope
-{
-    None,
-    OwnDepartment,
-    AllDepartments
-}
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using PMWDS.Application.Interfaces.Services;
@@ -13,6 +6,13 @@ using PMWDS.Domain.Entities;
 using PMWDS.Persistence.Context;
 
 namespace PMWDS.API.Services;
+
+public enum DepartmentDataScope
+{
+    None,
+    OwnDepartment,
+    AllDepartments
+}
 
 public class RoleScopeService
 {
