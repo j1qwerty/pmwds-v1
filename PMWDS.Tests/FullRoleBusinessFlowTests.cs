@@ -48,7 +48,7 @@ public sealed partial class FullRoleBusinessFlowTests
                 project.ProjectId, flow.TaskId,
                 projectManager, teamMember, departmentHead, director);
 
-            await ExecuteAdministrationFlowAsync(director);
+            await ExecuteAdministrationFlowAsync(director, project.ProjectId);
 
             // Both administrative roles retain access to the complete graph before cleanup.
             (await director.GetAsync<JsonElement>($"/api/v1/projects/{project.ProjectId}"))
