@@ -1,3 +1,10 @@
+public enum DepartmentDataScope
+{
+    None,
+    OwnDepartment,
+    AllDepartments
+}
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using PMWDS.Application.Interfaces.Services;
@@ -341,6 +348,30 @@ public class RoleScopeService
         var departmentId = await ResolveWorkItemDepartmentIdAsync(projectId, milestoneId, taskId, ct);
         return departmentId.HasValue &&
             (await GetDepartmentIdsAsync(ct)).Contains(departmentId.Value);
+    }
+
+    public async Task<DepartmentDataScope> GetProjectDocumentAccessScopeAsync(
+        Guid projectId,
+        CancellationToken ct,
+        string ownViewPermission,
+        string allViewPermission,
+        string ownManagePermission,
+        string allManagePermission)
+    {
+        if (!await CanAccessProjectAsync(projectId, ct))
+        {
+            return DepartmentDataScope.None;
+        }
+
+        if (await CanSeeFullProjectDetailsAsync(projectId, ct) ||
+            await HasAnyPermissionAsync(ct, allViewPermission, allManagePermission))
+        {
+            return DepartmentDataScope.AllDepartments;
+        }
+
+        return await HasAnyPermissionAsync(ct, ownViewPermission, ownManagePermission)
+            ? DepartmentDataScope.OwnDepartment
+            : DepartmentDataScope.None;
     }
 
     public async Task<bool> CanModifyProjectDocumentAsync(
