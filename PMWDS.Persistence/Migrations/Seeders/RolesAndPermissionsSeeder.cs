@@ -313,7 +313,13 @@ internal static class RolesAndPermissionsSeeder
             PermissionCodes.ActivityLogAllManage,
             PermissionCodes.ReportAllManage,
             PermissionCodes.DocumentAllManage,
+            PermissionCodes.DocumentAllProjectUpload,
+            PermissionCodes.DocumentAllMilestoneUpload,
+            PermissionCodes.DocumentAllTaskUpload,
             PermissionCodes.UtilizationCertificateAllManage,
+            PermissionCodes.UtilizationCertificateAllProjectUpload,
+            PermissionCodes.UtilizationCertificateAllMilestoneUpload,
+            PermissionCodes.UtilizationCertificateAllTaskUpload,
             PermissionCodes.RoleManage,
             PermissionCodes.PermissionManage,
             PermissionCodes.AiView,
@@ -331,7 +337,13 @@ internal static class RolesAndPermissionsSeeder
             PermissionCodes.NotificationOwnView,
             PermissionCodes.ActivityLogOwnCreate,
             PermissionCodes.DocumentAllManage,
-            PermissionCodes.UtilizationCertificateAllManage
+            PermissionCodes.DocumentAllProjectUpload,
+            PermissionCodes.DocumentAllMilestoneUpload,
+            PermissionCodes.DocumentAllTaskUpload,
+            PermissionCodes.UtilizationCertificateAllManage,
+            PermissionCodes.UtilizationCertificateAllProjectUpload,
+            PermissionCodes.UtilizationCertificateAllMilestoneUpload,
+            PermissionCodes.UtilizationCertificateAllTaskUpload
         };
         var departmentHeadPermissionCodes = new[]
         {
