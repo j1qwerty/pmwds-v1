@@ -24,24 +24,25 @@ public sealed partial class FullRoleBusinessFlowTests
         var superAdmin = _fixture.SuperAdmin.Client;
 
         var pwd = await WizardFlowTests.DepartmentForCodeAsync(projectManager, "PWD");
-        var pwdc = await WizardFlowTests.DepartmentForCodeAsync(projectManager, "PWDC");
+        var pwdc = await WizardFlowTests.DepartmentForCodeAsync(departmentHead, "PWDC");
 
-        // Role hand-off starts with ProjectManager creating the shared project.
-        var project = await new WizardBuilder(projectManager)
+        // Role hand-off starts with DepartmentHead creating a project in its own department.
+        var project = await new WizardBuilder(departmentHead)
             .WithName($"Full Role Flow {Guid.NewGuid():N}"[..24])
-            .WithDepartments(pwd, pwdc)
+            .WithDepartments(pwdc)
             .BuildAsync();
 
         try
         {
             project.ProjectId.Should().NotBeEmpty();
 
-            await AssertProjectVisibilityAsync(project.ProjectId, departmentHead, viewer);
+            await AssertInitialProjectVisibilityAsync(project.ProjectId, projectManager, teamMember);
+
             var flow = await ExecuteProjectWorkAsync(
                 project.ProjectId, pwd, pwdc, projectManager, departmentHead, teamMember, viewer);
 
             await ExecuteDocumentFlowAsync(
-                project.ProjectId, flow.MilestoneId, flow.TaskId,
+                project.ProjectId, flow.MilestoneId, flow.ManagementMilestoneId, flow.TaskId,
                 projectManager, departmentHead, teamMember, viewer);
 
             await ExecuteCertificateFlowAsync(
@@ -69,15 +70,15 @@ public sealed partial class FullRoleBusinessFlowTests
         }
     }
 
-    private static async Task AssertProjectVisibilityAsync(
+    private static async Task AssertInitialProjectVisibilityAsync(
         Guid projectId,
-        ApiClient departmentHead,
-        ApiClient viewer)
+        ApiClient projectManager,
+        ApiClient teamMember)
     {
-        (await departmentHead.GetAsync<JsonElement>($"/api/v1/projects/{projectId}"))
+        (await projectManager.GetAsync<JsonElement>($"/api/v1/projects/{projectId}"))
             .Status.Should().Be(HttpStatusCode.OK);
 
-        (await viewer.GetAsync<JsonElement>($"/api/v1/projects/{projectId}"))
+        (await teamMember.GetAsync<JsonElement>($"/api/v1/projects/{projectId}"))
             .Status.Should().Be(HttpStatusCode.OK);
     }
 
