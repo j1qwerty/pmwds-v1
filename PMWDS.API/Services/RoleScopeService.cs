@@ -401,6 +401,12 @@ public class RoleScopeService
             .FirstOrDefaultAsync(ct);
     }
 
+    public async Task<List<Guid>> GetAccessibleProjectIdsAsync(CancellationToken ct)
+    {
+        var scoped = await ScopeProjectsAsync(_db.Projects.AsNoTracking(), ct);
+        return await scoped.Select(project => project.Id).ToListAsync(ct);
+    }
+
     public async Task<bool> CanAccessKnowledgeAsync(Guid? projectId, CancellationToken ct)
     {
         if (IsSuperAdmin ||
