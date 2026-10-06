@@ -73,8 +73,29 @@ public sealed partial class FullRoleBusinessFlowTests
             .Status.Should().Be(HttpStatusCode.NoContent);
     }
 
-    private static async Task ExecuteAdministrationFlowAsync(ApiClient director)
+    private static async Task ExecuteAdministrationFlowAsync(ApiClient director, Guid projectId)
     {
+        // Director exercises project edit/status while the same project is still live.
+        var editedProject = await director.PutAsync<JsonElement>($"/api/v1/projects/{projectId}", new
+        {
+            name = "Full Role Flow - Director Updated",
+            description = "Updated by Director during the end-to-end lifecycle.",
+            category = "Monitoring",
+            plannedStartDate = new DateTime(2026, 1, 1),
+            plannedEndDate = new DateTime(2026, 12, 31),
+            plannedBudget = 1_250_000m,
+            departmentId = await WizardFlowTests.DepartmentForCodeAsync(director, "PWD"),
+            projectManagerId = string.Empty,
+            priority = "High",
+        });
+        editedProject.Status.Should().Be(HttpStatusCode.OK);
+        editedProject.Data.GetString("name").Should().Be("Full Role Flow - Director Updated");
+
+        var status = await director.PatchAsync<JsonElement>(
+            $"/api/v1/projects/{projectId}/status",
+            new { newStatus = "InProgress", justification = "Director started execution." });
+        status.Status.Should().Be(HttpStatusCode.OK);
+
         var adminDepartment = await director.PostAsync<JsonElement>("/api/v1/departments", new
         {
             name = "Flow Administration",
