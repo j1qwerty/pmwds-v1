@@ -948,14 +948,17 @@ public class RoleScopeService
         var effective = new HashSet<string>(permissions, StringComparer.OrdinalIgnoreCase);
         foreach (var permission in permissions)
         {
-            if (!PermissionCatalog.ManagePermissionCoverage.TryGetValue(permission, out var covered))
+            if (PermissionCatalog.ManagePermissionCoverage.TryGetValue(permission, out var covered))
             {
-                continue;
+                foreach (var coveredPermission in covered)
+                {
+                    effective.Add(coveredPermission);
+                }
             }
 
-            foreach (var coveredPermission in covered)
+            if (permission.Contains("_ALL_", StringComparison.Ordinal))
             {
-                effective.Add(coveredPermission);
+                effective.Add(permission.Replace("_ALL_", "_OWN_", StringComparison.Ordinal));
             }
         }
 
