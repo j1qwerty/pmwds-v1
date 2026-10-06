@@ -75,7 +75,11 @@ public class ProjectsController : BaseApiController
                 ActiveProjects = group.Count(project => project.Status == ProjectStatus.InProgress),
                 CompletedProjects = group.Count(project => project.Status == ProjectStatus.Completed),
                 OnHoldProjects = group.Count(project => project.Status == ProjectStatus.OnHold),
-                DelayedProjects = group.Count(project => project.Status == ProjectStatus.Delayed),
+                DelayedProjects = group.Count(project =>
+                    project.Status == ProjectStatus.Delayed ||
+                    (project.Status != ProjectStatus.Completed &&
+                     project.ProgressPercentage < 100 &&
+                     project.PlannedEndDate < now)),
                 OverdueProjects = group.Count(project =>
                     (project.ActualEndDate.HasValue && project.ActualEndDate > project.PlannedEndDate) ||
                     (!project.ActualEndDate.HasValue && now > project.PlannedEndDate)),
