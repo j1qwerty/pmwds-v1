@@ -1,4 +1,142 @@
 export const Permission = {
+
+  DepartmentOwnManage: "DEPARTMENT_OWN_MANAGE",
+  DepartmentOwnView: "DEPARTMENT_OWN_VIEW",
+  DepartmentOwnCreate: "DEPARTMENT_OWN_CREATE",
+  DepartmentOwnEdit: "DEPARTMENT_OWN_EDIT",
+  DepartmentOwnDelete: "DEPARTMENT_OWN_DELETE",
+  DepartmentAllManage: "DEPARTMENT_ALL_MANAGE",
+  DepartmentAllView: "DEPARTMENT_ALL_VIEW",
+  DepartmentAllCreate: "DEPARTMENT_ALL_CREATE",
+  DepartmentAllEdit: "DEPARTMENT_ALL_EDIT",
+  DepartmentAllDelete: "DEPARTMENT_ALL_DELETE",
+
+  ProjectOwnManage: "PROJECT_OWN_MANAGE",
+  ProjectOwnView: "PROJECT_OWN_VIEW",
+  ProjectOwnCreate: "PROJECT_OWN_CREATE",
+  ProjectOwnEdit: "PROJECT_OWN_EDIT",
+  ProjectOwnDelete: "PROJECT_OWN_DELETE",
+  ProjectAllManage: "PROJECT_ALL_MANAGE",
+  ProjectAllView: "PROJECT_ALL_VIEW",
+  ProjectAllCreate: "PROJECT_ALL_CREATE",
+  ProjectAllEdit: "PROJECT_ALL_EDIT",
+  ProjectAllDelete: "PROJECT_ALL_DELETE",
+
+  MilestoneOwnManage: "MILESTONE_OWN_MANAGE",
+  MilestoneOwnView: "MILESTONE_OWN_VIEW",
+  MilestoneOwnCreate: "MILESTONE_OWN_CREATE",
+  MilestoneOwnEdit: "MILESTONE_OWN_EDIT",
+  MilestoneOwnDelete: "MILESTONE_OWN_DELETE",
+  MilestoneAllManage: "MILESTONE_ALL_MANAGE",
+  MilestoneAllView: "MILESTONE_ALL_VIEW",
+  MilestoneAllCreate: "MILESTONE_ALL_CREATE",
+  MilestoneAllEdit: "MILESTONE_ALL_EDIT",
+  MilestoneAllDelete: "MILESTONE_ALL_DELETE",
+
+  TaskOwnManage: "TASK_OWN_MANAGE",
+  TaskOwnView: "TASK_OWN_VIEW",
+  TaskOwnCreate: "TASK_OWN_CREATE",
+  TaskOwnEdit: "TASK_OWN_EDIT",
+  TaskOwnDelete: "TASK_OWN_DELETE",
+  TaskAllManage: "TASK_ALL_MANAGE",
+  TaskAllView: "TASK_ALL_VIEW",
+  TaskAllCreate: "TASK_ALL_CREATE",
+  TaskAllEdit: "TASK_ALL_EDIT",
+  TaskAllDelete: "TASK_ALL_DELETE",
+  TaskOwnAssign: "TASK_OWN_ASSIGN",
+  TaskAllAssign: "TASK_ALL_ASSIGN",
+  TaskOwnCommentCreate: "TASK_OWN_COMMENT_CREATE",
+  TaskAllCommentCreate: "TASK_ALL_COMMENT_CREATE",
+  TaskOwnAttachmentCreate: "TASK_OWN_ATTACHMENT_CREATE",
+  TaskAllAttachmentCreate: "TASK_ALL_ATTACHMENT_CREATE",
+
+  SubtaskOwnManage: "SUBTASK_OWN_MANAGE",
+  SubtaskOwnView: "SUBTASK_OWN_VIEW",
+  SubtaskOwnCreate: "SUBTASK_OWN_CREATE",
+  SubtaskOwnEdit: "SUBTASK_OWN_EDIT",
+  SubtaskOwnDelete: "SUBTASK_OWN_DELETE",
+  SubtaskAllManage: "SUBTASK_ALL_MANAGE",
+  SubtaskAllView: "SUBTASK_ALL_VIEW",
+  SubtaskAllCreate: "SUBTASK_ALL_CREATE",
+  SubtaskAllEdit: "SUBTASK_ALL_EDIT",
+  SubtaskAllDelete: "SUBTASK_ALL_DELETE",
+
+  UserOwnManage: "USER_OWN_MANAGE",
+  UserOwnView: "USER_OWN_VIEW",
+  UserOwnCreate: "USER_OWN_CREATE",
+  UserOwnEdit: "USER_OWN_EDIT",
+  UserOwnDelete: "USER_OWN_DELETE",
+  UserAllManage: "USER_ALL_MANAGE",
+  UserAllView: "USER_ALL_VIEW",
+  UserAllCreate: "USER_ALL_CREATE",
+  UserAllEdit: "USER_ALL_EDIT",
+  UserAllDelete: "USER_ALL_DELETE",
+
+  NotificationOwnManage: "NOTIFICATION_OWN_MANAGE",
+  NotificationOwnView: "NOTIFICATION_OWN_VIEW",
+  NotificationOwnCreate: "NOTIFICATION_OWN_CREATE",
+  NotificationOwnEdit: "NOTIFICATION_OWN_EDIT",
+  NotificationOwnDelete: "NOTIFICATION_OWN_DELETE",
+  NotificationAllManage: "NOTIFICATION_ALL_MANAGE",
+  NotificationAllView: "NOTIFICATION_ALL_VIEW",
+  NotificationAllCreate: "NOTIFICATION_ALL_CREATE",
+  NotificationAllEdit: "NOTIFICATION_ALL_EDIT",
+  NotificationAllDelete: "NOTIFICATION_ALL_DELETE",
+
+  ReportOwnManage: "REPORT_OWN_MANAGE",
+  ReportOwnView: "REPORT_OWN_VIEW",
+  ReportOwnCreate: "REPORT_OWN_CREATE",
+  ReportOwnEdit: "REPORT_OWN_EDIT",
+  ReportOwnDelete: "REPORT_OWN_DELETE",
+  ReportAllManage: "REPORT_ALL_MANAGE",
+  ReportAllView: "REPORT_ALL_VIEW",
+  ReportAllCreate: "REPORT_ALL_CREATE",
+  ReportAllEdit: "REPORT_ALL_EDIT",
+  ReportAllDelete: "REPORT_ALL_DELETE",
+
+  ActivityLogOwnManage: "ACTIVITY_LOG_OWN_MANAGE",
+  ActivityLogOwnView: "ACTIVITY_LOG_OWN_VIEW",
+  ActivityLogOwnCreate: "ACTIVITY_LOG_OWN_CREATE",
+  ActivityLogAllManage: "ACTIVITY_LOG_ALL_MANAGE",
+  ActivityLogAllView: "ACTIVITY_LOG_ALL_VIEW",
+  ActivityLogAllCreate: "ACTIVITY_LOG_ALL_CREATE",
+
+  DocumentOwnManage: "DOCUMENT_OWN_MANAGE",
+  DocumentOwnView: "DOCUMENT_OWN_VIEW",
+  DocumentOwnCreate: "DOCUMENT_OWN_CREATE",
+  DocumentOwnEdit: "DOCUMENT_OWN_EDIT",
+  DocumentOwnDelete: "DOCUMENT_OWN_DELETE",
+  DocumentAllManage: "DOCUMENT_ALL_MANAGE",
+  DocumentAllView: "DOCUMENT_ALL_VIEW",
+  DocumentAllCreate: "DOCUMENT_ALL_CREATE",
+  DocumentAllEdit: "DOCUMENT_ALL_EDIT",
+  DocumentAllDelete: "DOCUMENT_ALL_DELETE",
+  DocumentOwnProjectUpload: "DOCUMENT_OWN_PROJECT_UPLOAD",
+  DocumentOwnMilestoneUpload: "DOCUMENT_OWN_MILESTONE_UPLOAD",
+  DocumentOwnTaskUpload: "DOCUMENT_OWN_TASK_UPLOAD",
+  DocumentAllProjectUpload: "DOCUMENT_ALL_PROJECT_UPLOAD",
+  DocumentAllMilestoneUpload: "DOCUMENT_ALL_MILESTONE_UPLOAD",
+  DocumentAllTaskUpload: "DOCUMENT_ALL_TASK_UPLOAD",
+
+  UtilizationCertificateOwnManage: "UTILIZATION_CERTIFICATE_OWN_MANAGE",
+  UtilizationCertificateOwnView: "UTILIZATION_CERTIFICATE_OWN_VIEW",
+  UtilizationCertificateOwnCreate: "UTILIZATION_CERTIFICATE_OWN_CREATE",
+  UtilizationCertificateOwnEdit: "UTILIZATION_CERTIFICATE_OWN_EDIT",
+  UtilizationCertificateOwnDelete: "UTILIZATION_CERTIFICATE_OWN_DELETE",
+  UtilizationCertificateOwnReview: "UTILIZATION_CERTIFICATE_OWN_REVIEW",
+  UtilizationCertificateAllManage: "UTILIZATION_CERTIFICATE_ALL_MANAGE",
+  UtilizationCertificateAllView: "UTILIZATION_CERTIFICATE_ALL_VIEW",
+  UtilizationCertificateAllCreate: "UTILIZATION_CERTIFICATE_ALL_CREATE",
+  UtilizationCertificateAllEdit: "UTILIZATION_CERTIFICATE_ALL_EDIT",
+  UtilizationCertificateAllDelete: "UTILIZATION_CERTIFICATE_ALL_DELETE",
+  UtilizationCertificateAllReview: "UTILIZATION_CERTIFICATE_ALL_REVIEW",
+  UtilizationCertificateOwnProjectUpload: "UTILIZATION_CERTIFICATE_OWN_PROJECT_UPLOAD",
+  UtilizationCertificateOwnMilestoneUpload: "UTILIZATION_CERTIFICATE_OWN_MILESTONE_UPLOAD",
+  UtilizationCertificateOwnTaskUpload: "UTILIZATION_CERTIFICATE_OWN_TASK_UPLOAD",
+  UtilizationCertificateAllProjectUpload: "UTILIZATION_CERTIFICATE_ALL_PROJECT_UPLOAD",
+  UtilizationCertificateAllMilestoneUpload: "UTILIZATION_CERTIFICATE_ALL_MILESTONE_UPLOAD",
+  UtilizationCertificateAllTaskUpload: "UTILIZATION_CERTIFICATE_ALL_TASK_UPLOAD",
+
   SystemAdmin: "SYSTEM_ADMIN",
   SystemDatabaseView: "SYSTEM_DATABASE_VIEW",
   AuthManage: "AUTH_MANAGE",
@@ -335,17 +473,52 @@ export function isSuperAdmin(perms: readonly string[] | undefined | null): boole
   return Boolean(perms?.includes(Permission.SystemAdmin));
 }
 
+export type PermissionScope = "own" | "all" | "global" | "none";
+
+export function permissionScope(code: string): PermissionScope {
+  if (/_OWN_/.test(code)) return "own";
+  if (/_ALL_/.test(code)) return "all";
+  if (code === Permission.SystemAdmin || code.startsWith("SYSTEM_") || code.startsWith("AUTH_") || code.startsWith("ORGANIZATION_") || code.startsWith("ROLE_") || code.startsWith("PERMISSION_")) {
+    return "global";
+  }
+  return "none";
+}
+
+function scopedVariants(requested: string): string[] {
+  const variants = [requested];
+  if (/_OWN_/.test(requested)) {
+    variants.push(requested.replace("_OWN_", "_ALL_"));
+    variants.push(requested.replace("_OWN_", "_OWN_MANAGE").replace(/_MANAGE_MANAGE$/, "_MANAGE"));
+    variants.push(requested.replace("_OWN_", "_ALL_MANAGE").replace(/_MANAGE_MANAGE$/, "_MANAGE"));
+  } else if (/_ALL_/.test(requested)) {
+    variants.push(requested.replace("_ALL_", "_ALL_MANAGE").replace(/_MANAGE_MANAGE$/, "_MANAGE"));
+  }
+  return Array.from(new Set(variants));
+}
+
 export function coversManagedPermission(
   userPermissions: readonly string[] | undefined | null,
   requested: string,
 ): boolean {
   if (!userPermissions?.length) return false;
-  if (userPermissions.includes(Permission.SystemAdmin)) return true;
-  if (userPermissions.includes(requested)) return true;
-  return Object.entries(PERMISSION_COVERAGE).some(
-    ([managePermission, covered]) =>
-      userPermissions.includes(managePermission) && covered.includes(requested),
-  );
+  if (userPermissions.some((permission) => permission === Permission.SystemAdmin)) return true;
+
+  const expanded = new Set<string>();
+  for (const granted of userPermissions) {
+    expanded.add(granted);
+    for (const covered of PERMISSION_COVERAGE[granted] ?? []) expanded.add(covered);
+
+    if (/_ALL_(MANAGE|VIEW|CREATE|EDIT|DELETE|ASSIGN|COMMENT_CREATE|ATTACHMENT_CREATE|PROJECT_UPLOAD|MILESTONE_UPLOAD|TASK_UPLOAD)$/.test(granted)) {
+      expanded.add(granted.replace("_ALL_", "_OWN_"));
+    }
+  }
+
+  for (const candidate of scopedVariants(requested)) {
+    if (expanded.has(candidate)) return true;
+    if (PERMISSION_COVERAGE[candidate]?.some((covered) => expanded.has(covered))) return true;
+  }
+
+  return false;
 }
 
 export function coversAnyPermission(
@@ -361,13 +534,19 @@ export function expandPermissions(userPermissions: readonly string[] | undefined
   if (!userPermissions?.length) return [];
   for (const perm of userPermissions) {
     set.add(perm);
-    const covered = PERMISSION_COVERAGE[perm];
-    if (covered) {
-      for (const scoped of covered) set.add(scoped);
+    for (const scoped of PERMISSION_COVERAGE[perm] ?? []) {
+      set.add(scoped);
+    }
+    if (/_ALL_/.test(perm)) {
+      set.add(perm.replace("_ALL_", "_OWN_"));
+      for (const covered of PERMISSION_COVERAGE[perm] ?? []) {
+        if (/_ALL_/.test(covered)) set.add(covered.replace("_ALL_", "_OWN_"));
+      }
     }
   }
   return Array.from(set);
 }
+
 
 export const RoleKey = {
   SuperAdmin: "superadmin",
