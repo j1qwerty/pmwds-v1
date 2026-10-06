@@ -40,7 +40,10 @@ public class KnowledgeController : BaseApiController
                 PermissionCodes.KnowledgeAllEdit,
                 PermissionCodes.KnowledgeAllDelete))
         {
-            articles = articles.Where(a => a.ProjectId.HasValue && _scope.CanAccessKnowledgeAsync(a.ProjectId, ct).GetAwaiter().GetResult()).ToList();
+            var accessibleProjectIds = await _scope.GetAccessibleProjectIdsAsync(ct);
+            articles = articles
+                .Where(a => a.ProjectId.HasValue && accessibleProjectIds.Contains(a.ProjectId.Value))
+                .ToList();
         }
 
         return Ok(articles.OrderByDescending(a => a.LastUpdated).Select(MapArticle));
