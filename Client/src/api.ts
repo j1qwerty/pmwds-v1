@@ -58,6 +58,7 @@ import type {
   SubmitUtilizationCertificatePayload,
   UpdateUtilizationCertificatePayload,
   UtilizationCertificate,
+  UtilizationCertificateUploadCapabilities,
 } from "./types";
 
 const API_BASE_URL =
