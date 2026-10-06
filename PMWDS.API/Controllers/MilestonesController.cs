@@ -74,8 +74,8 @@ public class MilestonesController : BaseApiController
         if (project == null)
             return NotFound(new { message = "Project not found" });
 
-        if (!await _scope.CanAccessProjectDataAsync(dto.ProjectId, null, ct,
-                PermissionCodes.MilestoneOwnEdit, PermissionCodes.MilestoneAllEdit,
+        if (!await _scope.CanModifyProjectChildAsync(dto.ProjectId, null, ct,
+            PermissionCodes.MilestoneOwnEdit, PermissionCodes.MilestoneAllEdit,
                 PermissionCodes.MilestoneOwnManage, PermissionCodes.MilestoneAllManage))
             return Forbid();
 
@@ -363,7 +363,7 @@ public class MilestonesController : BaseApiController
             return NotFound();
         }
 
-        if (!await _scope.CanAccessProjectDataAsync(milestone.ProjectId, milestone.DepartmentId, ct,
+        if (!await _scope.CanModifyProjectChildAsync(milestone.ProjectId, milestone.DepartmentId, ct,
             PermissionCodes.MilestoneOwnEdit, PermissionCodes.MilestoneAllEdit,
             PermissionCodes.MilestoneOwnManage, PermissionCodes.MilestoneAllManage))
         {
@@ -431,7 +431,7 @@ public class MilestonesController : BaseApiController
             return NotFound();
         }
 
-        if (!await _scope.CanAccessProjectDataAsync(milestone.ProjectId, milestone.DepartmentId, ct,
+        if (!await _scope.CanModifyProjectChildAsync(milestone.ProjectId, milestone.DepartmentId, ct,
             PermissionCodes.MilestoneOwnEdit, PermissionCodes.MilestoneAllEdit,
             PermissionCodes.MilestoneOwnManage, PermissionCodes.MilestoneAllManage))
         {
@@ -583,7 +583,7 @@ public class MilestonesController : BaseApiController
 
         var projectId = milestone.ProjectId;
 
-        if (!await _scope.CanAccessProjectDataAsync(projectId, milestone.DepartmentId, ct,
+        if (!await _scope.CanModifyProjectChildAsync(projectId, milestone.DepartmentId, ct,
             PermissionCodes.MilestoneOwnDelete, PermissionCodes.MilestoneAllDelete,
             PermissionCodes.MilestoneOwnManage, PermissionCodes.MilestoneAllManage))
         {
