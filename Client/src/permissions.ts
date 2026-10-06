@@ -484,14 +484,20 @@ export function permissionScope(code: string): PermissionScope {
   return "none";
 }
 
+function scopeManageVariant(code: string): string | null {
+  const match = code.match(/^(.+?)_(OWN|ALL)_(.+)$/);
+  return match ? `${match[1]}_${match[2]}_MANAGE` : null;
+}
+
 function scopedVariants(requested: string): string[] {
   const variants = [requested];
   if (/_OWN_/.test(requested)) {
     variants.push(requested.replace("_OWN_", "_ALL_"));
-    variants.push(requested.replace("_OWN_", "_OWN_MANAGE").replace(/_MANAGE_MANAGE$/, "_MANAGE"));
-    variants.push(requested.replace("_OWN_", "_ALL_MANAGE").replace(/_MANAGE_MANAGE$/, "_MANAGE"));
-  } else if (/_ALL_/.test(requested)) {
-    variants.push(requested.replace("_ALL_", "_ALL_MANAGE").replace(/_MANAGE_MANAGE$/, "_MANAGE"));
+  }
+  const manage = scopeManageVariant(requested);
+  if (manage) {
+    variants.push(manage);
+    if (/_OWN_/.test(requested)) variants.push(manage.replace("_OWN_", "_ALL_"));
   }
   return Array.from(new Set(variants));
 }
