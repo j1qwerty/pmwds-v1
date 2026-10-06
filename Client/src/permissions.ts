@@ -530,7 +530,7 @@ function scopedVariants(requested: string): string[] {
   const legacy = requested.match(/^(DEPARTMENT|PROJECT|MILESTONE|TASK|SUBTASK|USER|NOTIFICATION|REPORT|ACTIVITY_LOG|DOCUMENT|UTILIZATION_CERTIFICATE|KNOWLEDGE)_(VIEW|CREATE|EDIT|DELETE|MANAGE|ASSIGN|COMMENT_CREATE|ATTACHMENT_CREATE)$/);
   if (legacy) {
     const [, module, action] = legacy;
-    variants.push(`${module}_ALL_${action}`);
+    variants.push(`${module}_OWN_${action}`, `${module}_ALL_${action}`);
   }
   if (/_OWN_/.test(requested)) {
     variants.push(requested.replace("_OWN_", "_ALL_"));
