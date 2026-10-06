@@ -52,6 +52,10 @@ public static class AuthorizationPolicies
     public const string UsersEdit = "Users.Edit";
     public const string UsersDelete = "Users.Delete";
     public const string DocumentsView = "Documents.View";
+    public const string KnowledgeView = "Knowledge.View";
+    public const string KnowledgeCreate = "Knowledge.Create";
+    public const string KnowledgeEdit = "Knowledge.Edit";
+    public const string KnowledgeDelete = "Knowledge.Delete";
     public const string DocumentsCreate = "Documents.Create";
     public const string DocumentsEdit = "Documents.Edit";
     public const string DocumentsDelete = "Documents.Delete";
