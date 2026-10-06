@@ -45,7 +45,6 @@ public static class PermissionCatalog
 
         var module = match.Groups[1].Value;
         var action = match.Groups[2].Value;
-        yield return $"{module}_OWN_{action}";
         yield return $"{module}_ALL_{action}";
     }
 
