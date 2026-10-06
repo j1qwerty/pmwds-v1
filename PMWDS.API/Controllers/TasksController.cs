@@ -1153,4 +1153,20 @@ public class TasksController : BaseApiController
 
         return NoContent();
     }
+    private async Task<Guid?> ResolveTaskDepartmentIdAsync(Guid projectId, Guid? milestoneId, CancellationToken ct)
+    {
+        if (milestoneId.HasValue)
+        {
+            return await _db.Milestones
+                .Where(milestone => milestone.Id == milestoneId.Value && milestone.ProjectId == projectId)
+                .Select(milestone => milestone.DepartmentId)
+                .FirstOrDefaultAsync(ct);
+        }
+
+        return await _db.Projects
+            .Where(project => project.Id == projectId)
+            .Select(project => (Guid?)project.DepartmentId)
+            .FirstOrDefaultAsync(ct);
+    }
+
 }
