@@ -587,18 +587,18 @@ public class ProjectsController : BaseApiController
         if (canView == DepartmentDataScope.None)
             return Forbid();
 
-        var canProjectUpload = await _scope.CanUploadProjectDocumentAsync(
-            id, null, null, ct,
+        var canProjectUpload = await _scope.HasAnyPermissionAsync(
+            ct,
             PermissionCodes.DocumentOwnProjectUpload,
             PermissionCodes.DocumentAllProjectUpload);
 
-        var canMilestoneUpload = await _scope.CanUploadProjectDocumentAsync(
-            id, null, null, ct,
+        var canMilestoneUpload = await _scope.HasAnyPermissionAsync(
+            ct,
             PermissionCodes.DocumentOwnMilestoneUpload,
             PermissionCodes.DocumentAllMilestoneUpload);
 
-        var canTaskUpload = await _scope.CanUploadProjectDocumentAsync(
-            id, null, null, ct,
+        var canTaskUpload = await _scope.HasAnyPermissionAsync(
+            ct,
             PermissionCodes.DocumentOwnTaskUpload,
             PermissionCodes.DocumentAllTaskUpload);
 
