@@ -489,7 +489,6 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
               onDepartmentsChange={setSelectedDepartmentIds}
               departments={scopedDepartments}
               organizations={data.organizations}
-              showOrganization={isSuperAdmin}
               users={data.users}
               onRefresh={refresh}
             />
