@@ -93,6 +93,15 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
     const rows = matrix
       .flatMap(([, moduleRows]) => moduleRows)
       .filter((item) => item.module === row.module);
+
+    if (!CRUD_ACTIONS.has(row.action)) {
+      if (row.scope === "OWN") {
+        const all = rows.find((item) => item.scope === "ALL" && item.action === row.action);
+        return Boolean(all && selected.has(all.permission.id));
+      }
+      return false;
+    }
+
     const manage = manageRow(rows, row.scope);
     if (manage && selected.has(manage.permission.id)) return true;
 
