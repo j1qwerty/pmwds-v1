@@ -35,7 +35,7 @@ public static class PermissionCatalog
     {
         var match = System.Text.RegularExpressions.Regex.Match(
             permission,
-            @"^(DEPARTMENT|PROJECT|MILESTONE|TASK|SUBTASK|USER|NOTIFICATION|REPORT|ACTIVITY_LOG|DOCUMENT|UTILIZATION_CERTIFICATE)_(VIEW|CREATE|EDIT|DELETE|MANAGE|ASSIGN|COMMENT_CREATE|ATTACHMENT_CREATE)$",
+            @"^(DEPARTMENT|PROJECT|MILESTONE|TASK|SUBTASK|USER|NOTIFICATION|REPORT|ACTIVITY_LOG|DOCUMENT|UTILIZATION_CERTIFICATE|KNOWLEDGE)_(VIEW|CREATE|EDIT|DELETE|MANAGE|ASSIGN|COMMENT_CREATE|ATTACHMENT_CREATE)$",
             System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 
         if (!match.Success)
@@ -67,6 +67,8 @@ public static class PermissionCatalog
             [PermissionCodes.NotificationAllManage] = new[] { PermissionCodes.NotificationAllView, PermissionCodes.NotificationAllCreate, PermissionCodes.NotificationAllEdit, PermissionCodes.NotificationAllDelete },
             [PermissionCodes.ReportOwnManage] = new[] { PermissionCodes.ReportOwnView, PermissionCodes.ReportOwnCreate, PermissionCodes.ReportOwnEdit, PermissionCodes.ReportOwnDelete },
             [PermissionCodes.ReportAllManage] = new[] { PermissionCodes.ReportAllView, PermissionCodes.ReportAllCreate, PermissionCodes.ReportAllEdit, PermissionCodes.ReportAllDelete },
+            [PermissionCodes.KnowledgeOwnManage] = new[] { PermissionCodes.KnowledgeOwnView, PermissionCodes.KnowledgeOwnCreate, PermissionCodes.KnowledgeOwnEdit, PermissionCodes.KnowledgeOwnDelete },
+            [PermissionCodes.KnowledgeAllManage] = new[] { PermissionCodes.KnowledgeAllView, PermissionCodes.KnowledgeAllCreate, PermissionCodes.KnowledgeAllEdit, PermissionCodes.KnowledgeAllDelete },
             [PermissionCodes.ActivityLogOwnManage] = new[] { PermissionCodes.ActivityLogOwnView, PermissionCodes.ActivityLogOwnCreate },
             [PermissionCodes.ActivityLogAllManage] = new[] { PermissionCodes.ActivityLogAllView, PermissionCodes.ActivityLogAllCreate },
             [PermissionCodes.DocumentOwnManage] = new[] { PermissionCodes.DocumentOwnView, PermissionCodes.DocumentOwnCreate, PermissionCodes.DocumentOwnEdit, PermissionCodes.DocumentOwnDelete },
