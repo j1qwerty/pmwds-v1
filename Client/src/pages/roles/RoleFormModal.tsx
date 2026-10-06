@@ -18,7 +18,7 @@ type MatrixPermission = {
 };
 
 const SCOPED_CODE = /^(.+?)_(OWN|ALL)_(.+)$/;
-const LEGACY_CODE = /^(DEPARTMENT|PROJECT|MILESTONE|TASK|SUBTASK|USER|NOTIFICATION|REPORT|ACTIVITY_LOG|DOCUMENT|UTILIZATION_CERTIFICATE)_(VIEW|CREATE|EDIT|DELETE|MANAGE)$/;
+const LEGACY_CODE = /^(DEPARTMENT|PROJECT|MILESTONE|TASK|SUBTASK|USER|NOTIFICATION|REPORT|ACTIVITY_LOG|DOCUMENT|UTILIZATION_CERTIFICATE|KNOWLEDGE)_(VIEW|CREATE|EDIT|DELETE|MANAGE|ASSIGN|COMMENT_CREATE|ATTACHMENT_CREATE)$/;
 
 function parseScoped(permission: PermissionRecord): MatrixPermission | null {
   const match = permission.code.match(SCOPED_CODE);
@@ -39,6 +39,18 @@ function crudRows(rows: MatrixPermission[], scope: Scope) {
 
 function extraRows(rows: MatrixPermission[], scope: Scope) {
   return rows.filter((row) => row.scope === scope && row.action !== "MANAGE" && !CRUD_ACTIONS.has(row.action));
+}
+
+function legacyEquivalent(permission: PermissionRecord, permissions: PermissionRecord[]) {
+  const match = permission.code.match(/^(.+?)_(OWN|ALL)_(.+)$/);
+  if (!match) return undefined;
+  return permissions.find((candidate) => candidate.code === `${match[1]}_${match[3]}`);
+}
+
+function legacyGrantFor(permission: PermissionRecord, permissions: PermissionRecord[]) {
+  const match = permission.code.match(/^(.+?)_(OWN|ALL)_(.+)$/);
+  if (!match) return undefined;
+  return permissions.find((candidate) => candidate.code === `${match[1]}_${match[3]}`);
 }
 
 function manageRow(rows: MatrixPermission[], scope: Scope) {
@@ -66,9 +78,14 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
       .sort(([a], [b]) => a.localeCompare(b));
   }, [permissions]);
 
+  const primaryDepartmentPermission = useMemo(
+    () => permissions.find((permission) => permission.code === "PROJECT_PRIMARY_DEPARTMENT_MANAGE"),
+    [permissions],
+  );
+
   const globalPermissions = useMemo(
     () => permissions
-      .filter((permission) => !SCOPED_CODE.test(permission.code) && !LEGACY_CODE.test(permission.code))
+      .filter((permission) => !SCOPED_CODE.test(permission.code) && !LEGACY_CODE.test(permission.code) && permission.code !== "PROJECT_PRIMARY_DEPARTMENT_MANAGE")
       .sort((a, b) => (a.module + a.name).localeCompare(b.module + b.name)),
     [permissions],
   );
@@ -87,6 +104,8 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
 
   const isEffective = (permission: PermissionRecord) => {
     if (selected.has(permission.id)) return true;
+    const legacy = legacyEquivalent(permission, permissions);
+    if (legacy && selected.has(legacy.id)) return true;
     const row = parseScoped(permission);
     if (!row) return false;
 
@@ -185,6 +204,20 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
     setSubmitting(true);
 
     const normalized = new Set(selected);
+
+    for (const legacy of permissions.filter((permission) => LEGACY_CODE.test(permission.code))) {
+      if (!normalized.has(legacy.id)) continue;
+      const canonical = permissions.find((permission) => {
+        if (legacy.code.startsWith("KNOWLEDGE_") || legacy.code.startsWith("UTILIZATION_CERTIFICATE_")) {
+          return permission.code === `${legacy.code.split("_").slice(0, -1).join("_")}_ALL_${legacy.code.split("_").at(-1)}`;
+        }
+        return permission.code === `${legacy.code.split("_").slice(0, -1).join("_")}_ALL_${legacy.code.split("_").at(-1)}`;
+      });
+      if (canonical) {
+        normalized.delete(legacy.id);
+        normalized.add(canonical.id);
+      }
+    }
     for (const [, rows] of matrix) {
       for (const scope of ["OWN", "ALL"] as Scope[]) {
         const manage = manageRow(rows, scope);
@@ -275,6 +308,31 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
                   <p className="text-[11px] text-slate-400">Department-scoped feature permissions</p>
                 </div>
               </div>
+              {module === "Projects" && primaryDepartmentPermission && (
+                <div className="border-t border-slate-100 bg-amber-50/50 px-4 py-3">
+                  <label className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(primaryDepartmentPermission.id)}
+                      onChange={() => setSelected((current) => {
+                        const next = new Set(current);
+                        if (next.has(primaryDepartmentPermission.id)) next.delete(primaryDepartmentPermission.id);
+                        else next.add(primaryDepartmentPermission.id);
+                        return next;
+                      })}
+                      className="mt-0.5 size-4 accent-amber-600"
+                      title={primaryDepartmentPermission.description}
+                    />
+                    <span>
+                      <span className="block text-xs font-semibold text-slate-700">Primary Department Control</span>
+                      <span className="block text-[10px] text-slate-500">
+                        Full project-detail visibility for the project's primary department. Other departments remain limited to their assigned milestones and tasks.
+                      </span>
+                    </span>
+                  </label>
+                </div>
+              )}
+
               {(["OWN", "ALL"] as Scope[]).map((scope) => {
                 const extras = extraRows(rows, scope);
                 if (extras.length === 0) return null;
