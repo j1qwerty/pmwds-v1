@@ -18,7 +18,10 @@ public static class PermissionCatalog
         "Audit",
         "Reports",
         "AI",
-        "Utilization Certificates"
+        "Utilization Certificates",
+        "Documents",
+        "Knowledge",
+        "Integrations"
     };
 
     public static readonly IReadOnlySet<string> AdminOnlyModules = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -31,6 +34,29 @@ public static class PermissionCatalog
     public static readonly IReadOnlyDictionary<string, string[]> ManagePermissionCoverage =
         new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
         {
+            [PermissionCodes.DepartmentOwnManage] = new[] { PermissionCodes.DepartmentOwnView, PermissionCodes.DepartmentOwnCreate, PermissionCodes.DepartmentOwnEdit, PermissionCodes.DepartmentOwnDelete },
+            [PermissionCodes.DepartmentAllManage] = new[] { PermissionCodes.DepartmentAllView, PermissionCodes.DepartmentAllCreate, PermissionCodes.DepartmentAllEdit, PermissionCodes.DepartmentAllDelete },
+            [PermissionCodes.ProjectOwnManage] = new[] { PermissionCodes.ProjectOwnView, PermissionCodes.ProjectOwnCreate, PermissionCodes.ProjectOwnEdit, PermissionCodes.ProjectOwnDelete },
+            [PermissionCodes.ProjectAllManage] = new[] { PermissionCodes.ProjectAllView, PermissionCodes.ProjectAllCreate, PermissionCodes.ProjectAllEdit, PermissionCodes.ProjectAllDelete },
+            [PermissionCodes.MilestoneOwnManage] = new[] { PermissionCodes.MilestoneOwnView, PermissionCodes.MilestoneOwnCreate, PermissionCodes.MilestoneOwnEdit, PermissionCodes.MilestoneOwnDelete },
+            [PermissionCodes.MilestoneAllManage] = new[] { PermissionCodes.MilestoneAllView, PermissionCodes.MilestoneAllCreate, PermissionCodes.MilestoneAllEdit, PermissionCodes.MilestoneAllDelete },
+            [PermissionCodes.TaskOwnManage] = new[] { PermissionCodes.TaskOwnView, PermissionCodes.TaskOwnCreate, PermissionCodes.TaskOwnEdit, PermissionCodes.TaskOwnDelete, PermissionCodes.TaskOwnAssign, PermissionCodes.TaskOwnCommentCreate, PermissionCodes.TaskOwnAttachmentCreate },
+            [PermissionCodes.TaskAllManage] = new[] { PermissionCodes.TaskAllView, PermissionCodes.TaskAllCreate, PermissionCodes.TaskAllEdit, PermissionCodes.TaskAllDelete, PermissionCodes.TaskAllAssign, PermissionCodes.TaskAllCommentCreate, PermissionCodes.TaskAllAttachmentCreate },
+            [PermissionCodes.SubtaskOwnManage] = new[] { PermissionCodes.SubtaskOwnView, PermissionCodes.SubtaskOwnCreate, PermissionCodes.SubtaskOwnEdit, PermissionCodes.SubtaskOwnDelete },
+            [PermissionCodes.SubtaskAllManage] = new[] { PermissionCodes.SubtaskAllView, PermissionCodes.SubtaskAllCreate, PermissionCodes.SubtaskAllEdit, PermissionCodes.SubtaskAllDelete },
+            [PermissionCodes.UserOwnManage] = new[] { PermissionCodes.UserOwnView, PermissionCodes.UserOwnCreate, PermissionCodes.UserOwnEdit, PermissionCodes.UserOwnDelete },
+            [PermissionCodes.UserAllManage] = new[] { PermissionCodes.UserAllView, PermissionCodes.UserAllCreate, PermissionCodes.UserAllEdit, PermissionCodes.UserAllDelete },
+            [PermissionCodes.NotificationOwnManage] = new[] { PermissionCodes.NotificationOwnView, PermissionCodes.NotificationOwnCreate, PermissionCodes.NotificationOwnEdit, PermissionCodes.NotificationOwnDelete },
+            [PermissionCodes.NotificationAllManage] = new[] { PermissionCodes.NotificationAllView, PermissionCodes.NotificationAllCreate, PermissionCodes.NotificationAllEdit, PermissionCodes.NotificationAllDelete },
+            [PermissionCodes.ReportOwnManage] = new[] { PermissionCodes.ReportOwnView, PermissionCodes.ReportOwnCreate, PermissionCodes.ReportOwnEdit, PermissionCodes.ReportOwnDelete },
+            [PermissionCodes.ReportAllManage] = new[] { PermissionCodes.ReportAllView, PermissionCodes.ReportAllCreate, PermissionCodes.ReportAllEdit, PermissionCodes.ReportAllDelete },
+            [PermissionCodes.ActivityLogOwnManage] = new[] { PermissionCodes.ActivityLogOwnView, PermissionCodes.ActivityLogOwnCreate },
+            [PermissionCodes.ActivityLogAllManage] = new[] { PermissionCodes.ActivityLogAllView, PermissionCodes.ActivityLogAllCreate },
+            [PermissionCodes.DocumentOwnManage] = new[] { PermissionCodes.DocumentOwnView, PermissionCodes.DocumentOwnCreate, PermissionCodes.DocumentOwnEdit, PermissionCodes.DocumentOwnDelete, PermissionCodes.DocumentOwnProjectUpload, PermissionCodes.DocumentOwnMilestoneUpload, PermissionCodes.DocumentOwnTaskUpload },
+            [PermissionCodes.DocumentAllManage] = new[] { PermissionCodes.DocumentAllView, PermissionCodes.DocumentAllCreate, PermissionCodes.DocumentAllEdit, PermissionCodes.DocumentAllDelete, PermissionCodes.DocumentAllProjectUpload, PermissionCodes.DocumentAllMilestoneUpload, PermissionCodes.DocumentAllTaskUpload },
+            [PermissionCodes.UtilizationCertificateOwnManage] = new[] { PermissionCodes.UtilizationCertificateOwnView, PermissionCodes.UtilizationCertificateOwnCreate, PermissionCodes.UtilizationCertificateOwnEdit, PermissionCodes.UtilizationCertificateOwnDelete, PermissionCodes.UtilizationCertificateOwnReview, PermissionCodes.UtilizationCertificateOwnProjectUpload, PermissionCodes.UtilizationCertificateOwnMilestoneUpload, PermissionCodes.UtilizationCertificateOwnTaskUpload },
+            [PermissionCodes.UtilizationCertificateAllManage] = new[] { PermissionCodes.UtilizationCertificateAllView, PermissionCodes.UtilizationCertificateAllCreate, PermissionCodes.UtilizationCertificateAllEdit, PermissionCodes.UtilizationCertificateAllDelete, PermissionCodes.UtilizationCertificateAllReview, PermissionCodes.UtilizationCertificateAllProjectUpload, PermissionCodes.UtilizationCertificateAllMilestoneUpload, PermissionCodes.UtilizationCertificateAllTaskUpload },
+
             [PermissionCodes.OrganizationManage] = new[] { PermissionCodes.OrganizationView, PermissionCodes.OrganizationCreate, PermissionCodes.OrganizationEdit, PermissionCodes.OrganizationDelete },
             [PermissionCodes.DepartmentManage] = new[] { PermissionCodes.DepartmentView, PermissionCodes.DepartmentCreate, PermissionCodes.DepartmentEdit, PermissionCodes.DepartmentDelete },
             [PermissionCodes.ProjectManage] = new[] { PermissionCodes.ProjectView, PermissionCodes.ProjectCreate, PermissionCodes.ProjectEdit, PermissionCodes.ProjectDelete, PermissionCodes.ProjectPrimaryDepartmentManage },
