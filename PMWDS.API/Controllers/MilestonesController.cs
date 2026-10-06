@@ -74,9 +74,9 @@ public class MilestonesController : BaseApiController
         if (project == null)
             return NotFound(new { message = "Project not found" });
 
-        if (!await _scope.CanModifyProjectChildAsync(dto.ProjectId, null, ct,
-            PermissionCodes.MilestoneOwnEdit, PermissionCodes.MilestoneAllEdit,
-                PermissionCodes.MilestoneOwnManage, PermissionCodes.MilestoneAllManage))
+        if (!await _scope.CanCreateProjectChildAsync(dto.ProjectId, dto.DepartmentId, ct,
+            PermissionCodes.MilestoneOwnCreate, PermissionCodes.MilestoneAllCreate,
+            PermissionCodes.MilestoneOwnManage, PermissionCodes.MilestoneAllManage))
             return Forbid();
 
         if (dto.PrerequisiteMilestoneId == dto.DependentMilestoneId)
