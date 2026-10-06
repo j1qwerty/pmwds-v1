@@ -360,8 +360,40 @@ public class RoleScopeService
             return false;
         }
 
-        if (await HasAnyPermissionAsync(ct, allPermission, allManagePermission) ||
-            await CanSeeFullProjectDetailsAsync(projectId, ct))
+        if (await HasAnyPermissionAsync(ct, allPermission, allManagePermission))
+        {
+            return true;
+        }
+
+        if (!await HasAnyPermissionAsync(ct, ownPermission, ownManagePermission))
+        {
+            return false;
+        }
+
+        var effectiveDepartmentId = departmentId ?? await _db.Projects
+            .Where(project => project.Id == projectId)
+            .Select(project => (Guid?)project.DepartmentId)
+            .FirstOrDefaultAsync(ct);
+
+        return effectiveDepartmentId.HasValue &&
+            (await GetDepartmentIdsAsync(ct)).Contains(effectiveDepartmentId.Value);
+    }
+
+    public async Task<bool> CanModifyProjectChildAsync(
+        Guid projectId,
+        Guid? departmentId,
+        CancellationToken ct,
+        string ownPermission,
+        string allPermission,
+        string ownManagePermission,
+        string allManagePermission)
+    {
+        if (!await CanAccessProjectAsync(projectId, ct))
+        {
+            return false;
+        }
+
+        if (await HasAnyPermissionAsync(ct, allPermission, allManagePermission))
         {
             return true;
         }
