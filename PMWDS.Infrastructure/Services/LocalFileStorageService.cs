@@ -90,6 +90,17 @@ public class LocalFileStorageService : ILocalFileStorageService
         return Task.FromResult<Stream>(File.OpenRead(fullPath));
     }
 
+    public Task DeleteFileAsync(string filePath, CancellationToken ct = default)
+    {
+        var fullPath = ResolvePath(filePath);
+        if (File.Exists(fullPath))
+        {
+            File.Delete(fullPath);
+        }
+
+        return Task.CompletedTask;
+    }
+
     private string ResolvePath(string relativePath)
     {
         if (string.IsNullOrWhiteSpace(relativePath))
