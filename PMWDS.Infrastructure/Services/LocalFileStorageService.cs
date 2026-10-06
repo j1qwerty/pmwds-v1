@@ -9,6 +9,7 @@ public interface ILocalFileStorageService
     Task<string> UploadAvatarAsync(Stream stream, string userCode, string extension, CancellationToken ct = default);
     Task<string> UploadDocumentAsync(Stream stream, string projectCode, string projectName, string extension, string contentType, CancellationToken ct = default);
     Task<Stream> DownloadFileAsync(string filePath, CancellationToken ct = default);
+    Task DeleteFileAsync(string filePath, CancellationToken ct = default);
 }
 
 public class LocalFileStorageService : ILocalFileStorageService
