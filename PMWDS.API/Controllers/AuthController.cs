@@ -354,12 +354,36 @@ public class AuthController : BaseApiController
     }
 
     private static List<string> ResolvePermissions(ApplicationUser user)
-        => user.Roles
+    {
+        var codes = user.Roles
             .SelectMany(role => role.Permissions)
             .Select(permission => permission.Code)
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(code => code)
-            .ToList();
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Keep legacy permission claims for existing clients/tests while the persisted
+        // matrix uses explicit OWN/ALL permissions. These aliases are compatibility-only
+        // and are not shown in the role editor.
+        foreach (var code in codes.ToArray())
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(
+                code,
+                @"^(DEPARTMENT|PROJECT|MILESTONE|TASK|SUBTASK|USER|NOTIFICATION|REPORT|ACTIVITY_LOG|DOCUMENT|UTILIZATION_CERTIFICATE|KNOWLEDGE)_(OWN|ALL)_(VIEW|CREATE|EDIT|DELETE|MANAGE|ASSIGN|COMMENT_CREATE|ATTACHMENT_CREATE)$",
+                System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+            if (match.Success)
+            {
+                codes.Add($"{match.Groups[1].Value}_{match.Groups[3].Value}");
+            }
+
+            if (codes.Contains(PermissionCodes.SystemAdmin))
+            {
+                break;
+            }
+        }
+
+        return codes.OrderBy(code => code).ToList();
+    }
 
     private static string HashPassword(ApplicationUser user, string password)
         => new PasswordHasher<ApplicationUser>().HashPassword(user, password.Trim());
