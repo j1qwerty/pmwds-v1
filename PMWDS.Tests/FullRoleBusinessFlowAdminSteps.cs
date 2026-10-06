@@ -95,15 +95,18 @@ public sealed partial class FullRoleBusinessFlowTests
                 maxCapacity = 12,
             })).Status.Should().Be(HttpStatusCode.OK);
 
-            (await director.GetAsync<JsonElement>("/api/v1/roles/permissions"))
-                .Status.Should().Be(HttpStatusCode.OK);
+            var permissions = await director.GetAsync<JsonElement>("/api/v1/roles/permissions");
+            permissions.Status.Should().Be(HttpStatusCode.OK);
+            var projectManagePermissionId = permissions.Data.EnumerateArray()
+                .First(permission => permission.GetString("code") == "PROJECT_ALL_MANAGE")
+                .GetGuid("id");
 
             var permission = await director.PostAsync<JsonElement>("/api/v1/roles/permissions", new
             {
                 code = $"FLOW.TEST.{Guid.NewGuid():N}"[..24].ToUpperInvariant(),
                 name = "Flow Test Permission",
                 description = "Temporary permission.",
-                module = "Testing",
+                module = "Projects",
                 isGlobal = false,
             });
             permission.Status.Should().Be(HttpStatusCode.Created);
@@ -117,7 +120,7 @@ public sealed partial class FullRoleBusinessFlowTests
                     description = "Temporary role.",
                     permissionLevel = 20,
                     paginationPageSize = 10,
-                    permissionIds = new[] { permissionId },
+                    permissionIds = new[] { projectManagePermissionId },
                 });
                 role.Status.Should().Be(HttpStatusCode.Created);
                 var roleId = role.Data.GetGuid("id");
