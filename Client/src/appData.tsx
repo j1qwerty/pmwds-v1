@@ -311,7 +311,11 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       }
     });
 
-    void startRealtime();
+    // Pass the live token: localStorage is only written by AuthProvider's effect, which React
+    // runs *after* this one, so on a fresh login it still holds the previous (now revoked)
+    // session's token. Without this the first negotiate 401s and the hub stays disconnected
+    // until the retry backoff lands.
+    void startRealtime(auth.token);
 
     const onFocus = () => scheduleRefresh(FOCUS_DEBOUNCE_MS);
     const onVisibilityChange = () => {
@@ -368,7 +372,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
 
       if (now - unhealthySince >= REALTIME_WATCHDOG_MS) {
         unhealthySince = null;
-        void startRealtime();
+        void startRealtime(auth.token);
       }
     }, REALTIME_WATCHDOG_CHECK_MS);
 

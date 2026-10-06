@@ -65,6 +65,21 @@ function currentToken(): string | null {
 }
 
 /**
+ * Token handed in by the auth context, used only when localStorage has nothing yet.
+ *
+ * auth.tsx persists to localStorage from its own effect, and React runs child effects
+ * before parent effects. AppDataProvider is a child of AuthProvider, so on a fresh login its
+ * effect calls startRealtime() while localStorage still holds the previous session's token -
+ * which the login has already revoked. The first negotiate therefore went out with a revoked
+ * token and came back 401, leaving the dashboard hub disconnected until the retry backoff
+ * happened to succeed.
+ *
+ * localStorage stays the primary source so that a token refreshed mid-session is still picked
+ * up on the next (re)negotiate; this only covers the window before the write lands.
+ */
+let contextToken: string | null = null;
+
+/**
  * Retry policy that never gives up.
  *
  * `withAutomaticReconnect([0, 2000, 5000, 10000, 30000])` is a *finite* policy. Once the
@@ -119,8 +134,9 @@ function build(): HubConnection {
     .withUrl(resolveHubUrl(), {
       // Read fresh on every (re)negotiate rather than closing over a token captured at
       // start time. auth.tsx rewrites localStorage when it refreshes the JWT, so a socket
-      // that reconnects after expiry picks up the new one instead of failing to 401.
-      accessTokenFactory: () => currentToken() ?? "",
+      // that reconnects after expiry picks up the new one instead of failing to 401. The
+      // context token covers the brief window before that write lands on a fresh login.
+      accessTokenFactory: () => currentToken() ?? contextToken ?? "",
       withCredentials: true,
     })
     .withAutomaticReconnect(new PersistentRetryPolicy())
@@ -164,12 +180,18 @@ function scheduleRestart() {
 /**
  * Connects if not already connected. Safe to call repeatedly and from multiple
  * components (React StrictMode mounts everything twice in development).
+ *
+ * @param token the caller's live access token, if it has one. See `contextToken`.
  */
-export function startRealtime(): Promise<void> {
+export function startRealtime(token?: string | null): Promise<void> {
   // An explicit start means we do want a connection, so cancel any pending self-heal and
   // clear the intentional-stop latch.
   stopped = false;
   clearRestart();
+
+  if (token) {
+    contextToken = token;
+  }
 
   if (connection && connection.state !== HubConnectionState.Disconnected) {
     return starting ?? Promise.resolve();
@@ -276,6 +298,9 @@ export function stopRealtime(): void {
   stopped = true;
   clearRestart();
   restartAttempt = 0;
+  // Drop the token with the connection. Keeping it would let a later connection attempt
+  // authenticate as whoever signed in previously.
+  contextToken = null;
 
   dataChangedHandlers.clear();
   statusHandlers.clear();
