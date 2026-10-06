@@ -7,7 +7,7 @@ import type {
   UtilizationCertificate,
   UtilizationCertificateStatus,
 } from "../../types";
-import { PERMISSION_GROUPS, usePermission } from "./RoleGate";
+import { Permission, usePermission } from "./RoleGate";
 import { useToast } from "./Toast";
 import { useAuth } from "../../auth";
 import { formatRupees } from "../../lib/formatters";
@@ -169,7 +169,7 @@ export function UtilizationCertificates({
   // Only the two coarse gates stay client-side: whether the section is visible at
   // all, and whether to offer the "Submit UC" button. Per-certificate actions
   // come from the server via `capabilities` instead.
-  const canView = perm.has(PERMISSION_GROUPS.utilizationCertificate.view);
+  const canView = perm.has(Permission.UtilizationCertificateOwnView) || perm.has(Permission.UtilizationCertificateAllView);
   const canSubmit = Boolean(
     uploadCapabilities?.canUploadProject ||
     uploadCapabilities?.canUploadMilestone ||
