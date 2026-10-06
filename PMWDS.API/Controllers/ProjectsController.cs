@@ -769,7 +769,7 @@ public class ProjectsController : BaseApiController
                 var targetDepartmentId = document.Task?.Milestone?.DepartmentId
                     ?? document.Milestone?.DepartmentId
                     ?? project.DepartmentId;
-                return targetDepartmentId.HasValue && departmentIds.Contains(targetDepartmentId.Value);
+                return departmentIds.Contains(targetDepartmentId);
             }).ToList();
         }
 
