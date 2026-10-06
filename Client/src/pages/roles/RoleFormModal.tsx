@@ -9,15 +9,15 @@ interface RoleFormModalProps {
 }
 
 type Scope = "OWN" | "ALL";
-type CrudAction = "VIEW" | "CREATE" | "EDIT" | "DELETE";
+type CrudAction = "VIEW" | "CREATE" | "EDIT" | "DELETE" | "MANAGE";
 type MatrixPermission = {
   module: string;
   scope: Scope;
-  action: CrudAction | "MANAGE";
+  action: string;
   permission: PermissionRecord;
 };
 
-const SCOPED_CODE = /^(.+?)_(OWN|ALL)_(VIEW|CREATE|EDIT|DELETE|MANAGE)$/;
+const SCOPED_CODE = /^(.+?)_(OWN|ALL)_(.+)$/;
 const LEGACY_CODE = /^(DEPARTMENT|PROJECT|MILESTONE|TASK|SUBTASK|USER|NOTIFICATION|REPORT|ACTIVITY_LOG|DOCUMENT|UTILIZATION_CERTIFICATE)_(VIEW|CREATE|EDIT|DELETE|MANAGE)$/;
 
 function parseScoped(permission: PermissionRecord): MatrixPermission | null {
@@ -31,8 +31,14 @@ function parseScoped(permission: PermissionRecord): MatrixPermission | null {
   };
 }
 
+const CRUD_ACTIONS = new Set(["VIEW", "CREATE", "EDIT", "DELETE"]);
+
 function crudRows(rows: MatrixPermission[], scope: Scope) {
-  return rows.filter((row) => row.scope === scope && row.action !== "MANAGE");
+  return rows.filter((row) => row.scope === scope && CRUD_ACTIONS.has(row.action));
+}
+
+function extraRows(rows: MatrixPermission[], scope: Scope) {
+  return rows.filter((row) => row.scope === scope && row.action !== "MANAGE" && !CRUD_ACTIONS.has(row.action));
 }
 
 function manageRow(rows: MatrixPermission[], scope: Scope) {
@@ -102,9 +108,14 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
     return false;
   };
 
-  const toggleCrud = (row: MatrixPermission, rows: MatrixPermission[]) => {
+  const togglePermission = (row: MatrixPermission, rows: MatrixPermission[]) => {
     setSelected((current) => {
       const next = new Set(current);
+      if (!CRUD_ACTIONS.has(row.action)) {
+        if (next.has(row.permission.id)) next.delete(row.permission.id);
+        else next.add(row.permission.id);
+        return next;
+      }
       const manage = manageRow(rows, row.scope);
 
       const inheritedFromAll =
@@ -255,6 +266,39 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
                   <p className="text-[11px] text-slate-400">Department-scoped feature permissions</p>
                 </div>
               </div>
+              {(["OWN", "ALL"] as Scope[]).map((scope) => {
+                const extras = extraRows(rows, scope);
+                if (extras.length === 0) return null;
+                return (
+                  <div key={scope} className="border-t border-slate-100 px-4 py-3 bg-slate-50/40">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                      Additional permissions · {scope === "OWN" ? "Own Department" : "All Departments"}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {extras.map((row) => {
+                        const inherited = scope === "OWN" && isEffective(row.permission) && !selected.has(row.permission.id);
+                        return (
+                          <label key={row.permission.id} className="flex items-start gap-2 rounded-lg border border-slate-100 bg-white px-3 py-2 hover:bg-slate-50">
+                            <input
+                              type="checkbox"
+                              checked={isEffective(row.permission)}
+                              disabled={inherited}
+                              onChange={() => togglePermission(row, rows)}
+                              title={inherited ? "Granted by All Departments" : row.permission.description}
+                              className="mt-0.5 size-4 accent-indigo-600"
+                            />
+                            <span className="min-w-0">
+                              <span className="block text-xs font-semibold text-slate-700">{row.permission.name}</span>
+                              <span className="block text-[10px] text-slate-400">{row.permission.description}</span>
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+              
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[720px] text-xs">
                   <thead className="bg-white border-b border-slate-100">
@@ -286,7 +330,7 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
                                   type="checkbox"
                                   checked={checked}
                                   disabled={inherited}
-                                  onChange={() => toggleCrud(row, rows)}
+                                  onChange={() => togglePermission(row, rows)}
                                   title={inherited ? "Granted by All Departments" : row.permission.description}
                                   className="size-4 accent-indigo-600"
                                 />
