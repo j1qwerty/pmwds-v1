@@ -6,6 +6,8 @@ namespace PMWDS.Domain.Entities;
 public class ProjectDocument : BaseEntity
 {
     public Guid ProjectId { get; private set; }
+    public Guid? MilestoneId { get; private set; }
+    public Guid? TaskId { get; private set; }
     public string Title { get; private set; } = string.Empty;
     public string FilePath { get; private set; } = string.Empty;
     public string ContentType { get; private set; } = string.Empty;
@@ -19,6 +21,12 @@ public class ProjectDocument : BaseEntity
     /// Defaults to <see cref="DocumentCategory.General"/> so existing rows keep behaving as plain files.
     /// </summary>
     public DocumentCategory Category { get; private set; } = DocumentCategory.General;
+
+    public DocumentLevel Level => TaskId.HasValue
+        ? DocumentLevel.Task
+        : MilestoneId.HasValue
+            ? DocumentLevel.Milestone
+            : DocumentLevel.Project;
 
     protected ProjectDocument() { }
 
@@ -38,7 +46,9 @@ public class ProjectDocument : BaseEntity
             FileSizeBytes = sizeBytes,
             UploadedByUserId = userId,
             Description = description,
-            Category = category
+            Category = category,
+            MilestoneId = milestoneId,
+            TaskId = taskId
         };
     }
 
@@ -66,6 +76,19 @@ public class ProjectDocument : BaseEntity
         }
 
         return string.IsNullOrWhiteSpace(cleaned) ? "document" : cleaned;
+    }
+
+    public void ValidateHierarchy()
+    {
+        if (TaskId.HasValue && !MilestoneId.HasValue)
+        {
+            throw new InvalidOperationException("Task documents must be linked to their milestone.");
+        }
+
+        if (MilestoneId.HasValue && TaskId.HasValue && MilestoneId == Guid.Empty)
+        {
+            throw new InvalidOperationException("Milestone link is invalid.");
+        }
     }
 
     /// <summary>A Utilization Certificate carries a finance approval lifecycle.</summary>
