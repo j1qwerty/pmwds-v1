@@ -760,25 +760,8 @@ export function UtilizationCertificates({
                     Only levels granted to your role are available.
                   </p>
                 </Field>
-                <Field label="Certifies which work?">
-                  <select
-                    value={form.linkType}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        linkType: e.target.value as FormState["linkType"],
-                        linkId: "",
-                      })
-                    }
-                    className={fieldClass}
-                  >
-                    <option value="none">Project level</option>
-                    {!uploadCapabilities?.canUploadMilestone && <option value="milestone" disabled>Milestone level unavailable</option>}
-                    {!uploadCapabilities?.canUploadTask && <option value="task" disabled>Task level unavailable</option>}
-                  </select>
-                </Field>
                 {form.linkType !== "none" && (
-                  <Field label="Select" required>
+                  <Field label="Link to work item" required>
                     <select
                       value={form.linkId}
                       onChange={(e) => setForm({ ...form, linkId: e.target.value })}
