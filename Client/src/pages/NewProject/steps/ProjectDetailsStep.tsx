@@ -16,9 +16,12 @@ interface ProjectDetailsStepProps {
   departments?: Department[];
   onPrimaryDepartmentChange?: (id: string) => void;
   primaryDepartmentLocked?: boolean;
+  projectDocumentFile?: File | null;
+  onProjectDocumentChange?: (file: File | null) => void;
+  canUploadProjectDocument?: boolean;
 }
 
-export function ProjectDetailsStep({ name, description, priority, budget, startDate, endDate, onChange, primaryDepartmentId, departments, onPrimaryDepartmentChange, primaryDepartmentLocked = false }: ProjectDetailsStepProps) {
+export function ProjectDetailsStep({ name, description, priority, budget, startDate, endDate, onChange, primaryDepartmentId, departments, onPrimaryDepartmentChange, primaryDepartmentLocked = false, projectDocumentFile = null, onProjectDocumentChange, canUploadProjectDocument = false }: ProjectDetailsStepProps) {
   // The budget is typed in lakhs. Holding the raw text locally keeps typing natural: with a
   // controlled value of 0 the browser edits "0" as a string, so typing 20 lands as "020".
   const [budgetLakhs, setBudgetLakhs] = useState(budget > 0 ? String(budget) : "");
@@ -115,6 +118,27 @@ export function ProjectDetailsStep({ name, description, priority, budget, startD
           </p>
         </div>
       </div>
+
+      {canUploadProjectDocument && onProjectDocumentChange && (
+        <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+            Project Document <span className="text-slate-300 font-normal">(optional)</span>
+          </label>
+          <input
+            type="file"
+            onChange={(event) => onProjectDocumentChange(event.target.files?.[0] ?? null)}
+            className="block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs"
+          />
+          <p className="text-[10px] text-slate-400 mt-1">
+            This file is uploaded at Project level. Milestone and Task documents can be added after the project is created.
+          </p>
+          {projectDocumentFile && (
+            <p className="text-[10px] text-indigo-600 mt-1 truncate">
+              Selected: {projectDocumentFile.name}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>

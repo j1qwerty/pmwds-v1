@@ -893,9 +893,25 @@ export type DocumentCategory =
   | "Financial"
   | "UtilizationCertificate";
 
+export type ProjectDocumentLevel = "Project" | "Milestone" | "Task";
+
+export interface ProjectDocumentCapabilities {
+  canUploadProject: boolean;
+  canUploadMilestone: boolean;
+  canUploadTask: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+}
+
 export interface ProjectDocument {
   id: string;
   projectId: string;
+  projectName?: string | null;
+  milestoneId?: string | null;
+  milestoneName?: string | null;
+  taskId?: string | null;
+  taskTitle?: string | null;
+  level: ProjectDocumentLevel;
   title: string;
   filePath: string;
   contentType: string;
@@ -965,6 +981,12 @@ export type UpdateUtilizationCertificatePayload = Omit<
   SubmitUtilizationCertificatePayload,
   "projectId"
 >;
+
+export interface UtilizationCertificateUploadCapabilities {
+  canUploadProject: boolean;
+  canUploadMilestone: boolean;
+  canUploadTask: boolean;
+}
 
 export interface UtilizationCertificateCapabilities {
   /** Resolved server-side, so the UI never disagrees with the API. */
