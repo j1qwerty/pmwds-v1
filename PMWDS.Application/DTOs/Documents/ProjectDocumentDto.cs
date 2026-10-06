@@ -20,3 +20,15 @@ public record ProjectDocumentDto(
     string Version,
     DocumentCategory Category,
     DateTime CreatedDate);
+
+public record UpdateProjectDocumentDto(
+    string Title,
+    string? Description,
+    DocumentCategory Category);
+
+public record ProjectDocumentCapabilitiesDto(
+    bool CanUploadProject,
+    bool CanUploadMilestone,
+    bool CanUploadTask,
+    bool CanEdit,
+    bool CanDelete);
