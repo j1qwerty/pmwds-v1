@@ -285,7 +285,7 @@ public class TasksController : BaseApiController
         if (task == null)
             return NotFound();
 
-        if (!await _scope.CanAccessProjectDataAsync(task.ProjectId, await ResolveTaskDepartmentIdAsync(task.ProjectId, task.MilestoneId, ct), ct,
+        if (!await _scope.CanModifyProjectChildAsync(task.ProjectId, await ResolveTaskDepartmentIdAsync(task.ProjectId, task.MilestoneId, ct), ct,
             PermissionCodes.TaskOwnEdit, PermissionCodes.TaskAllEdit,
             PermissionCodes.TaskOwnManage, PermissionCodes.TaskAllManage))
         {
@@ -343,8 +343,8 @@ public class TasksController : BaseApiController
     {
         var taskForWrite = await _uow.Tasks.GetByIdAsync(id, ct);
         if (taskForWrite == null ||
-            !await _scope.CanAccessProjectDataAsync(taskForWrite.ProjectId, await ResolveTaskDepartmentIdAsync(taskForWrite.ProjectId, taskForWrite.MilestoneId, ct), ct,
-                PermissionCodes.TaskOwnEdit, PermissionCodes.TaskAllEdit,
+            !await _scope.CanModifyProjectChildAsync(taskForWrite.ProjectId, await ResolveTaskDepartmentIdAsync(taskForWrite.ProjectId, taskForWrite.MilestoneId, ct), ct,
+            PermissionCodes.TaskOwnEdit, PermissionCodes.TaskAllEdit,
                 PermissionCodes.TaskOwnManage, PermissionCodes.TaskAllManage))
         {
             return Forbid();
@@ -985,7 +985,7 @@ public class TasksController : BaseApiController
         var milestoneId = task.MilestoneId;
         var taskTitle = task.Title;
         var projectId = task.ProjectId;
-        if (!await _scope.CanAccessProjectDataAsync(projectId, await ResolveTaskDepartmentIdAsync(projectId, task.MilestoneId, ct), ct,
+        if (!await _scope.CanModifyProjectChildAsync(projectId, await ResolveTaskDepartmentIdAsync(projectId, task.MilestoneId, ct), ct,
             PermissionCodes.TaskOwnDelete, PermissionCodes.TaskAllDelete,
             PermissionCodes.TaskOwnManage, PermissionCodes.TaskAllManage)) return Forbid();
         await _uow.Tasks.DeleteTaskGraphAsync(id, ct);
