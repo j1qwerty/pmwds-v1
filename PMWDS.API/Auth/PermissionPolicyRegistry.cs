@@ -85,6 +85,26 @@ public static class PermissionPolicyRegistry
             PermissionCodes.DocumentOwnManage, PermissionCodes.DocumentOwnView, PermissionCodes.DocumentOwnCreate, PermissionCodes.DocumentOwnEdit, PermissionCodes.DocumentOwnDelete,
             PermissionCodes.DocumentAllManage, PermissionCodes.DocumentAllView, PermissionCodes.DocumentAllCreate, PermissionCodes.DocumentAllEdit, PermissionCodes.DocumentAllDelete);
 
+        options.AddPolicy("Documents.Upload", policy => RequireAny(
+            policy,
+            PermissionCodes.SystemAdmin,
+            PermissionCodes.DocumentOwnProjectUpload,
+            PermissionCodes.DocumentOwnMilestoneUpload,
+            PermissionCodes.DocumentOwnTaskUpload,
+            PermissionCodes.DocumentAllProjectUpload,
+            PermissionCodes.DocumentAllMilestoneUpload,
+            PermissionCodes.DocumentAllTaskUpload));
+
+        options.AddPolicy("UtilizationCertificates.Upload", policy => RequireAny(
+            policy,
+            PermissionCodes.SystemAdmin,
+            PermissionCodes.UtilizationCertificateOwnProjectUpload,
+            PermissionCodes.UtilizationCertificateOwnMilestoneUpload,
+            PermissionCodes.UtilizationCertificateOwnTaskUpload,
+            PermissionCodes.UtilizationCertificateAllProjectUpload,
+            PermissionCodes.UtilizationCertificateAllMilestoneUpload,
+            PermissionCodes.UtilizationCertificateAllTaskUpload));
+
         AddScopedCrud(options, "UtilizationCertificates",
             PermissionCodes.UtilizationCertificateOwnManage, PermissionCodes.UtilizationCertificateOwnView, PermissionCodes.UtilizationCertificateOwnCreate, PermissionCodes.UtilizationCertificateOwnEdit, PermissionCodes.UtilizationCertificateOwnDelete,
             PermissionCodes.UtilizationCertificateAllManage, PermissionCodes.UtilizationCertificateAllView, PermissionCodes.UtilizationCertificateAllCreate, PermissionCodes.UtilizationCertificateAllEdit, PermissionCodes.UtilizationCertificateAllDelete);
