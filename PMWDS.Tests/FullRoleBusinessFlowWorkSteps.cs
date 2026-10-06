@@ -141,7 +141,7 @@ public sealed partial class FullRoleBusinessFlowTests
         return new FlowIds(milestoneId, managementMilestoneId, taskId, secondTaskId);
     }
 
-    private static async Task ExecuteDocumentFlowAsync(
+    private async Task ExecuteDocumentFlowAsync(
         Guid projectId,
         Guid milestoneId,
         Guid taskId,
@@ -184,7 +184,7 @@ public sealed partial class FullRoleBusinessFlowTests
         var head = await departmentHead.GetAsync<JsonElement>($"/api/v1/projects/{projectId}/documents");
         head.Status.Should().Be(HttpStatusCode.OK);
         head.Data.EnumerateArray().Should().OnlyContain(
-            doc => doc.GetString("level") is "Milestone" or "Task");
+            doc => doc.GetString("level") == "Milestone" || doc.GetString("level") == "Task");
 
         var visibleToViewer = await viewer.GetAsync<JsonElement>($"/api/v1/projects/{projectId}/documents");
         visibleToViewer.Status.Should().Be(HttpStatusCode.OK);
