@@ -343,6 +343,36 @@ public class RoleScopeService
             (await GetDepartmentIdsAsync(ct)).Contains(departmentId.Value);
     }
 
+    public async Task<bool> CanModifyProjectDocumentAsync(
+        Guid projectId,
+        Guid? milestoneId,
+        Guid? taskId,
+        CancellationToken ct,
+        string ownPermission,
+        string allPermission,
+        string ownManagePermission,
+        string allManagePermission)
+    {
+        if (!await CanAccessProjectAsync(projectId, ct))
+        {
+            return false;
+        }
+
+        if (await HasAnyPermissionAsync(ct, allPermission, allManagePermission))
+        {
+            return true;
+        }
+
+        if (!await HasAnyPermissionAsync(ct, ownPermission, ownManagePermission))
+        {
+            return false;
+        }
+
+        var departmentId = await ResolveWorkItemDepartmentIdAsync(projectId, milestoneId, taskId, ct);
+        return departmentId.HasValue &&
+            (await GetDepartmentIdsAsync(ct)).Contains(departmentId.Value);
+    }
+
     public async Task<bool> CanUploadProjectDocumentAsync(
         Guid projectId,
         Guid? milestoneId,
