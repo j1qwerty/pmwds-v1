@@ -99,6 +99,17 @@ public static class PermissionCodes
     public const string ReportAllEdit = "REPORT_ALL_EDIT";
     public const string ReportAllDelete = "REPORT_ALL_DELETE";
 
+    public const string KnowledgeOwnManage = "KNOWLEDGE_OWN_MANAGE";
+    public const string KnowledgeOwnView = "KNOWLEDGE_OWN_VIEW";
+    public const string KnowledgeOwnCreate = "KNOWLEDGE_OWN_CREATE";
+    public const string KnowledgeOwnEdit = "KNOWLEDGE_OWN_EDIT";
+    public const string KnowledgeOwnDelete = "KNOWLEDGE_OWN_DELETE";
+    public const string KnowledgeAllManage = "KNOWLEDGE_ALL_MANAGE";
+    public const string KnowledgeAllView = "KNOWLEDGE_ALL_VIEW";
+    public const string KnowledgeAllCreate = "KNOWLEDGE_ALL_CREATE";
+    public const string KnowledgeAllEdit = "KNOWLEDGE_ALL_EDIT";
+    public const string KnowledgeAllDelete = "KNOWLEDGE_ALL_DELETE";
+
     public const string ActivityLogOwnManage = "ACTIVITY_LOG_OWN_MANAGE";
     public const string ActivityLogOwnView = "ACTIVITY_LOG_OWN_VIEW";
     public const string ActivityLogOwnCreate = "ACTIVITY_LOG_OWN_CREATE";
