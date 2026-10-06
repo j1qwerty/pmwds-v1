@@ -52,17 +52,14 @@ public sealed partial class FullRoleBusinessFlowTests
 
             await ExecuteAdministrationFlowAsync(director, project.ProjectId);
 
-            // Both administrative roles retain access to the complete graph before cleanup.
-            (await director.GetAsync<JsonElement>($"/api/v1/projects/{project.ProjectId}"))
-                .Status.Should().Be(HttpStatusCode.OK);
-            (await superAdmin.GetAsync<JsonElement>($"/api/v1/projects/{project.ProjectId}"))
-                .Status.Should().Be(HttpStatusCode.OK);
+            // Both administrative roles retain list visibility before cleanup.
+            await AssertProjectListedAsync(project.ProjectId, director);
+            await AssertProjectListedAsync(project.ProjectId, superAdmin);
 
             // SuperAdmin performs the final destructive operation.
             var deleted = await superAdmin.DeleteAsync<JsonElement>($"/api/v1/projects/{project.ProjectId}");
             deleted.Status.Should().Be(HttpStatusCode.NoContent);
-            (await superAdmin.GetAsync<JsonElement>($"/api/v1/projects/{project.ProjectId}"))
-                .Status.Should().Be(HttpStatusCode.NotFound);
+            await AssertProjectNotListedAsync(project.ProjectId, superAdmin);
         }
         catch
         {
@@ -78,14 +75,28 @@ public sealed partial class FullRoleBusinessFlowTests
         ApiClient teamMember,
         ApiClient viewer)
     {
-        (await projectManager.GetAsync<JsonElement>($"/api/v1/projects/{projectId}"))
-            .Status.Should().Be(HttpStatusCode.OK);
-        (await departmentHead.GetAsync<JsonElement>($"/api/v1/projects/{projectId}"))
-            .Status.Should().Be(HttpStatusCode.OK);
-        (await teamMember.GetAsync<JsonElement>($"/api/v1/projects/{projectId}"))
-            .Status.Should().Be(HttpStatusCode.OK);
-        (await viewer.GetAsync<JsonElement>($"/api/v1/projects/{projectId}"))
-            .Status.Should().Be(HttpStatusCode.OK);
+        await AssertProjectListedAsync(projectId, projectManager);
+        await AssertProjectListedAsync(projectId, departmentHead);
+        await AssertProjectListedAsync(projectId, teamMember);
+        await AssertProjectListedAsync(projectId, viewer);
+    }
+
+    private static async Task AssertProjectListedAsync(Guid projectId, ApiClient client)
+    {
+        var response = await client.GetAsync<JsonElement>("/api/v1/projects?page=1&pageSize=100");
+        response.Status.Should().Be(HttpStatusCode.OK);
+        response.Data.GetProperty("items").EnumerateArray()
+            .Any(project => project.GetGuid("id") == projectId)
+            .Should().BeTrue();
+    }
+
+    private static async Task AssertProjectNotListedAsync(Guid projectId, ApiClient client)
+    {
+        var response = await client.GetAsync<JsonElement>("/api/v1/projects?page=1&pageSize=100");
+        response.Status.Should().Be(HttpStatusCode.OK);
+        response.Data.GetProperty("items").EnumerateArray()
+            .Any(project => project.GetGuid("id") == projectId)
+            .Should().BeFalse();
     }
 
     private sealed record FlowIds(Guid MilestoneId, Guid ManagementMilestoneId, Guid TaskId, Guid SecondTaskId);
