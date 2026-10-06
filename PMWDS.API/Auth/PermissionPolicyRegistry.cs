@@ -77,6 +77,10 @@ public static class PermissionPolicyRegistry
             PermissionCodes.ReportOwnManage, PermissionCodes.ReportOwnView, PermissionCodes.ReportOwnCreate, PermissionCodes.ReportOwnEdit, PermissionCodes.ReportOwnDelete,
             PermissionCodes.ReportAllManage, PermissionCodes.ReportAllView, PermissionCodes.ReportAllCreate, PermissionCodes.ReportAllEdit, PermissionCodes.ReportAllDelete);
 
+        AddScopedCrud(options, "Knowledge",
+            PermissionCodes.KnowledgeOwnManage, PermissionCodes.KnowledgeOwnView, PermissionCodes.KnowledgeOwnCreate, PermissionCodes.KnowledgeOwnEdit, PermissionCodes.KnowledgeOwnDelete,
+            PermissionCodes.KnowledgeAllManage, PermissionCodes.KnowledgeAllView, PermissionCodes.KnowledgeAllCreate, PermissionCodes.KnowledgeAllEdit, PermissionCodes.KnowledgeAllDelete);
+
         AddScopedCrud(options, "Documents",
             PermissionCodes.DocumentOwnManage, PermissionCodes.DocumentOwnView, PermissionCodes.DocumentOwnCreate, PermissionCodes.DocumentOwnEdit, PermissionCodes.DocumentOwnDelete,
             PermissionCodes.DocumentAllManage, PermissionCodes.DocumentAllView, PermissionCodes.DocumentAllCreate, PermissionCodes.DocumentAllEdit, PermissionCodes.DocumentAllDelete);
