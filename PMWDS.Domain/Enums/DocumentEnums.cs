@@ -1,5 +1,14 @@
 namespace PMWDS.Domain.Enums;
 
+public enum DocumentLevel
+{
+    Project = 0,
+    Milestone = 1,
+    Task = 2
+}
+
+namespace PMWDS.Domain.Enums;
+
 /// <summary>
 /// Classifies a project document so the UI can group, filter and badge documents.
 /// A Utilization Certificate carries extra finance metadata and an approval lifecycle,
