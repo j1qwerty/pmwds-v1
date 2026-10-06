@@ -1,0 +1,41 @@
+name: Generate document hierarchy migration
+
+on:
+  push:
+    branches:
+      - refactor/document-hierarchy-permissions
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    if: contains(github.event.head_commit.message, '[generate-document-migration]') == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.x
+
+      - name: Install EF
+        run: dotnet tool install --global dotnet-ef --version 10.0.7
+
+      - name: Restore
+        run: dotnet restore PMWDS.slnx
+
+      - name: Generate migration
+        run: dotnet ef migrations add AddDocumentHierarchy --project PMWDS.Persistence --startup-project PMWDS.API --context ApplicationDbContext --output-dir Migrations --no-build
+
+      - name: Commit generated migration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add PMWDS.Persistence/Migrations
+          git rm .github/workflows/generate-document-migration.yml
+          git diff --cached --quiet && exit 0
+          git commit -m "chore(db): add document hierarchy migration [generate-document-migration]"
+          git push origin HEAD:refactor/document-hierarchy-permissions
