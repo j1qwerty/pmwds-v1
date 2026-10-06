@@ -170,6 +170,28 @@ public class UtilizationCertificatesController : ControllerBase
         return Ok(await ToDtoAsync(new LoadedCertificate(certificate, document), ct));
     }
 
+    [HttpGet("project/{projectId:guid}/capabilities")]
+    [Authorize(Policy = AuthorizationPolicies.UtilizationCertificateView)]
+    public async Task<IActionResult> GetProjectUploadCapabilities(Guid projectId, CancellationToken ct)
+    {
+        if (!await _scope.CanAccessProjectAsync(projectId, ct))
+            return Forbid();
+
+        return Ok(new UtilizationCertificateUploadCapabilitiesDto(
+            await _scope.HasAnyPermissionAsync(
+                ct,
+                PermissionCodes.UtilizationCertificateOwnProjectUpload,
+                PermissionCodes.UtilizationCertificateAllProjectUpload),
+            await _scope.HasAnyPermissionAsync(
+                ct,
+                PermissionCodes.UtilizationCertificateOwnMilestoneUpload,
+                PermissionCodes.UtilizationCertificateAllMilestoneUpload),
+            await _scope.HasAnyPermissionAsync(
+                ct,
+                PermissionCodes.UtilizationCertificateOwnTaskUpload,
+                PermissionCodes.UtilizationCertificateAllTaskUpload)));
+    }
+
     /// <summary>All certificates raised against a project.</summary>
     [HttpGet("project/{projectId:guid}")]
     [Authorize(Policy = AuthorizationPolicies.UtilizationCertificateView)]
