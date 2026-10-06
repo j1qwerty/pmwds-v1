@@ -47,12 +47,6 @@ function legacyEquivalent(permission: PermissionRecord, permissions: PermissionR
   return permissions.find((candidate) => candidate.code === `${match[1]}_${match[3]}`);
 }
 
-function legacyGrantFor(permission: PermissionRecord, permissions: PermissionRecord[]) {
-  const match = permission.code.match(/^(.+?)_(OWN|ALL)_(.+)$/);
-  if (!match) return undefined;
-  return permissions.find((candidate) => candidate.code === `${match[1]}_${match[3]}`);
-}
-
 function manageRow(rows: MatrixPermission[], scope: Scope) {
   return rows.find((row) => row.scope === scope && row.action === "MANAGE");
 }
