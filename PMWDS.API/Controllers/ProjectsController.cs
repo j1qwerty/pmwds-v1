@@ -621,7 +621,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpPost("{id:guid}/documents")]
-    [Authorize(Policy = AuthorizationPolicies.DocumentsCreate)]
+    [Authorize(Policy = AuthorizationPolicies.DocumentsUpload)]
     public async Task<IActionResult> UploadDocument(
         Guid id,
         IFormFile? file,
