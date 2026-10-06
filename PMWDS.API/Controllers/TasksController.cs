@@ -143,6 +143,70 @@ public class TasksController : BaseApiController
         return Ok(PaginatedResponse<TaskDto>.Create(items, pagination, totalCount));
     }
 
+    [HttpGet("dashboard-summary")]
+    public async Task<IActionResult> GetDashboardSummary(CancellationToken ct)
+    {
+        var allowedProjectIds = await _taskWorkflow.GetAccessibleProjectIdsAsync(ct);
+        var query = _db.Tasks
+            .AsNoTracking()
+            .Where(task => allowedProjectIds.Contains(task.ProjectId) && task.ParentTaskId == null);
+
+        var counts = await query
+            .GroupBy(task => 1)
+            .Select(group => new
+            {
+                Total = group.Count(),
+                InProgress = group.Count(task => task.Status == TaskStatus.InProgress),
+                OnHold = group.Count(task => task.Status == TaskStatus.OnHold),
+                Completed = group.Count(task => task.Status == TaskStatus.Completed),
+                Delayed = group.Count(task =>
+                    task.Status == TaskStatus.Delayed ||
+                    (task.Status != TaskStatus.Completed && task.DueDate < DateTime.UtcNow))
+            })
+            .FirstOrDefaultAsync(ct);
+
+        async Task<List<TaskDashboardPreviewDto>> LoadRecentAsync(
+            IQueryable<ProjectTask> source)
+        {
+            return await source
+                .Include(task => task.Project)
+                .Include(task => task.Milestone)
+                .OrderByDescending(task => task.CreatedDate)
+                .Take(5)
+                .Select(task => new TaskDashboardPreviewDto(
+                    task.Id,
+                    task.Title,
+                    task.Status.ToString(),
+                    task.ProjectId,
+                    task.Project != null ? task.Project.Name : null,
+                    task.MilestoneId,
+                    task.Milestone != null ? task.Milestone.Name : null,
+                    task.ProgressPercentage,
+                    task.CreatedDate))
+                .ToListAsync(ct);
+        }
+
+        var recent = await LoadRecentAsync(query);
+        var inProgress = await LoadRecentAsync(query.Where(task => task.Status == TaskStatus.InProgress));
+        var onHold = await LoadRecentAsync(query.Where(task => task.Status == TaskStatus.OnHold));
+        var completed = await LoadRecentAsync(query.Where(task => task.Status == TaskStatus.Completed));
+        var delayed = await LoadRecentAsync(query.Where(task =>
+            task.Status == TaskStatus.Delayed ||
+            (task.Status != TaskStatus.Completed && task.DueDate < DateTime.UtcNow)));
+
+        return Ok(new TaskDashboardStatsDto(
+            counts?.Total ?? 0,
+            counts?.InProgress ?? 0,
+            counts?.OnHold ?? 0,
+            counts?.Completed ?? 0,
+            counts?.Delayed ?? 0,
+            recent,
+            inProgress,
+            onHold,
+            completed,
+            delayed));
+    }
+
     [HttpGet("by-project/{projectId:guid}")]
     public async Task<IActionResult> GetByProject(Guid projectId, CancellationToken ct)
     {
