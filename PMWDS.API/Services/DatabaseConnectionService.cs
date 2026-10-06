@@ -2,6 +2,8 @@ using System.Data;
 using System.Data.Common;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using PMWDS.Infrastructure.Settings;
 using PMWDS.Persistence.Context;
 
@@ -215,27 +217,22 @@ public static class DatabaseConnectionService
         ApplicationDbContext db,
         CancellationToken ct)
     {
-        var connection = db.Database.GetDbConnection();
-        if (connection.State != ConnectionState.Open)
+        // A database that has never been migrated has no history table at all. That is the normal
+        // state of a fresh deployment, not a corrupt one, so report it as "nothing applied yet"
+        // and let the migration step create the table. Selecting from it unconditionally threw
+        // "Invalid object name '__EFMigrationsHistory'" and made a brand new SQL Server database
+        // impossible to start against.
+        //
+        // The check has to be for this specific table, not for "does the database have any
+        // tables": Hangfire installs its own tables during startup, so a database can be
+        // non-empty and still have no migration history.
+        var history = db.GetService<IHistoryRepository>();
+        if (!history.Exists())
         {
-            await connection.OpenAsync(ct);
+            return [];
         }
 
-        var applied = new List<string>();
-        await using var command = connection.CreateCommand();
-        command.CommandText =
-            "SELECT [MigrationId] FROM [__EFMigrationsHistory]";
-
-        await using var reader = await command.ExecuteReaderAsync(ct);
-        while (await reader.ReadAsync(ct))
-        {
-            if (!reader.IsDBNull(0))
-            {
-                applied.Add(reader.GetString(0));
-            }
-        }
-
-        return applied;
+        return [.. history.GetAppliedMigrations().Select(row => row.MigrationId)];
     }
 
     /// <summary>
