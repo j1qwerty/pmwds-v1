@@ -117,3 +117,7 @@ public record UtilizationCertificateDto(
         document?.FileSizeBytes ?? 0,
         capabilities);
 }
+public record UtilizationCertificateUploadCapabilitiesDto(
+    bool CanUploadProject,
+    bool CanUploadMilestone,
+    bool CanUploadTask);
