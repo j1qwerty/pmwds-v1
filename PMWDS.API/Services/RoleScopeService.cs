@@ -312,6 +312,95 @@ public class RoleScopeService
         return organizationIds.Contains(organizationId);
     }
 
+    public async Task<bool> CanAccessProjectDocumentAsync(
+        Guid projectId,
+        Guid? milestoneId,
+        Guid? taskId,
+        CancellationToken ct,
+        string ownViewPermission,
+        string allViewPermission,
+        string ownManagePermission,
+        string allManagePermission)
+    {
+        if (!await CanAccessProjectAsync(projectId, ct))
+        {
+            return false;
+        }
+
+        if (await CanSeeFullProjectDetailsAsync(projectId, ct) ||
+            await HasAnyPermissionAsync(ct, allViewPermission, allManagePermission))
+        {
+            return true;
+        }
+
+        if (!await HasAnyPermissionAsync(ct, ownViewPermission, ownManagePermission))
+        {
+            return false;
+        }
+
+        var departmentId = await ResolveWorkItemDepartmentIdAsync(projectId, milestoneId, taskId, ct);
+        return departmentId.HasValue &&
+            (await GetDepartmentIdsAsync(ct)).Contains(departmentId.Value);
+    }
+
+    public async Task<bool> CanUploadProjectDocumentAsync(
+        Guid projectId,
+        Guid? milestoneId,
+        Guid? taskId,
+        CancellationToken ct,
+        string ownUploadPermission,
+        string allUploadPermission)
+    {
+        if (!await CanAccessProjectAsync(projectId, ct))
+        {
+            return false;
+        }
+
+        if (await HasAnyPermissionAsync(ct, allUploadPermission))
+        {
+            return true;
+        }
+
+        if (!await HasAnyPermissionAsync(ct, ownUploadPermission))
+        {
+            return false;
+        }
+
+        var departmentId = await ResolveWorkItemDepartmentIdAsync(projectId, milestoneId, taskId, ct);
+        return departmentId.HasValue &&
+            (await GetDepartmentIdsAsync(ct)).Contains(departmentId.Value);
+    }
+
+    private async Task<Guid?> ResolveWorkItemDepartmentIdAsync(
+        Guid projectId,
+        Guid? milestoneId,
+        Guid? taskId,
+        CancellationToken ct)
+    {
+        if (taskId.HasValue)
+        {
+            return await _db.Tasks
+                .Where(task => task.Id == taskId.Value && task.ProjectId == projectId)
+                .Select(task => task.Milestone != null
+                    ? task.Milestone.DepartmentId
+                    : (Guid?)null)
+                .FirstOrDefaultAsync(ct);
+        }
+
+        if (milestoneId.HasValue)
+        {
+            return await _db.Milestones
+                .Where(milestone => milestone.Id == milestoneId.Value && milestone.ProjectId == projectId)
+                .Select(milestone => milestone.DepartmentId)
+                .FirstOrDefaultAsync(ct);
+        }
+
+        return await _db.Projects
+            .Where(project => project.Id == projectId)
+            .Select(project => (Guid?)project.DepartmentId)
+            .FirstOrDefaultAsync(ct);
+    }
+
     public async Task<bool> CanAccessProjectDataAsync(
         Guid projectId,
         Guid? departmentId,
