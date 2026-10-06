@@ -15,9 +15,10 @@ interface ProjectDetailsStepProps {
   primaryDepartmentId?: string;
   departments?: Department[];
   onPrimaryDepartmentChange?: (id: string) => void;
+  primaryDepartmentLocked?: boolean;
 }
 
-export function ProjectDetailsStep({ name, description, priority, budget, startDate, endDate, onChange, primaryDepartmentId, departments, onPrimaryDepartmentChange }: ProjectDetailsStepProps) {
+export function ProjectDetailsStep({ name, description, priority, budget, startDate, endDate, onChange, primaryDepartmentId, departments, onPrimaryDepartmentChange, primaryDepartmentLocked = false }: ProjectDetailsStepProps) {
   // The budget is typed in lakhs. Holding the raw text locally keeps typing natural: with a
   // controlled value of 0 the browser edits "0" as a string, so typing 20 lands as "020".
   const [budgetLakhs, setBudgetLakhs] = useState(budget > 0 ? String(budget) : "");
@@ -45,6 +46,7 @@ export function ProjectDetailsStep({ name, description, priority, budget, startD
           <select
             value={primaryDepartmentId ?? ""}
             onChange={(e) => onPrimaryDepartmentChange(e.target.value)}
+            disabled={primaryDepartmentLocked}
             className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none bg-white/80 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
           >
             <option value="">-- None --</option>
@@ -52,6 +54,10 @@ export function ProjectDetailsStep({ name, description, priority, budget, startD
               <option key={d.id} value={d.id}>{d.name}</option>
             ))}
           </select>
+          <p className="text-[10px] text-slate-400 mt-1">
+            Primary Department owns the project and keeps full visibility. Other departments only see milestones and tasks assigned to their department.
+          </p>
+          {primaryDepartmentLocked && <p className="text-[10px] text-indigo-500 mt-1">Your permission scope fixes the primary department to your department.</p>}
         </div>
       )}
 
