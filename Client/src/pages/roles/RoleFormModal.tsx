@@ -196,7 +196,7 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
       }
     }
 
-    const form = event.currentTarget;
+    const form = event.currentTarget as HTMLFormElement;
     const name = new FormData(form).get("name")?.toString().trim() ?? "";
     const description = new FormData(form).get("description")?.toString() ?? "";
     onSubmit({ name, description, permissionLevel: Number(new FormData(form).get("permissionLevel") ?? 10), permissionIds: Array.from(normalized) });
