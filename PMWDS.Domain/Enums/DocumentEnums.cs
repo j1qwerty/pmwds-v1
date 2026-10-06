@@ -7,7 +7,6 @@ public enum DocumentLevel
     Task = 2
 }
 
-namespace PMWDS.Domain.Enums;
 
 /// <summary>
 /// Classifies a project document so the UI can group, filter and badge documents.
