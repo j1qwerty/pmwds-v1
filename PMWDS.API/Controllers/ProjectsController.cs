@@ -713,7 +713,7 @@ public class ProjectsController : BaseApiController
 
         HttpContext.Items["ActivityLog"] = new ActivityLogContext(
             ActivityType: "Document Uploaded",
-            Description: $"{_currentUser.FullName} uploaded "{file.FileName}" to project "{project.Name}"",
+            Description: $"{_currentUser.FullName} uploaded \"{file.FileName}\" to project \"{project.Name}\"",
             Metadata: new Dictionary<string, object>
             {
                 ["projectId"] = id,
