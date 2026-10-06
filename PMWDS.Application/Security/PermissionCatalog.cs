@@ -31,6 +31,24 @@ public static class PermissionCatalog
         "System"
     };
 
+    public static IEnumerable<string> GetScopedAliases(string permission)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(
+            permission,
+            @"^(DEPARTMENT|PROJECT|MILESTONE|TASK|SUBTASK|USER|NOTIFICATION|REPORT|ACTIVITY_LOG|DOCUMENT|UTILIZATION_CERTIFICATE)_(VIEW|CREATE|EDIT|DELETE|MANAGE|ASSIGN|COMMENT_CREATE|ATTACHMENT_CREATE)$",
+            System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+        if (!match.Success)
+        {
+            yield break;
+        }
+
+        var module = match.Groups[1].Value;
+        var action = match.Groups[2].Value;
+        yield return $"{module}_OWN_{action}";
+        yield return $"{module}_ALL_{action}";
+    }
+
     public static readonly IReadOnlyDictionary<string, string[]> ManagePermissionCoverage =
         new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
         {
