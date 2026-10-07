@@ -21,6 +21,7 @@ export function StatsCards({ health, burnout, delay }: StatsCardsProps) {
         icon="psychology"
         color="indigo"
         hint="Active signals count current health weaknesses, risk items, high-risk team burnout records, and high-delay tasks."
+        hintAlign="left"
       />
       <StatCard
         label="Overall Health"
@@ -29,6 +30,7 @@ export function StatsCards({ health, burnout, delay }: StatsCardsProps) {
         icon="monitoring"
         color="emerald"
         hint="This uses the selected project's overall health score. It is based on schedule, budget, team capacity, and completed work."
+        hintAlign="left"
       />
       <StatCard
         label="Risk Alerts"
@@ -37,6 +39,7 @@ export function StatsCards({ health, burnout, delay }: StatsCardsProps) {
         icon="warning"
         color="red"
         hint="Risk alerts count team members above the burnout-risk threshold plus the selected task when its delay probability is 70% or higher."
+        hintAlign="right"
       />
       <StatCard
         label="Delay Risk"
@@ -45,6 +48,7 @@ export function StatsCards({ health, burnout, delay }: StatsCardsProps) {
         icon="speed"
         color="violet"
         hint="Delay risk is the selected task's probability of finishing after its planned due date. AI output is used when available, otherwise the live-data fallback uses current progress and dates."
+        hintAlign="right"
       />
     </div>
   );
@@ -57,6 +61,7 @@ function StatCard({
   icon,
   color,
   hint,
+  hintAlign = "right",
 }: {
   label: string;
   value: string | number;
@@ -64,6 +69,7 @@ function StatCard({
   icon: string;
   color: "indigo" | "emerald" | "red" | "violet";
   hint?: string;
+  hintAlign?: "left" | "right";
 }) {
   const colorMap = {
     indigo: { bg: "bg-indigo-50", text: "text-indigo-600", border: "border-indigo-100" },
@@ -73,13 +79,19 @@ function StatCard({
   };
   const colors = colorMap[color];
 
+  // No overflow-hidden here: the card is narrower than the hint popup, so
+  // clipping would cut the popup off at the card edge. Nothing inside the
+  // card bleeds, so rounded corners render fine without it.
+  // No backdrop-blur either: it creates a stacking context that traps the
+  // popup's z-index, so later cards would paint over it. relative + hover:z
+  // lifts the hovered card (popup included) above its siblings instead.
   return (
-    <div className={"rounded-xl border " + colors.border + " bg-white/90 backdrop-blur-sm overflow-hidden"} style={{ padding: "clamp(6px, 1.5vw, 12px)" }}>
+    <div className={"relative hover:z-20 focus-within:z-20 rounded-xl border " + colors.border + " bg-white/90 overflow-visible"} style={{ padding: "clamp(6px, 1.5vw, 12px)" }}>
       <div className="flex items-center justify-between mb-2">
         <span className="font-semibold text-slate-400 uppercase tracking-wider" style={{ fontSize: "clamp(8px, 2vw, 11px)" }}>{label}</span>
         <div className="flex items-center gap-1.5">
           <span className={"material-symbols-outlined leading-none " + colors.text} style={{ fontSize: "clamp(16px, 3.5vw, 24px)" }}>{icon}</span>
-          {hint && <AIInfoHint title={label}>{hint}</AIInfoHint>}
+          {hint && <AIInfoHint title={label} align={hintAlign}>{hint}</AIInfoHint>}
         </div>
       </div>
       <span className={"font-bold " + colors.text} style={{ fontSize: "clamp(16px, 4.5vw, 30px)" }}>{value}</span>

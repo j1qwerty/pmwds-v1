@@ -382,3 +382,143 @@ export function calculateTimelinePrediction(project: Project) {
     text: statusText,
   };
 }
+
+// ── Anomaly feed + recommendations (ported from Saturday reference) ─────────
+// Live anomalies from the current portfolio: escalated tasks, overdue tasks,
+// and projects past their end date. Replaces any hardcoded sample entries.
+
+export function isTaskDone(task: Task): boolean {
+  return task.status === "Completed" || (task.progressPercentage ?? 0) >= 100;
+}
+
+export function isTaskLate(task: Task): boolean {
+  if (isTaskDone(task)) return false;
+  if (task.isOverdue) return true;
+  return task.dueDate ? new Date(task.dueDate).getTime() < Date.now() : false;
+}
+
+export type Anomaly = { title: string; detail: string; time: string; tone: "red" | "amber" | "indigo" };
+
+export function computeAnomalies(
+  projects: Project[],
+  overdue: Task[],
+  escalated: Task[],
+): Anomaly[] {
+  const out: Anomaly[] = [];
+
+  for (const task of escalated.slice(0, 3)) {
+    out.push({
+      title: "Escalated task",
+      detail: `"${task.title}" was escalated in ${task.projectName || "a project"}.`,
+      time: task.escalatedDate ? new Date(task.escalatedDate).toLocaleDateString() : "Recently",
+      tone: "red",
+    });
+  }
+
+  for (const task of overdue.slice(0, 3)) {
+    out.push({
+      title: "Overdue task",
+      detail: `"${task.title}" passed its due date in ${task.projectName || "a project"}.`,
+      time: task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "Recently",
+      tone: "amber",
+    });
+  }
+
+  for (const project of projects.filter((p) => p.status !== "Completed" && p.plannedEndDate && new Date(p.plannedEndDate).getTime() < Date.now()).slice(0, 2)) {
+    out.push({
+      title: "Project past its end date",
+      detail: `"${project.name}" was due ${new Date(project.plannedEndDate).toLocaleDateString()} and is still open.`,
+      time: new Date(project.plannedEndDate).toLocaleDateString(),
+      tone: "red",
+    });
+  }
+
+  if (out.length === 0) {
+    out.push({ title: "No anomalies", detail: "Nothing escalated, overdue, or past its end date.", time: "Now", tone: "indigo" });
+  }
+
+  return out;
+}
+
+export type Insight = { title: string; detail: string; tone: "red" | "amber" | "indigo" | "emerald" };
+
+/**
+ * Actionable findings derived from the selected project's real state:
+ * budget overrun, overdue tasks, unassigned work, stalled tasks, team load,
+ * plus the AI health service's own weaknesses when available.
+ */
+export function computeInsights(
+  project: Project | null,
+  health: ProjectHealth | null,
+  tasks: Task[],
+  burnout: Array<{ fullName: string; burnoutRisk: number; activeTasks: number }>,
+): Insight[] {
+  const insights: Insight[] = [];
+
+  if (project) {
+    if (project.plannedBudget > 0 && project.actualCost > project.plannedBudget) {
+      const over = Math.round(((project.actualCost - project.plannedBudget) / project.plannedBudget) * 100);
+      insights.push({
+        title: "Reduce spend or re-forecast",
+        detail: `${project.name} is ${over}% over its planned budget. Review the cost lines driving the overrun.`,
+        tone: "red",
+      });
+    }
+
+    const late = tasks.filter(isTaskLate);
+    if (late.length > 0) {
+      insights.push({
+        title: `Clear ${late.length} overdue task${late.length === 1 ? "" : "s"}`,
+        detail: `The furthest behind is "${late[0].title}", due ${new Date(late[0].dueDate).toLocaleDateString()}. Escalate or re-date it.`,
+        tone: "red",
+      });
+    }
+
+    const unassigned = tasks.filter((t) => !isTaskDone(t) && !t.assignedToUserId && !t.assignees?.length);
+    if (unassigned.length > 0) {
+      insights.push({
+        title: `Assign ${unassigned.length} open task${unassigned.length === 1 ? "" : "s"}`,
+        detail: "Open work with nobody responsible is the most common cause of a missed date.",
+        tone: "amber",
+      });
+    }
+
+    const stalled = tasks.filter(
+      (t) => !isTaskDone(t) && t.status === "NotStarted" && t.startDate && new Date(t.startDate).getTime() < Date.now(),
+    );
+    if (stalled.length > 0) {
+      insights.push({
+        title: `${stalled.length} task${stalled.length === 1 ? " has" : "s have"} a start date in the past but no progress`,
+        detail: `Oldest is "${stalled[0].title}". Either start it or move its dates to match reality.`,
+        tone: "amber",
+      });
+    }
+  }
+
+  const strained = burnout.filter((b) => (b.burnoutRisk ?? 0) >= 0.6);
+  if (strained.length > 0) {
+    insights.push({
+      title: "Rebalance the team load",
+      detail: `${strained.map((b) => b.fullName).slice(0, 3).join(", ")} ${strained.length === 1 ? "is" : "are"} carrying more than a fair share of open work.`,
+      tone: "red",
+    });
+  }
+
+  if (health) {
+    for (const weakness of health.weaknesses.slice(0, 2)) {
+      insights.push({ title: weakness, detail: "Flagged as a weakness in the latest health analysis.", tone: "indigo" });
+    }
+  }
+
+  if (insights.length === 0) {
+    insights.push({
+      title: project ? "Nothing needs attention right now" : "Select a project to analyse",
+      detail: project
+        ? "No overdue work, no budget overrun, and no overloaded team members were found for this project."
+        : "Pick a project from the list to see its own findings.",
+      tone: "emerald",
+    });
+  }
+
+  return insights.slice(0, 6);
+}

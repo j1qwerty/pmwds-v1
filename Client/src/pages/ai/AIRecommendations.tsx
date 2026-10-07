@@ -1,43 +1,60 @@
-import { GlassCard } from "../shared";
+import type { Project, ProjectHealth, Task } from "../../types";
+import { GlassCard, InfoTip } from "../shared";
 import { Icon } from "../../components/ui/Icon";
-import { AIInfoHint } from "./AIInfoHint";
+import { computeInsights, type Insight } from "./aiCalculations";
 
 interface AIRecommendationsProps {
-  recommendations: string[];
-  fallback: boolean;
+  project: Project | null;
+  health: ProjectHealth | null;
+  tasks: Task[];
+  burnout: Array<{ fullName: string; burnoutRisk: number; activeTasks: number }>;
 }
 
-export function AIRecommendations({ recommendations, fallback }: AIRecommendationsProps) {
+const TONE: Record<Insight["tone"], { text: string; bg: string; icon: string }> = {
+  red: { text: "text-red-600", bg: "bg-red-50 border-red-100", icon: "priority_high" },
+  amber: { text: "text-amber-600", bg: "bg-amber-50 border-amber-100", icon: "warning" },
+  indigo: { text: "text-indigo-600", bg: "bg-indigo-50 border-indigo-100", icon: "lightbulb" },
+  emerald: { text: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100", icon: "check_circle" },
+};
+
+export function AIRecommendations({ project, health, tasks, burnout }: AIRecommendationsProps) {
+  const insights = computeInsights(project, health, tasks, burnout);
+
   return (
     <GlassCard className="p-5">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Icon name="auto_awesome" size={20} className="text-indigo-500" />
-          <h3 className="text-sm font-bold text-slate-800">AI Recommendations</h3>
+      <div className="flex items-center justify-between mb-4 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <Icon name="auto_awesome" size={20} className="text-indigo-500 shrink-0" />
+          <h3 className="text-sm font-bold text-slate-800 truncate">Recommendations</h3>
         </div>
-        <AIInfoHint title="Recommendations">
-          Recommendations come from the selected project's health risks and current delivery data. When an AI provider is unavailable, the page uses rule-based suggestions from the same live inputs.
-        </AIInfoHint>
+        <InfoTip
+          title="Recommendations"
+          summary="Suggestions on what to fix first, worked out from the selected project's live state."
+          points={[
+            "Budget overrun",
+            "Overdue tasks",
+            "Unassigned work",
+            "Stalled tasks",
+            "Team load",
+          ]}
+          note="When the AI health service is available its own weaknesses are added to the end of the list."
+        />
       </div>
 
-      {recommendations.length === 0 ? (
-        <div className="py-10 text-center text-xs text-slate-400">No actions are currently suggested.</div>
-      ) : (
-        <div className="space-y-2">
-          {recommendations.slice(0, 5).map((recommendation) => (
-            <div key={recommendation} className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors">
-              <span className="material-symbols-outlined text-lg text-indigo-500 mt-0.5">lightbulb</span>
-              <div>
-                <span className="text-xs font-semibold text-slate-700 block">Recommended action</span>
-                <span className="text-[11px] text-slate-500 leading-relaxed">{recommendation}</span>
+      <div className="space-y-2">
+        {insights.map((insight) => {
+          const tone = TONE[insight.tone];
+          return (
+            <div key={insight.title} className={`flex items-start gap-3 p-3 rounded-lg border ${tone.bg}`}>
+              <span className={`material-symbols-outlined text-lg ${tone.text} mt-0.5 shrink-0`}>{tone.icon}</span>
+              <div className="min-w-0">
+                <span className={`text-xs font-semibold ${tone.text} block`}>{insight.title}</span>
+                <span className="text-[11px] text-slate-600 leading-relaxed">{insight.detail}</span>
               </div>
             </div>
-          ))}
-        </div>
-      )}
-      {fallback && recommendations.length > 0 && (
-        <p className="text-[9px] text-amber-500 mt-3">Using live-data fallback rules because AI recommendations are unavailable.</p>
-      )}
+          );
+        })}
+      </div>
     </GlassCard>
   );
 }

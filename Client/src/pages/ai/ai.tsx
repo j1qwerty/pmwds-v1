@@ -25,6 +25,7 @@ import { AIRecommendations } from "./AIRecommendations";
 import { BurnoutPanel } from "./BurnoutPanel";
 import { AIChatPanel } from "./AIChatPanel";
 import { NeuralHeatmap } from "./NeuralHeatmap";
+import { AnomalyFeed } from "./AnomalyFeed";
 import { calculateFallbackBurnout, calculateFallbackDelay, calculateFallbackProjectHealth } from "./aiCalculations";
 import { AIInfoHint } from "./AIInfoHint";
 
@@ -41,6 +42,8 @@ export function AIPage() {
   const [selectedDepartmentId, setSelectedDepartmentId] = useState("");
   const [projectTasks, setProjectTasks] = useState<Task[]>([]);
   const [myTasks, setMyTasks] = useState<Task[]>([]);
+  const [overdue, setOverdue] = useState<Task[]>([]);
+  const [escalated, setEscalated] = useState<Task[]>([]);
   const [burnout, setBurnout] = useState<BurnoutRiskRecord[]>([]);
   const [health, setHealth] = useState<ProjectHealth | null>(null);
   const [delay, setDelay] = useState<any>(null);
@@ -240,6 +243,14 @@ export function AIPage() {
     void loadBurnout();
   }, [loadBurnout]);
 
+  // Overdue + escalated feed the anomaly feed. Loaded once and reused rather
+  // than only when the AI calls fail.
+  useEffect(() => {
+    if (!auth) return;
+    api.getOverdueTasks(auth.token).then((t) => setOverdue(t as Task[])).catch(() => setOverdue([]));
+    api.getEscalatedTasks(auth.token).then((t) => setEscalated(t as Task[])).catch(() => setEscalated([]));
+  }, [auth]);
+
   useEffect(() => {
     if (!auth) return;
 
@@ -292,7 +303,6 @@ export function AIPage() {
   const effectiveHealth = health ?? fallbackHealth;
   const effectiveDelay = delay ?? fallbackDelay;
   const effectiveBurnout = burnout.length ? burnout : fallbackBurnout;
-  const recommendations = effectiveHealth?.recommendations ?? [];
 
   const handleChat = async () => {
     if (!auth || !chatPrompt.trim()) return;
@@ -338,20 +348,7 @@ export function AIPage() {
             onSelectProject={setSelectedProjectId}
           />
 
-          <GlassCard className="p-4 border border-indigo-100/30">
-            <div className="flex items-center justify-between gap-2 mb-3 text-indigo-600">
-              <div className="flex items-center gap-2">
-                <Icon name="bolt" size={18} />
-                <span className="text-[11px] font-bold uppercase tracking-wider">Live Data</span>
-              </div>
-              <AIInfoHint title="Live AI data">
-                AI panels read current project, task, user, and delivery data. SignalR refreshes the selected data when projects, tasks, milestones, users, or departments change.
-              </AIInfoHint>
-            </div>
-            <p className="text-[10px] text-slate-500 leading-relaxed">
-              {projectTasks.length} selected-project task(s) loaded. {appData.users.length} team member(s) available to the analysis.
-            </p>
-          </GlassCard>
+          <AnomalyFeed projects={visibleProjects} overdue={overdue} escalated={escalated} />
         </div>
 
         <div className="flex flex-col gap-5">
@@ -366,7 +363,12 @@ export function AIPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <TimelinePredictions projects={visibleProjects} />
-            <AIRecommendations recommendations={recommendations} fallback={!health && Boolean(fallbackHealth)} />
+            <AIRecommendations
+              project={selectedProject}
+              health={effectiveHealth}
+              tasks={projectTasks}
+              burnout={effectiveBurnout}
+            />
           </div>
 
           <AIChatPanel

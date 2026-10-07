@@ -51,6 +51,39 @@ function manageRow(rows: MatrixPermission[], scope: Scope) {
   return rows.find((row) => row.scope === scope && row.action === "MANAGE");
 }
 
+/**
+ * Why an Own Department grant reads as checked without being ticked itself.
+ * "ALL" means an All Departments grant covers it; "OWN_MANAGE" means the same
+ * scope's Manage covers it. Anything else (e.g. a legacy code on an old role)
+ * reports as "OTHER" so the tooltip never blames the wrong grant.
+ */
+function ownGrantSource(
+  row: MatrixPermission,
+  rows: MatrixPermission[],
+  selected: Set<string>,
+): "ALL" | "OWN_MANAGE" | "OTHER" | null {
+  if (row.scope !== "OWN" || selected.has(row.permission.id)) return null;
+  if (CRUD_ACTIONS.has(row.action)) {
+    const allAction = rows.find((item) => item.scope === "ALL" && item.action === row.action);
+    if (allAction && selected.has(allAction.permission.id)) return "ALL";
+    const allManage = manageRow(rows, "ALL");
+    if (allManage && selected.has(allManage.permission.id)) return "ALL";
+    const ownManage = manageRow(rows, "OWN");
+    if (ownManage && selected.has(ownManage.permission.id)) return "OWN_MANAGE";
+    return "OTHER";
+  }
+  const all = rows.find((item) => item.scope === "ALL" && item.action === row.action);
+  if (all && selected.has(all.permission.id)) return "ALL";
+  return "OTHER";
+}
+
+function inheritedTitle(source: "ALL" | "OWN_MANAGE" | "OTHER" | null, fallback: string) {
+  if (source === "ALL") return "Granted by All Departments";
+  if (source === "OWN_MANAGE") return "Granted by Manage — uncheck Manage to change it";
+  if (source === "OTHER") return "Granted by another permission on this role";
+  return fallback;
+}
+
 export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: RoleFormModalProps) {
   const [submitting, setSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -337,6 +370,7 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                       {extras.map((row) => {
+                        const source = ownGrantSource(row, rows, selected);
                         const inherited = scope === "OWN" && isEffective(row.permission) && !selected.has(row.permission.id);
                         return (
                           <label key={row.permission.id} className="flex items-start gap-2 rounded-lg border border-slate-100 bg-white px-3 py-2 hover:bg-slate-50">
@@ -345,7 +379,7 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
                               checked={isEffective(row.permission)}
                               disabled={inherited}
                               onChange={() => togglePermission(row, rows)}
-                              title={inherited ? "Granted by All Departments" : row.permission.description}
+                              title={inherited ? inheritedTitle(source, row.permission.description) : row.permission.description}
                               className="mt-0.5 size-4 accent-indigo-600"
                             />
                             <span className="min-w-0">
@@ -385,6 +419,7 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
                             if (!row) return <td key={action} className="px-3 py-3 text-center text-slate-300">—</td>;
                             const checked = isEffective(row.permission);
                             const inherited = scope === "OWN" && checked && !selected.has(row.permission.id);
+                            const source = scope === "OWN" ? ownGrantSource(row, rows, selected) : null;
                             return (
                               <td key={action} className="px-3 py-3 text-center">
                                 <input
@@ -392,7 +427,7 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
                                   checked={checked}
                                   disabled={inherited}
                                   onChange={() => togglePermission(row, rows)}
-                                  title={inherited ? "Granted by All Departments" : row.permission.description}
+                                  title={inherited ? inheritedTitle(source, row.permission.description) : row.permission.description}
                                   className="size-4 accent-indigo-600"
                                 />
                               </td>
@@ -400,16 +435,22 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
                           })}
                           <td className="px-4 py-3">
                             {manage ? (
+                              (() => {
+                                const manageInherited = scope === "OWN" && !selected.has(manage.permission.id) && isEffective(manage.permission);
+                                return (
                               <label className="inline-flex items-center gap-2">
                                 <input
                                   type="checkbox"
-                                  checked={selected.has(manage.permission.id)}
+                                  checked={isEffective(manage.permission)}
+                                  disabled={manageInherited}
                                   onChange={() => toggleManage(scope, rows)}
-                                  title={manage.permission.description}
+                                  title={manageInherited ? "Granted by All Departments" : manage.permission.description}
                                   className="size-4 accent-emerald-600"
                                 />
                                 <span className="font-semibold text-emerald-700">Manage</span>
                               </label>
+                                );
+                              })()
                             ) : (
                               <span className="text-slate-300">—</span>
                             )}

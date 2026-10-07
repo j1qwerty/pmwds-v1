@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { PermissionRecord, RoleRecord } from "../../types";
-import { roleDisplayName } from "../../permissions";
+import { coversManagedPermission, roleDisplayName } from "../../permissions";
 import {
   AnimatedBackground,
   GlassCard,
@@ -13,7 +13,6 @@ import {
   ModalOverlay,
   DeleteConfirmationModal,
   usePermission,
-  expandPermissions,
   StatCard,
   TabButton,
   useToast,
@@ -63,12 +62,16 @@ export function RolesPage() {
 
   const ADMIN_ONLY_MODULES = new Set(["Authorization", "Authentication", "System"]);
 
+  // A role may only be given a permission the editor effectively holds. An exact
+  // code match is not enough: an admin seeded with TASK_ALL_MANAGE holds
+  // TASK_OWN_VIEW too (ALL covers OWN, MANAGE covers CRUD), so coverage — the
+  // same semantics as perm.has() — decides what the matrix may offer. Otherwise
+  // every Own Department row renders as "—" for anyone but superadmin.
   const assignablePermissions = useMemo(() => {
     if (!auth) return [];
     if (perm.isSuperAdmin) return permissions;
-    const userPermSet = new Set(expandPermissions(auth.permissions));
     return permissions.filter((p) =>
-      !ADMIN_ONLY_MODULES.has(p.module) && userPermSet.has(p.code),
+      !ADMIN_ONLY_MODULES.has(p.module) && coversManagedPermission(auth.permissions, p.code),
     );
   }, [permissions, auth, perm.isSuperAdmin]);
 
@@ -182,7 +185,7 @@ export function RolesPage() {
             onClick={() => setActiveTab("permissions")}
             icon="lock"
             label="Permissions"
-            count={permissions.length}
+            count={assignablePermissions.length}
           />
         </div>
       </div>
@@ -201,7 +204,7 @@ export function RolesPage() {
 
         {activeTab === "permissions" && (
           <PermissionsTable
-            permissions={permissions}
+            permissions={assignablePermissions}
             onEdit={(perm) => setPermissionModal({ open: true, editPermission: perm })}
             onDelete={(perm) => setDeleteConfirm({ open: true, type: "permission", id: perm.id, name: perm.code })}
             onCreate={() => setPermissionModal({ open: true })}

@@ -4,9 +4,10 @@ import { Icon } from "../../components/ui/Icon";
 interface AIInfoHintProps {
   title: string;
   children: string;
+  align?: "left" | "right";
 }
 
-export function AIInfoHint({ title, children }: AIInfoHintProps) {
+export function AIInfoHint({ title, children, align = "right" }: AIInfoHintProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -32,7 +33,7 @@ export function AIInfoHint({ title, children }: AIInfoHintProps) {
       </button>
       {open && (
         <div
-          className="absolute right-0 top-8 z-50 w-72 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-xl"
+          className={`absolute top-8 z-50 w-72 max-w-[calc(100vw-2.5rem)] rounded-xl border border-slate-200 bg-white p-3 text-left shadow-xl ${align === "right" ? "right-0" : "left-0"}`}
           role="tooltip"
         >
           <div className="flex items-start gap-2">

@@ -118,7 +118,8 @@ export function DashboardPage() {
   const loadActivity = useCallback(async () => {
     if (!auth) return;
     try {
-      const items = await api.getTeamActivityLogs(auth.token, 50);
+      // 200 rows so a busy workspace still covers the full 7-day window.
+      const items = await api.getTeamActivityLogs(auth.token, 200);
       setActivityLogs(Array.isArray(items) ? items : []);
     } catch (cause) {
       addToast(cause instanceof Error ? cause.message : "Failed to load activity", "error");
@@ -285,14 +286,28 @@ export function DashboardPage() {
     navigate(target.path);
   }, [auth, navigate, addToast]);
 
+  // Real activity: bucket the team's activity log (task created/updated/commented,
+  // project and milestone events, ...) by calendar day over the last 7 days. Labels carry
+  // the actual date, so a spike always means something happened that day - unlike plain
+  // weekday buckets, which lump every event ever created on e.g. a Saturday into one bar.
   const activityData = useMemo(() => {
     const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const days: { key: string; label: string; value: number }[] = [];
+    const days: {
+      key: string;
+      label: string;
+      value: number;
+      events: Map<string, number>;
+    }[] = [];
     const now = new Date();
     for (let offset = 6; offset >= 0; offset--) {
       const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - offset);
       const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-      days.push({ key, label: `${dayNames[d.getDay()]} ${d.getDate()}`, value: 0 });
+      days.push({
+        key,
+        label: `${dayNames[d.getDay()]} ${d.getDate()}`,
+        value: 0,
+        events: new Map<string, number>(),
+      });
     }
     const byKey = new Map(days.map((d) => [d.key, d]));
 
@@ -301,14 +316,33 @@ export function DashboardPage() {
         ? activityLogs.filter((log) => log.userId === auth.userId)
         : activityLogs;
 
+    // Counted over the same logs and the same window as the chart, so a day's
+    // detail can never report a different total than the line above it.
     sourceLogs.forEach((log) => {
       const at = new Date(log.timestamp);
       if (Number.isNaN(at.getTime())) return;
-      const bucket = byKey.get(`${at.getFullYear()}-${at.getMonth()}-${at.getDate()}`);
-      if (bucket) bucket.value++;
+      const key = `${at.getFullYear()}-${at.getMonth()}-${at.getDate()}`;
+      const bucket = byKey.get(key);
+      if (!bucket) return;
+
+      bucket.value++;
+      // Tallied per day, so hovering or clicking a point can say what happened
+      // that day rather than only how many events there were.
+      const label = (log.activityType || "Other").trim() || "Other";
+      bucket.events.set(label, (bucket.events.get(label) ?? 0) + 1);
     });
 
-    return days.map(({ label, value }) => ({ day: label, value }));
+    return {
+      points: days.map(({ label, value, events }) => ({
+        day: label,
+        value,
+        // Busiest types first; capped so the popup stays short.
+        events: [...events.entries()]
+          .map(([label, count]) => ({ label, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 6),
+      })),
+    };
   }, [activityLogs, selectedActivityFilter, auth]);
 
   if (loading) return <PageSkeleton />;
@@ -329,7 +363,9 @@ export function DashboardPage() {
           />
 
           <Activity
-            data={activityData}
+            data={activityData.points}
+            isFiltered={selectedActivityFilter === "My Tasks"}
+            filterLabel={selectedActivityFilter === "My Tasks" ? "Your activity" : undefined}
             title="Activity"
             filterOptions={[]}
             selectedFilter={selectedActivityFilter}
