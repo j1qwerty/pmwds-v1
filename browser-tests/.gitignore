@@ -1,0 +1,5 @@
+node_modules/
+runs/
+reports/
+playwright-report/
+test-results/

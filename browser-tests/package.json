@@ -1,0 +1,20 @@
+{
+  "name": "pmwds-browser-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "e2e": "tsx src/runner.ts automatic",
+    "e2e:interactive": "tsx src/runner.ts interactive",
+    "e2e:discover": "tsx src/discover.ts",
+    "install:browsers": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "prettier": "^3.6.2",
+    "tsx": "^4.20.5",
+    "typescript": "^6.0.2"
+  }
+}
