@@ -7,6 +7,7 @@ import { createProject, loginAs, verifyProjectForUser } from "./project-lifecycl
 import type { FlowState } from "./types.js";
 import {
   adminMilestonesAndTasks,
+  createMilestoneDependency,
   roleWork,
   teamMemberWork,
   verifyViewer,
@@ -86,6 +87,7 @@ export async function runFullBusinessFlow(
     const director = await use("director");
     await verifyProjectForUser(director, runner, state, "Director");
     await adminMilestonesAndTasks(director, runner, state);
+    await createMilestoneDependency(director, runner, state);
 
     for (const role of [
       "departmentHeadA",
@@ -127,6 +129,17 @@ export async function runFullBusinessFlow(
       await headC.getByRole("button", { name: /delete task/i }).last().click();
       await headC.getByRole("button", { name: /delete|confirm/i }).last().click();
       await expect(headC.getByText(taskName, { exact: true })).toHaveCount(0);
+    });
+
+    const manager = await use("projectManager");
+    await runner.step("Project Manager edits the project", async () => {
+      await manager.goto(`${ROUTES.projects}/${state.projectId}`, {
+        waitUntil: "domcontentloaded",
+      });
+      await manager.locator('button[title="Edit project"]').click();
+      await fillLabel(manager, /^Description$/, "Updated by Project Manager in browser E2E.");
+      await manager.getByRole("button", { name: /^Save$/ }).click();
+      await expect(manager.getByText("Updated by Project Manager in browser E2E.", { exact: true })).toBeVisible();
     });
 
     const admin = await use("director");
