@@ -73,7 +73,7 @@ public sealed partial class FullRoleBusinessFlowTests
             .Status.Should().Be(HttpStatusCode.NoContent);
     }
 
-    private static async Task ExecuteAdministrationFlowAsync(ApiClient director, Guid projectId)
+    private async Task ExecuteAdministrationFlowAsync(ApiClient director, Guid projectId)
     {
         // Director exercises project edit/status while the same project is still live.
         var editedProject = await director.PutAsync<JsonElement>($"/api/v1/projects/{projectId}", new
@@ -184,6 +184,11 @@ public sealed partial class FullRoleBusinessFlowTests
         finally
         {
             (await director.DeleteAsync<JsonElement>($"/api/v1/departments/{departmentId}"))
+                .Status.Should().Be(HttpStatusCode.Forbidden);
+
+            // Deleting a department is SuperAdmin-only, so the Director that created this
+            // temporary department cannot clean it up; the SuperAdmin session does.
+            (await _fixture.SuperAdmin.Client.DeleteAsync<JsonElement>($"/api/v1/departments/{departmentId}"))
                 .Status.Should().Be(HttpStatusCode.NoContent);
         }
     }

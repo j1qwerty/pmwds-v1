@@ -673,8 +673,15 @@ public class RoleScopeService
 
         var permissions = await GetPermissionSnapshotAsync(ct);
         var hasAll = permissionCodes
-            .Where(code => code.Contains("_All", StringComparison.Ordinal))
+            .Where(code => code.Contains("_All", StringComparison.OrdinalIgnoreCase))
             .Any(permissions.Contains);
+
+        // The permission codes are upper case (PROJECT_ALL_EDIT), so these two scope probes have
+        // to be case-insensitive or they never match and every scoped permission silently
+        // degrades to the department fallback.
+        var departmentIds = await GetDepartmentIdsAsync(ct);
+        var isInProjectDepartment = departmentIds.Contains(project.DepartmentId);
+
         if (hasAll)
         {
             if (project.OrganizationId.HasValue && await CanAccessOrganizationAsync(project.OrganizationId.Value, ct))
@@ -690,11 +697,15 @@ public class RoleScopeService
                 }
             }
 
-            return false;
+            // An all-department scope still covers the caller's own department, so this falls
+            // through to the department check rather than denying outright. A project manager
+            // holds PROJECT_ALL_MANAGE but no organization permission, and must still be able to
+            // manage a project owned by their own department - the same rule
+            // CanModifyProjectChildAsync applies when it returns early on an all-scope code.
+            return isInProjectDepartment;
         }
 
-        var departmentIds = await GetDepartmentIdsAsync(ct);
-        if (departmentIds.Contains(project.DepartmentId))
+        if (isInProjectDepartment)
         {
             if (permissionCodes.Any(code => code.Contains("PrimaryDepartment", StringComparison.OrdinalIgnoreCase)) &&
                 permissions.Contains(PermissionCodes.ProjectPrimaryDepartmentManage))
@@ -703,7 +714,7 @@ public class RoleScopeService
             }
 
             return permissionCodes
-                .Where(code => code.Contains("_Own", StringComparison.Ordinal))
+                .Where(code => code.Contains("_Own", StringComparison.OrdinalIgnoreCase))
                 .Any(permissions.Contains);
         }
 

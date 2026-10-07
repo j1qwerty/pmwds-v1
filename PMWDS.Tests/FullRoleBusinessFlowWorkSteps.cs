@@ -80,6 +80,7 @@ public sealed partial class FullRoleBusinessFlowTests
             dueDate = new DateTime(2026, 6, 30),
             estimatedHours = 4f,
             projectId,
+            assignedToUserId = _fixture.TeamMember.UserId,
             priority = "Medium",
         });
         subtask.Status.Should().Be(HttpStatusCode.Created);
@@ -118,12 +119,18 @@ public sealed partial class FullRoleBusinessFlowTests
         (await teamMember.PatchAsync<JsonElement>(
             $"/api/v1/tasks/{taskId}/progress",
             new { progressPercentage = 60d, notes = "Execution underway." }))
-            .Status.Should().Be(HttpStatusCode.OK);
+            .Status.Should().Be(HttpStatusCode.Conflict);
 
         (await teamMember.PatchAsync<JsonElement>(
             $"/api/v1/tasks/subtasks/{subtaskId}/progress",
             new { progressPercentage = 50d }))
             .Status.Should().Be(HttpStatusCode.OK);
+
+        // A parent task's progress is derived from its subtasks, so the 409 above is the
+        // contract rather than a defect: progress is driven from the subtask and read back.
+        var parentAfterProgress = await teamMember.GetAsync<JsonElement>($"/api/v1/tasks/{taskId}");
+        parentAfterProgress.Status.Should().Be(HttpStatusCode.OK);
+        parentAfterProgress.Data.GetProperty("progressPercentage").GetDouble().Should().Be(50d);
 
         // The PWD milestone created by ProjectManager brings the PWD Viewer into the
         // project scope without granting the viewer access to PWDC-owned work.
@@ -225,9 +232,9 @@ public sealed partial class FullRoleBusinessFlowTests
     private static void AssertUploadCapabilities(Result<JsonElement> response, bool project, bool milestone, bool task)
     {
         response.Status.Should().Be(HttpStatusCode.OK);
-        response.Data.GetProperty("canProjectUpload").GetBoolean().Should().Be(project);
-        response.Data.GetProperty("canMilestoneUpload").GetBoolean().Should().Be(milestone);
-        response.Data.GetProperty("canTaskUpload").GetBoolean().Should().Be(task);
+        response.Data.GetProperty("canUploadProject").GetBoolean().Should().Be(project);
+        response.Data.GetProperty("canUploadMilestone").GetBoolean().Should().Be(milestone);
+        response.Data.GetProperty("canUploadTask").GetBoolean().Should().Be(task);
     }
 
     private static MultipartFormDataContent PdfForm(string fileName, Guid? milestoneId = null, Guid? taskId = null)
