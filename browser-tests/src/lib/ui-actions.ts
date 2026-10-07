@@ -27,7 +27,18 @@ export async function selectLabel(
 ): Promise<void> {
   const field = page.getByLabel(label).first();
   await field.waitFor({ state: "visible" });
-  await field.selectOption(value);
+  await field.selectOption({ label: value }).catch(async () => {
+    await field.selectOption(value);
+  });
+}
+
+export async function selectAnyOption(
+  page: Page,
+  optionText: string,
+): Promise<void> {
+  const select = page.locator("select").filter({ hasText: optionText }).first();
+  await select.waitFor({ state: "visible" });
+  await select.selectOption({ label: optionText });
 }
 
 export async function clickButton(
@@ -50,19 +61,6 @@ export async function clickTitle(page: Page, title: string): Promise<void> {
   const button = page.locator(`button[title="${title}"]`).first();
   await button.waitFor({ state: "visible" });
   await button.click();
-}
-
-export async function modal(): Promise<Locator> {
-  throw new Error("Use page.locator('[role=dialog], dialog').filter(...) so the modal is scoped by its heading.");
-}
-
-export async function dialogByHeading(
-  page: Page,
-  heading: string | RegExp,
-): Promise<Locator> {
-  const headingLocator = page.getByRole("heading", { name: heading }).first();
-  await headingLocator.waitFor({ state: "visible" });
-  return headingLocator.locator("xpath=ancestor::*[self::div or self::section][1]");
 }
 
 export async function uploadFirstFile(
