@@ -1,8 +1,14 @@
 import { chromium, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import path from "node:path";
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 
 export type BrowserMode = "headless" | "headed";
+
+export type BrowserResources = {
+  context: BrowserContext;
+  page: Page;
+  flushNetwork: () => Promise<string>;
+};
 
 export async function launchBrowser(mode: BrowserMode): Promise<Browser> {
   return chromium.launch({
@@ -17,7 +23,10 @@ export async function launchBrowser(mode: BrowserMode): Promise<Browser> {
 export async function newContext(
   browser: Browser,
   runDir: string,
-): Promise<{ context: BrowserContext; page: Page }> {
+): Promise<BrowserResources> {
+  await mkdir(path.join(runDir, "network"), { recursive: true });
+  await mkdir(path.join(runDir, "video"), { recursive: true });
+
   const context = await browser.newContext({
     viewport: { width: 1440, height: 1000 },
     recordVideo: {
@@ -26,20 +35,16 @@ export async function newContext(
     },
   });
 
-  await mkdir(path.join(runDir, "network"), { recursive: true });
-
   const networkLog: string[] = [];
   const push = (event: string) => {
     networkLog.push(`${new Date().toISOString()} ${event}`);
   };
 
   context.on("request", (request) => {
-    push(
-      `REQUEST ${request.method()} ${request.url()}`,
-    );
+    push(`REQUEST ${request.method()} ${request.url()}`);
   });
 
-  context.on("response", async (response) => {
+  context.on("response", (response) => {
     push(
       `RESPONSE ${response.status()} ${response.request().method()} ${response.url()}`,
     );
@@ -51,16 +56,16 @@ export async function newContext(
     );
   });
 
-  const flush = async () => {
-    await mkdir(path.join(runDir, "network"), { recursive: true });
+  const flushNetwork = async (): Promise<string> => {
     const destination = path.join(
       runDir,
       "network",
       `network-${Date.now()}.log`,
     );
-    await Bun.write?.(destination, networkLog.join("\n")).catch?.(() => {});
+    await writeFile(destination, networkLog.join("\n"), "utf8");
+    return destination;
   };
 
   const page = await context.newPage();
-  return { context, page };
+  return { context, page, flushNetwork };
 }
