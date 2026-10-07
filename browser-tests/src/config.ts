@@ -47,7 +47,12 @@ export const ROUTES = {
   departments: "/departmentsPage",
   users: "/users",
   roles: "/roles",
+  notifications: "/notificationsPage",
+  organizationStructure: "/organizationStructure",
+  profiles: "/profiles",
+  ai: "/ai",
   reports: "/reports",
+  reportsView: "/reports/view",
   activityLogs: "/activity-logs",
   settings: "/settings",
 } as const;
