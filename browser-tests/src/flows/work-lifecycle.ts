@@ -98,34 +98,6 @@ async function editTask(page: Page, taskName: string): Promise<void> {
   await waitForToast(page, /task updated/i).catch(() => {});
 }
 
-async function deleteTask(page: Page, taskName: string): Promise<void> {
-  await openTask(page, taskName);
-  const deleteButton = page.getByRole("button", { name: /delete task/i }).last();
-  await deleteButton.waitFor({ state: "visible" });
-  await deleteButton.click();
-  await clickButton(page, /confirm|delete/i);
-  await waitForToast(page, /task deleted/i).catch(() => {});
-}
-
-async function updateSubtask(page: Page, subtaskName: string): Promise<void> {
-  const row = page
-    .getByText(subtaskName, { exact: true })
-    .first()
-    .locator("xpath=ancestor::*[self::div or self::li][1]");
-
-  const slider = row.locator('input[type="range"]').first();
-  await slider.waitFor({ state: "visible" });
-  await slider.fill("65");
-
-  const comment = row.locator('input[placeholder*="comment" i]').first();
-  if (await comment.count()) {
-    await comment.fill("Browser E2E progress update.");
-    await comment.press("Enter");
-  }
-
-  await expect(row).toContainText("65");
-}
-
 export async function adminMilestonesAndTasks(
   page: Page,
   runner: StepRunner,
