@@ -245,23 +245,41 @@ export function AIPage() {
 
     let timer: number | undefined;
     const stop = onDataChanged((change) => {
+      const scope = change.scope;
       if (
-        change.scope !== REALTIME_SCOPES.projects &&
-        change.scope !== REALTIME_SCOPES.tasks &&
-        change.scope !== REALTIME_SCOPES.milestones &&
-        change.scope !== REALTIME_SCOPES.users &&
-        change.scope !== REALTIME_SCOPES.departments
+        scope !== REALTIME_SCOPES.projects &&
+        scope !== REALTIME_SCOPES.tasks &&
+        scope !== REALTIME_SCOPES.milestones &&
+        scope !== REALTIME_SCOPES.users &&
+        scope !== REALTIME_SCOPES.departments
       ) {
         return;
       }
 
       if (timer !== undefined) window.clearTimeout(timer);
       timer = window.setTimeout(() => {
-        void loadProjects();
-        void loadProjectTasks();
-        void loadAIProjectSignals();
-        void loadAITaskSignal();
-        void loadBurnout();
+        void (async () => {
+          // Refresh only the slice affected by the event. The old handler fired five
+          // independent reads for every change, which created a burst of database work on
+          // busy workspaces even though most of the results were unchanged.
+          if (scope === REALTIME_SCOPES.projects) {
+            await loadProjects();
+            await loadAIProjectSignals();
+            return;
+          }
+
+          if (scope === REALTIME_SCOPES.users || scope === REALTIME_SCOPES.departments) {
+            await loadBurnout();
+            return;
+          }
+
+          await loadProjectTasks();
+          await loadAIProjectSignals();
+          await loadAITaskSignal();
+          if (scope === REALTIME_SCOPES.milestones) {
+            await loadBurnout();
+          }
+        })().catch(() => undefined);
       }, 250);
     });
 

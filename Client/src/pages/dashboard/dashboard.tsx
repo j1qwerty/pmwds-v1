@@ -6,7 +6,7 @@ import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
 import { onDataChanged } from "../../realtime";
 import { REALTIME_SCOPES } from "../../realtimeScopes";
-import type { ActivityLogRecord, NotificationItem, Project, ProjectDashboardData, Task } from "../../types";
+import type { ActivityLogRecord, NotificationItem, Project, ProjectDashboardData, Task, TaskDashboardStats } from "../../types";
 import { NotificationList } from "../shared/NotificationList";
 import { PageSkeleton, useNavHeader, useToast } from "../shared";
 import { PERMISSION_GROUPS, usePermission } from "../shared";
@@ -37,7 +37,7 @@ export function DashboardPage() {
 
   const { departments, users } = appData;
   const [dashboard, setDashboard] = useState<ProjectDashboardData | null>(null);
-  const [workspaceTasks, setWorkspaceTasks] = useState<Task[]>([]);
+  const [taskDashboard, setTaskDashboard] = useState<TaskDashboardStats | null>(null);
   const [unread, setUnread] = useState<NotificationItem[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [escalatedTasks, setEscalatedTasks] = useState<Task[]>([]);
@@ -90,13 +90,9 @@ export function DashboardPage() {
   const loadTaskStats = useCallback(async () => {
     if (!auth) return;
     try {
-      // Workspace task counts, not "my tasks": the stat cards are portfolio metrics and
-      // reading only the caller's assignments left every card at zero for anyone who was not
-      // personally assigned work.
-      const response = await api.getAccessibleTasks(auth.token);
-      setWorkspaceTasks(response.items ?? []);
+      setTaskDashboard(await api.getTaskDashboardSummary(auth.token));
     } catch (cause) {
-      addToast(cause instanceof Error ? cause.message : "Failed to load tasks", "error");
+      addToast(cause instanceof Error ? cause.message : "Failed to load task dashboard stats", "error");
     }
   }, [auth, addToast]);
 
@@ -345,7 +341,7 @@ export function DashboardPage() {
       </section>
 
       <div className="py-4">
-        <TaskStats tasks={workspaceTasks} />
+        <TaskStats stats={taskDashboard} />
       </div>
 
       <TaskPerformanceTable
@@ -393,7 +389,6 @@ export function DashboardPage() {
               }
               const freshTask = await api.getTask(auth.token, taskId);
               setSelectedTask(freshTask);
-              setWorkspaceTasks((current) => current.map((task) => task.id === freshTask.id ? freshTask : task));
             } catch (cause) {
               addToast(cause instanceof Error ? cause.message : "Failed to update task", "error");
               throw cause;
@@ -407,7 +402,6 @@ export function DashboardPage() {
           onDelete={async (taskId) => {
             if (!auth) return;
             await api.deleteTask(auth.token, taskId);
-            setWorkspaceTasks((current) => current.filter((task) => task.id !== taskId));
             setSelectedTask(null);
             await refreshTaskLists();
           }}

@@ -84,7 +84,9 @@ export function ReportsPage() {
     setStoredReportsLoading(true);
     api.getStoredReports(auth.token)
       .then((reports) => setStoredReports(reports))
-      .catch(() => { /* ignore */ })
+      .catch((cause) => {
+        addToast(cause instanceof Error ? cause.message : "Failed to load generated reports", "error");
+      })
       .finally(() => setStoredReportsLoading(false));
   }, [auth]);
 

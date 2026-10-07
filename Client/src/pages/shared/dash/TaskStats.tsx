@@ -1,23 +1,17 @@
 import { useNavigate } from "react-router-dom";
-import type { Task } from "../../../types";
+import type { TaskDashboardPreview, TaskDashboardStats } from "../../../types";
 import { getStatusColor } from "../colors";
 import { Icon } from "../../../components/ui/Icon";
 import { MetricStatCard, type MetricStatDetail } from "../MetricStatCard";
 
 type TaskStatsProps = {
-  tasks?: Task[];
+  stats?: TaskDashboardStats | null;
 };
 
-const PREVIEW_LIMIT = 10;
+const PREVIEW_LIMIT = 5;
 
-/**
- * Latest tasks behind a number, annotated with the project and milestone they sit under so the
- * number is explainable rather than just countable.
- */
-function recentTasks(tasks: Task[], predicate: (task: Task) => boolean): MetricStatDetail[] {
-  return tasks
-    .filter(predicate)
-    .sort((a, b) => new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime())
+function previews(tasks: TaskDashboardPreview[] | undefined): MetricStatDetail[] {
+  return (tasks ?? [])
     .slice(0, PREVIEW_LIMIT)
     .map((task) => ({
       id: task.id,
@@ -27,61 +21,63 @@ function recentTasks(tasks: Task[], predicate: (task: Task) => boolean): MetricS
     }));
 }
 
-export default function TaskStats({ tasks = [] }: TaskStatsProps) {
+export default function TaskStats({ stats }: TaskStatsProps) {
   const navigate = useNavigate();
 
   const openTask = (detail: MetricStatDetail) => {
-    if (detail.projectId) navigate(`/projects/${detail.projectId}/tasks?taskId=${detail.id}`);
+    if (detail.projectId) {
+      navigate(`/projects/${detail.projectId}/tasks?taskId=${detail.id}`);
+    }
   };
 
-  const stats = [
+  const cards = [
     {
       icon: <Icon name="file" size={16} />,
-      value: tasks.length,
+      value: stats?.totalTasks ?? 0,
       label: "Total Tasks",
       statusKey: "Total",
-      details: recentTasks(tasks, () => true),
+      details: previews(stats?.recentTasks),
     },
     {
       icon: <Icon name="clock" size={16} />,
-      value: tasks.filter((task) => task.status === "InProgress").length,
+      value: stats?.inProgressTasks ?? 0,
       label: "In Progress",
       statusKey: "InProgress",
-      details: recentTasks(tasks, (task) => task.status === "InProgress"),
+      details: previews(stats?.recentInProgressTasks),
     },
     {
       icon: <Icon name="alert-circle" size={16} />,
-      value: tasks.filter((task) => task.status === "OnHold").length,
+      value: stats?.onHoldTasks ?? 0,
       label: "On Hold",
       statusKey: "OnHold",
-      details: recentTasks(tasks, (task) => task.status === "OnHold"),
+      details: previews(stats?.recentOnHoldTasks),
     },
     {
       icon: <Icon name="check-circle" size={16} />,
-      value: tasks.filter((task) => task.status === "Completed" || task.progressPercentage === 100).length,
+      value: stats?.completedTasks ?? 0,
       label: "Completed",
       statusKey: "Completed",
-      details: recentTasks(tasks, (task) => task.status === "Completed" || task.progressPercentage === 100),
+      details: previews(stats?.recentCompletedTasks),
     },
     {
       icon: <Icon name="close" size={16} />,
-      value: tasks.filter((task) => task.isOverdue || task.status === "Delayed").length,
+      value: stats?.delayedTasks ?? 0,
       label: "Delayed",
       statusKey: "Delayed",
-      details: recentTasks(tasks, (task) => task.isOverdue || task.status === "Delayed"),
+      details: previews(stats?.recentDelayedTasks),
     },
   ];
 
   return (
     <div className="grid grid-cols-5 gap-4">
-      {stats.map((stat) => (
+      {cards.map((card) => (
         <MetricStatCard
-          key={stat.label}
-          icon={stat.icon}
-          value={stat.value}
-          label={stat.label}
-          tone={getStatusColor(stat.statusKey)}
-          details={stat.details}
+          key={card.label}
+          icon={card.icon}
+          value={card.value}
+          label={card.label}
+          tone={getStatusColor(card.statusKey)}
+          details={card.details}
           detailLabel="Latest tasks"
           onOpenDetail={openTask}
         />
