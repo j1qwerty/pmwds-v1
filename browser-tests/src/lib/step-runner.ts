@@ -13,13 +13,24 @@ export type StepAction<T> = (context: StepContext) => Promise<T>;
 
 export class StepRunner {
   private stepNo = 0;
+  private page: Page;
 
   constructor(
-    private readonly page: Page,
+    page: Page,
     private readonly runDir: string,
     private readonly interactive: boolean,
-    private readonly userLabel = "anonymous"
-  ) {}
+    private userLabel = "anonymous",
+  ) {
+    this.page = page;
+  }
+
+  setPage(page: Page): void {
+    this.page = page;
+  }
+
+  setUserLabel(label: string): void {
+    this.userLabel = label;
+  }
 
   async init(): Promise<void> {
     await mkdir(this.runDir, { recursive: true });
@@ -30,8 +41,7 @@ export class StepRunner {
       [
         "PMWDS browser run",
         `Started: ${new Date().toISOString()}`,
-        `User: ${this.userLabel}`,
-        `URL: ${this.page.url()}`,
+        `Interactive: ${this.interactive}`,
         "",
       ].join("\n"),
       "utf8",
@@ -40,7 +50,7 @@ export class StepRunner {
 
   async step<T>(label: string, action: StepAction<T>): Promise<T> {
     this.stepNo += 1;
-    const id = String(this.stepNo).padStart(2, "0");
+    const id = String(this.stepNo).padStart(3, "0");
     const safe = label
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
@@ -60,6 +70,7 @@ export class StepRunner {
 
     const started = Date.now();
     this.log(`[STEP ${id}] ${label}`);
+    this.log(`        User: ${this.userLabel}`);
     this.log(`        URL before: ${this.page.url()}`);
 
     await this.waitForPageReady();
@@ -72,6 +83,7 @@ export class StepRunner {
         userLabel: this.userLabel,
         interactive: this.interactive,
       });
+
       await this.waitForPageReady();
       await this.page.screenshot({ path: after, fullPage: true });
 
@@ -81,10 +93,7 @@ export class StepRunner {
       this.log(`        Before: ${before}`);
       this.log(`        After:  ${after}`);
 
-      if (this.interactive) {
-        await this.pause();
-      }
-
+      if (this.interactive) await this.pause();
       return result;
     } catch (error) {
       const failure = path.join(
@@ -93,7 +102,9 @@ export class StepRunner {
         `${id}-${safe}-failure.png`,
       );
       await this.page.screenshot({ path: failure, fullPage: true }).catch(() => {});
-      this.log(`        FAILED: ${error instanceof Error ? error.message : String(error)}`);
+      this.log(
+        `        FAILED: ${error instanceof Error ? error.message : String(error)}`,
+      );
       this.log(`        Failure screenshot: ${failure}`);
       throw error;
     }
