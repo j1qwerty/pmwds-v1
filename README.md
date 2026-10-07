@@ -331,6 +331,94 @@ npm run build
 npm run lint
 ```
 
+## Browser E2E tests
+
+The browser suite lives in `browser-tests` and uses Playwright with real Chromium. It is separate from the existing .NET API integration tests.
+
+The existing `PMWDS.Tests` commands remain the API/integration test commands:
+
+```powershell
+# Everything in the existing .NET test suite
+dotnet test PMWDS.slnx
+
+# API suite only
+dotnet test PMWDS.Tests\\PMWDS.Tests.csproj
+
+# One test class
+dotnet test PMWDS.Tests\\PMWDS.Tests.csproj --filter "FullyQualifiedName~CascadeTests"
+
+# One test
+dotnet test PMWDS.Tests\\PMWDS.Tests.csproj --filter "FullyQualifiedName~RealtimeTests.Deleting_a_task_broadcasts"
+
+# Coverage
+dotnet test PMWDS.Tests\\PMWDS.Tests.csproj --collect:"XPlat Code Coverage"
+```
+
+### Browser-test setup
+
+The browser suite connects to an already-running PMWDS client by default. The API used by the client can therefore be local, staging, or deployed.
+
+```powershell
+cd browser-tests
+pnpm install
+pnpm install:browsers
+
+# Point the browser runner at the client
+$env:E2E_BASE_URL = "http://127.0.0.1:5175"
+
+# Seeded test account password. Set this to the password configured for the target database.
+$env:E2E_PASSWORD = "<seeded-password>"
+```
+
+The current seeded test identities are defined in `browser-tests/src/config.ts`. Do not hard-code a production password into the repository.
+
+### Discover the browser UI
+
+Discovery walks selected authenticated routes, opens the New Project wizard when available, detects visible inputs/buttons/links, groups them by nearby form/dialog/section heading, and writes text inventories under `browser-tests/ui-map`.
+
+```powershell
+cd browser-tests
+
+# Headless discovery
+$env:E2E_BROWSER = "headless"
+pnpm e2e:discover
+
+# Visible Chromium discovery
+$env:E2E_BROWSER = "headed"
+pnpm e2e:discover
+```
+
+The inventories are intended to be consumed by the browser flow runner. They contain semantic attributes such as role, label, placeholder, name, id, type, aria-label, href, and disabled state.
+
+### Browser flow runner
+
+The browser runner has two browser modes and two execution modes.
+
+```powershell
+cd browser-tests
+
+# Interactive mode. It asks for browser visibility and pauses after each logical step.
+pnpm e2e:interactive
+
+# Automatic mode. Select the flows to run at startup.
+pnpm e2e
+```
+
+Browser mode:
+- headless Chromium is the default
+- headed mode opens a real visible Chromium window
+
+In headed mode every logical step records a before/after screenshot and prints the output path. Each run also records network request/response metadata, and failures retain the screenshot/trace/video artifacts.
+
+The full business-flow registry is being added in the next browser E2E PR. The current foundation provides the runner shell and UI discovery command.
+
+### Browser test artifacts
+
+Browser runs are written below `browser-tests/runs/` and are gitignored. Playwright reports are written below `browser-tests/reports/`.
+
+Never point the destructive full-flow tests at production. The flow creates, edits, uploads to, and finally deletes real application data.
+
+
 ## Future Improvements
 
 - Replace development password hashing with ASP.NET Core Identity password hashing or another production-grade password hasher.
