@@ -1,7 +1,6 @@
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import path from "node:path";
-import { expect, type BrowserContext, type Page } from "@playwright/test";
 import { launchBrowser, newContext, type BrowserMode } from "./lib/browser.js";
 import { runFullBusinessFlow } from "./flows/full-business-flow.js";
 import { createProject, loginAs } from "./flows/project-lifecycle.js";
