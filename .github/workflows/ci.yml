@@ -69,6 +69,8 @@ jobs:
         with:
           dotnet-version: '10.x'
       - run: dotnet restore PMWDS.slnx
+      - name: Install dotnet-ef
+        run: dotnet tool install --global dotnet-ef --version 10.0.7
       - run: dotnet build PMWDS.slnx --configuration Release --no-restore
       - run: dotnet test PMWDS.slnx --configuration Release --no-build
       - name: EF model must match the migration snapshot
