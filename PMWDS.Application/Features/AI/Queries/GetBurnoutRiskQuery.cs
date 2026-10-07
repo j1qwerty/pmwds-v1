@@ -26,7 +26,10 @@ public class GetBurnoutRiskQueryHandler : IRequestHandler<GetBurnoutRiskQuery, L
         return users
             .Select(user =>
             {
-                var metrics = liveWorkload.GetValueOrDefault(user.Id, (0, 0, 0d));
+                // The explicit type keeps the tuple element names: an unnamed tuple literal
+                // passed as the GetValueOrDefault default drops them and breaks metrics.ActiveTasks.
+                (int ActiveTasks, int OverdueTasks, double EstimatedHours) metrics =
+                    liveWorkload.GetValueOrDefault(user.Id, (ActiveTasks: 0, OverdueTasks: 0, EstimatedHours: 0d));
                 var capacityHours = Math.Max(20d, 40d * Math.Clamp(user.AvailabilityPercentage / 100d, 0.1d, 1d));
                 var taskPressure = Math.Clamp(metrics.ActiveTasks / 8d, 0d, 1d);
                 var hourPressure = Math.Clamp(metrics.EstimatedHours / capacityHours, 0d, 1d);
