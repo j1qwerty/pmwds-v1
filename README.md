@@ -410,7 +410,7 @@ Browser mode:
 
 In headed mode every logical step records a before/after screenshot and prints the output path. Each run also records network request/response metadata, and failures retain the screenshot/trace/video artifacts.
 
-The full business-flow registry is being added in the next browser E2E PR. The current foundation provides the runner shell and UI discovery command.
+The full seeded-role business lifecycle is now executable through the runner and Playwright test. It uses isolated browser contexts for each role so login state does not leak between users.
 
 ### Browser test artifacts
 
