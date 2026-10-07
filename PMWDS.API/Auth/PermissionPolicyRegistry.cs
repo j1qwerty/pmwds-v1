@@ -111,6 +111,17 @@ public static class PermissionPolicyRegistry
             PermissionCodes.UtilizationCertificateAllMilestoneUpload,
             PermissionCodes.UtilizationCertificateAllTaskUpload));
 
+        // Approving or rejecting a certificate is the finance sign-off step. The policy has to be
+        // registered explicitly: it is not one of the CRUD verbs AddScopedCrud generates, and an
+        // unregistered policy name makes [Authorize] throw at request time rather than deny.
+        options.AddPolicy(AuthorizationPolicies.UtilizationCertificateReview, policy => RequireAny(
+            policy,
+            PermissionCodes.SystemAdmin,
+            PermissionCodes.UtilizationCertificateOwnReview,
+            PermissionCodes.UtilizationCertificateAllReview,
+            PermissionCodes.UtilizationCertificateOwnManage,
+            PermissionCodes.UtilizationCertificateAllManage));
+
         AddScopedCrud(options, "UtilizationCertificates",
             PermissionCodes.UtilizationCertificateOwnManage, PermissionCodes.UtilizationCertificateOwnView, PermissionCodes.UtilizationCertificateOwnCreate, PermissionCodes.UtilizationCertificateOwnEdit, PermissionCodes.UtilizationCertificateOwnDelete,
             PermissionCodes.UtilizationCertificateAllManage, PermissionCodes.UtilizationCertificateAllView, PermissionCodes.UtilizationCertificateAllCreate, PermissionCodes.UtilizationCertificateAllEdit, PermissionCodes.UtilizationCertificateAllDelete);
