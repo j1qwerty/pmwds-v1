@@ -402,7 +402,6 @@ export function DashboardPage() {
           onDelete={async (taskId) => {
             if (!auth) return;
             await api.deleteTask(auth.token, taskId);
-            setWorkspaceTasks((current) => current.filter((task) => task.id !== taskId));
             setSelectedTask(null);
             await refreshTaskLists();
           }}
