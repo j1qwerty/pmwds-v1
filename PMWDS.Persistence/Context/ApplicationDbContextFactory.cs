@@ -13,7 +13,7 @@ public class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Applicati
         if (string.IsNullOrWhiteSpace(sqliteConnectionString))
         {
             var solutionRoot = FindSolutionRoot(Directory.GetCurrentDirectory());
-            var sqlitePath = Path.GetFullPath(Path.Combine(solutionRoot, "PMWDS.API", "App_Data", "pmwds-dev.sqlite"));
+            var sqlitePath = Path.GetFullPath(Path.Combine(solutionRoot, "PMWDS.API", "App_Data", "pmwds-v1.sqlite"));
             Directory.CreateDirectory(Path.GetDirectoryName(sqlitePath)!);
             sqliteConnectionString = $"Data Source={sqlitePath}";
         }

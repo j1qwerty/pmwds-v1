@@ -75,9 +75,9 @@ File: `PMWDS.API/appsettings.json`
 
 ```json
 "ConnectionStrings": {
-  "Default": "Server=127.0.0.1,1433;Database=PMWDS;User Id=sa;Password=CHANGE_ME_Strong_Passw0rd;TrustServerCertificate=True",
+  "Default": "Server=127.0.0.1,1433;Database=pmwds-v1;User Id=sa;Password=CHANGE_ME_Strong_Passw0rd;TrustServerCertificate=True",
   "Redis": "localhost:6379",
-  "Hangfire": "Server=127.0.0.1,1433;Database=PMWDS_Hangfire;User Id=sa;Password=CHANGE_ME_Strong_Passw0rd;TrustServerCertificate=True"
+  "Hangfire": "Server=127.0.0.1,1433;Database=pmwds-v1_Hangfire;User Id=sa;Password=CHANGE_ME_Strong_Passw0rd;TrustServerCertificate=True"
 }
 ```
 
@@ -123,7 +123,7 @@ File: `PMWDS.API/appsettings.Development.json`
 ```json
 "Database": {
   "ForceSqlite": false,
-  "SqliteConnectionString": "Data Source=App_Data/pmwds-dev.sqlite"
+  "SqliteConnectionString": "Data Source=App_Data/pmwds-v1.sqlite"
 }
 ```
 
@@ -131,7 +131,7 @@ Behavior:
 
 - `ForceSqlite: true` makes Development use SQLite without trying SQL Server.
 - If `ForceSqlite` is false and SQL Server cannot be reached, Development falls back to SQLite automatically.
-- The database file is `PMWDS.API/App_Data/pmwds-dev.sqlite`.
+- The database file is `PMWDS.API/App_Data/pmwds-v1.sqlite`.
 - The API startup path creates the directory, validates the expected SQLite schema, rebuilds stale development schema when needed, and runs seed data.
 - Hangfire is disabled while SQLite is active.
 
@@ -149,7 +149,7 @@ File: `PMWDS.Infrastructure/Settings/AppSettings.cs`
 public class DatabaseSettings
 {
     public bool ForceSqlite { get; set; } = false;
-    public string SqliteConnectionString { get; set; } = "Data Source=App_Data/pmwds-dev.sqlite";
+    public string SqliteConnectionString { get; set; } = "Data Source=App_Data/pmwds-v1.sqlite";
 }
 ```
 

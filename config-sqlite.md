@@ -29,7 +29,7 @@ Selection priority at startup:
 ```json
 "Database": {
   "ForceSqlite": true,
-  "SqliteConnectionString": "Data Source=App_Data/pmwds-dev.sqlite"
+  "SqliteConnectionString": "Data Source=App_Data/pmwds-v1.sqlite"
 }
 ```
 
@@ -65,7 +65,7 @@ After `EnsureCreated`, the following ALTER TABLE statements are applied if colum
 File: `PMWDS.Persistence/Context/ApplicationDbContextFactory.cs`
 
 - Reads `PMWDS_SQLITE_CONNECTION_STRING` env var
-- Falls back to resolving solution root → `PMWDS.API/App_Data/pmwds-dev.sqlite`
+- Falls back to resolving solution root → `PMWDS.API/App_Data/pmwds-v1.sqlite`
 - Always uses SQLite for EF tooling (migrations add, etc.)
 
 ### 2.5 Seed Data

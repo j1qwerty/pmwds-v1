@@ -281,7 +281,7 @@ public static class DatabaseConnectionService
             throw new InvalidOperationException(
                 $"Database:SqliteConnectionString points inside the application directory ({dataSource}). " +
                 "A deploy replaces that directory, which would delete the database. " +
-                "Use a durable absolute path outside the app folder, e.g. /var/lib/pmwds/database/pmwds.sqlite.");
+                "Use a durable absolute path outside the app folder, e.g. /var/lib/pmwds/database/pmwds-v1.sqlite.");
         }
 
         attempts.Add($"SQLite data source '{dataSource}' verified outside the application directory.");

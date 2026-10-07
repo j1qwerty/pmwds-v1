@@ -93,7 +93,7 @@ public class HangfireSettings
 public class DatabaseSettings
 {
     public bool ForceSqlite { get; set; } = false;
-    public string SqliteConnectionString { get; set; } = "Data Source=App_Data/pmwds-dev.sqlite";
+    public string SqliteConnectionString { get; set; } = "Data Source=App_Data/pmwds-v1.sqlite";
 
     /// <summary>
     /// Permits SQLite outside Development. Off by default so Production still demands SQL Server

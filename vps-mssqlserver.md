@@ -20,7 +20,7 @@ Related: [PRODUCTION.md](PRODUCTION.md) (§3b provisioning), [mssql-issue.md](ms
 | Redis | 7.0.15 | `/etc/redis/redis.conf`, data `/var/lib/redis` | `127.0.0.1:6379` |
 | OpenLDAP 2.5 shim | 2.5.20 (from 22.04) | `/usr/lib/x86_64-linux-gnu/libl{ber,dap}-2.5.so.0` | — |
 
-Databases: `PMWDS` (application) and `PMWDS_Hangfire` (background jobs).
+Databases: `pmwds-v1` (application) and `pmwds-v1_Hangfire` (background jobs).
 
 ### Logins
 
@@ -228,26 +228,26 @@ network.ipaddress            127.0.0.1
 ```bash
 # sa is still enabled at this point in a fresh setup; it is disabled afterwards (5d).
 sudo /opt/mssql-tools18/bin/sqlcmd -S 127.0.0.1,1433 -U sa -P "$MSSQL_SA_PASSWORD" -C -Q "
-CREATE DATABASE [PMWDS];
-CREATE DATABASE [PMWDS_Hangfire];
+CREATE DATABASE [pmwds-v1];
+CREATE DATABASE [pmwds-v1_Hangfire];
 "
 ```
 
 ```sql
 CREATE LOGIN [pmwds_app] WITH PASSWORD = '<strong password>', CHECK_POLICY = ON;
 
-USE [PMWDS];
+USE [pmwds-v1];
 CREATE USER [pmwds_app] FOR LOGIN [pmwds_app];
 ALTER ROLE db_datareader ADD MEMBER [pmwds_app];
 ALTER ROLE db_datawriter ADD MEMBER [pmwds_app];
 ALTER ROLE db_ddladmin   ADD MEMBER [pmwds_app];
 
-USE [PMWDS_Hangfire];
+USE [pmwds-v1_Hangfire];
 CREATE USER [pmwds_app] FOR LOGIN [pmwds_app];
 ALTER ROLE db_datareader ADD MEMBER [pmwds_app];
 ALTER ROLE db_datawriter ADD MEMBER [pmwds_app];
 ALTER ROLE db_ddladmin   ADD MEMBER [pmwds_app];
-ALTER DATABASE [PMWDS_Hangfire] SET TRUSTWORTHY ON;
+ALTER DATABASE [pmwds-v1_Hangfire] SET TRUSTWORTHY ON;
 ```
 
 The application creates its own databases at startup *only if it can*, which a least-privilege
@@ -330,7 +330,7 @@ address range. No SSH tunnel is needed for normal use.
 | Authentication | **SQL Server Authentication** |
 | User name | `pmwds_app` |
 | Password | see below |
-| Database name | `PMWDS`, or `<default>` |
+| Database name | `pmwds-v1`, or `<default>` |
 | Encrypt | Mandatory |
 | **Trust server certificate** | **ticked** ✓ |
 
@@ -354,14 +354,14 @@ Not sysadmin. It is the application's own login, scoped to the two databases it 
 | Database | Roles |
 |---|---|
 | `PMWDS` | `db_datareader`, `db_datawriter`, `db_ddladmin` |
-| `PMWDS_Hangfire` | `db_datareader`, `db_datawriter`, `db_ddladmin` |
+| `pmwds-v1_Hangfire` | `db_datareader`, `db_datawriter`, `db_ddladmin` |
 
 Verified working over the public IP: `SELECT`, `INSERT`, `UPDATE`, `DELETE`, transactions with
 `ROLLBACK`, `CREATE TABLE` and `DROP TABLE`. The DDL grant is what lets Entity Framework apply
 migrations if you ever need to.
 
 Not permitted: creating logins, changing server configuration, viewing other databases, or
-anything outside `PMWDS` / `PMWDS_Hangfire`. For that, see §5d.
+anything outside `pmwds-v1` / `pmwds-v1_Hangfire`. For that, see §5d.
 
 ### 5c. Azure Data Studio / VS Code
 
@@ -493,8 +493,8 @@ tail -f /var/opt/mssql/log/errorlog
 needs sysadmin, so enable an admin login (§5d) first:
 
 ```sql
-BACKUP DATABASE [PMWDS]          TO DISK = '/var/opt/mssql/backup/PMWDS.bak'          WITH INIT, COMPRESSION;
-BACKUP DATABASE [PMWDS_Hangfire] TO DISK = '/var/opt/mssql/backup/PMWDS_Hangfire.bak' WITH INIT, COMPRESSION;
+BACKUP DATABASE [pmwds-v1]          TO DISK = '/var/opt/mssql/backup/pmwds-v1.bak'          WITH INIT, COMPRESSION;
+BACKUP DATABASE [pmwds-v1_Hangfire] TO DISK = '/var/opt/mssql/backup/pmwds-v1_Hangfire.bak' WITH INIT, COMPRESSION;
 ```
 
 Create `/var/opt/mssql/backup` first. Disable the admin login again afterwards. Nothing else on

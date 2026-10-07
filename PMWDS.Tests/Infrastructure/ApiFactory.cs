@@ -17,7 +17,7 @@ namespace PMWDS.Tests.Infrastructure;
 /// Two isolation guarantees:
 /// <list type="bullet">
 ///   <item>Each fixture instance gets its own SQLite file under the temp directory, so
-///   tests never read or write the developer's <c>App_Data/pmwds-dev.sqlite</c>.</item>
+///   tests never read or write the developer's <c>App_Data/pmwds-v1.sqlite</c>.</item>
 ///   <item>Storage is redirected to a temp directory too, so uploads and seeded avatars do
 ///   not land in the real <c>App_Data</c> tree.</item>
 /// </list>

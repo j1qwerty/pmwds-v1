@@ -3,7 +3,7 @@
   <!--
     Integration tests. These run the real application in-process via
     WebApplicationFactory<Program> against an isolated SQLite database, so `dotnet test`
-    is self-contained and never touches the developer's App_Data/pmwds-dev.sqlite.
+    is self-contained and never touches the developer's App_Data/pmwds-v1.sqlite.
 
     See README.md ("Running the tests") for how to point them at SQL Server instead.
   -->

@@ -270,9 +270,9 @@ Expected to be the single biggest win: stops each query claiming 8 threads.
 | `EXEC sp_configure 'show advanced options', 1;` | reports success, value **silently stays 0** |
 | `EXEC sp_configure 'max degree of parallelism', 1;` | `The configuration option 'max degree of parallelism' does not exist, or it may be an advanced option.` |
 | `EXEC sp_configure 'max degree of parallelism', 1, RECURSIVE;` | `Procedure or function sp_configure has too many arguments specified.` |
-| `ALTER DATABASE [PMWDS] SET MAXDOP 1;` | `Incorrect syntax near '1'.` |
-| `ALTER DATABASE [PMWDS] SET MAXDOP = 1;` | `Incorrect syntax near 'MAXDOP'.` |
-| `ALTER DATABASE [PMWDS] SET (MAXDOP = 1);` | `Incorrect syntax near '('.` |
+| `ALTER DATABASE [pmwds-v1] SET MAXDOP 1;` | `Incorrect syntax near '1'.` |
+| `ALTER DATABASE [pmwds-v1] SET MAXDOP = 1;` | `Incorrect syntax near 'MAXDOP'.` |
+| `ALTER DATABASE [pmwds-v1] SET (MAXDOP = 1);` | `Incorrect syntax near '('.` |
 
 Supporting evidence that this was not a privilege problem:
 
@@ -400,7 +400,7 @@ short-lived cache, removing one query per request.
 
 ## 6. Unrelated bug found while measuring: a failing Hangfire job
 
-Four failed job states in `PMWDS_Hangfire`, each retrying 10 times:
+Four failed job states in `pmwds-v1_Hangfire`, each retrying 10 times:
 
 ```
 Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException

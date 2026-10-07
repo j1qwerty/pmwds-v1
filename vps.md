@@ -44,7 +44,7 @@ separate directories, services, ports and databases.
 | env file | `/etc/pmwds/pmwds-sqlite.env` | `/etc/pmwds/pmwds-mssql.env` |
 | data | `/var/lib/pmwds-sqlite/` | `/var/lib/pmwds-mssql/` |
 | port | `127.0.0.1:5001` | `127.0.0.1:5002` |
-| database | SQLite at `/var/lib/pmwds-sqlite/database/pmwds.sqlite` | SQL Server `PMWDS` + `PMWDS_Hangfire` |
+| database | SQLite at `/var/lib/pmwds-sqlite/database/pmwds-v1.sqlite` | SQL Server `pmwds-v1` + `pmwds-v1_Hangfire` |
 | Redis | not used (`ConnectionStrings__Redis=`) | `127.0.0.1:6379` |
 
 `deploy.ps1` never writes to a data directory, so databases and uploads survive every deploy.
@@ -145,7 +145,7 @@ Other runtimes: `.NET runtime 10.0.12` (no SDK on the box — publish locally), 
 
 ## Databases
 
-`PMWDS` and `PMWDS_Hangfire` on SQL Server. Logins:
+`pmwds-v1` and `pmwds-v1_Hangfire` on SQL Server. Logins:
 
 | Login | State | Role |
 |---|---|---|
@@ -154,12 +154,12 @@ Other runtimes: `.NET runtime 10.0.12` (no SDK on the box — publish locally), 
 | `pmwds_admin` | **disabled** | sysadmin, kept off the network deliberately |
 
 Hangfire has `TRUSTWORTHY` on and creates its own schema at startup — which is why `pmwds_app`
-has `db_ddladmin` on `PMWDS_Hangfire`.
+has `db_ddladmin` on `pmwds-v1_Hangfire`.
 
-SQLite copies on disk: `/var/lib/pmwds-sqlite/database/pmwds.sqlite` (live, 46 tables) and the
-untouched original `/var/lib/pmwds/database/pmwds.sqlite`.
+SQLite copies on disk: `/var/lib/pmwds-sqlite/database/pmwds-v1.sqlite` (live, 46 tables) and the
+untouched original `/var/lib/pmwds/database/pmwds-v1.sqlite`.
 
-**SQLite backups do not protect the subdomain any more.** Back up `PMWDS` with
+**SQLite backups do not protect the subdomain any more.** Back up `pmwds-v1` with
 `BACKUP DATABASE` — see [vps-mssqlserver.md](vps-mssqlserver.md) §6.
 
 ---

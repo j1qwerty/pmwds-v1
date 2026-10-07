@@ -56,7 +56,7 @@ dotnet build PMWDS.slnx
 dotnet run --project PMWDS.API --urls http://localhost:5179
 ```
 
-The SQLite database is at `PMWDS.API/App_Data/pmwds-dev.sqlite`. The API automatically uses SQLite because `appsettings.Development.json` has `Database:ForceSqlite: true`.
+The SQLite database is at `PMWDS.API/App_Data/pmwds-v1.sqlite`. The API automatically uses SQLite because `appsettings.Development.json` has `Database:ForceSqlite: true`.
 
 ### Docker Mode (SQL Server + Redis)
 
@@ -155,7 +155,7 @@ docker-compose logs -f
 The Docker SQL Server uses SQL authentication. `appsettings.Development.json` is pre-configured with these defaults:
 
 ```json
-"Default": "Server=localhost,1433;Database=PMWDS_Dev;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;MultipleActiveResultSets=true"
+"Default": "Server=localhost,1433;Database=pmwds-v1_Dev;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;MultipleActiveResultSets=true"
 ```
 
 The SA password is set in `.env` (gitignored). Change it before any non-local use.
@@ -259,7 +259,7 @@ dotnet test PMWDS.Tests\PMWDS.Tests.csproj --collect:"XPlat Code Coverage"
 
 No setup is required. Each run creates a throwaway SQLite database and storage directory
 under `%TEMP%\pmwds-tests\`, seeds it, and deletes both afterwards. **Your
-`App_Data/pmwds-dev.sqlite` is never touched**, and no `.env` or `appsettings` value from
+`App_Data/pmwds-v1.sqlite` is never touched**, and no `.env` or `appsettings` value from
 your machine leaks in - the test host is configured entirely from code.
 
 Tests require the seeded accounts, so run them against a seeded database. The default

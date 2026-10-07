@@ -28,13 +28,13 @@ PMWDS.S/
 ```json
 {
   "ConnectionStrings": {
-    "Default": "Server=.;Database=PMWDS_Dev;Trusted_Connection=True;...",
+    "Default": "Server=.;Database=pmwds-v1_Dev;Trusted_Connection=True;...",
     "Redis": "localhost:6379",
-    "Hangfire": "Server=.;Database=PMWDS_Hangfire_Dev;..."
+    "Hangfire": "Server=.;Database=pmwds-v1_Hangfire_Dev;..."
   },
   "Database": {
     "ForceSqlite": true,           // Force SQLite always in dev
-    "SqliteConnectionString": "Data Source=App_Data/pmwds-dev.sqlite"
+    "SqliteConnectionString": "Data Source=App_Data/pmwds-v1.sqlite"
   }
 }
 ```
@@ -44,7 +44,7 @@ PMWDS.S/
 {
   "Database": {
     "ForceSqlite": false,
-    "SqliteConnectionString": "Data Source=App_Data/pmwds-dev.sqlite"
+    "SqliteConnectionString": "Data Source=App_Data/pmwds-v1.sqlite"
   }
 }
 ```
@@ -53,7 +53,7 @@ PMWDS.S/
 ```json
 {
   "ConnectionStrings": {
-    "Default": "Server=.;Database=PMWDS;Trusted_Connection=True;..."
+    "Default": "Server=.;Database=pmwds-v1;Trusted_Connection=True;..."
   }
 }
 ```
@@ -66,7 +66,7 @@ PMWDS.S/
 public class DatabaseSettings
 {
     public bool ForceSqlite { get; set; } = false;
-    public string SqliteConnectionString { get; set; } = "Data Source=App_Data/pmwds-dev.sqlite";
+    public string SqliteConnectionString { get; set; } = "Data Source=App_Data/pmwds-v1.sqlite";
 }
 ```
 
@@ -122,7 +122,7 @@ When using SQLite:
 
 ### SQLite Database File
 
-- **Location:** `PMWDS.API/App_Data/pmwds-dev.sqlite`
+- **Location:** `PMWDS.API/App_Data/pmwds-v1.sqlite`
 - **Size:** ~299KB
 - **Created:** April 21, 2026
 
@@ -302,7 +302,7 @@ dotnet ef migrations add InitialCreate --project PMWDS.Persistence --startup-pro
 
 # The Design Time Factory uses SQL Server by default (see ApplicationDbContextFactory.cs)
 # Set environment variable before running:
-$env:PMWDS_CONNECTION_STRING = "Data Source=App_Data/pmwds-dev.sqlite"
+$env:PMWDS_CONNECTION_STRING = "Data Source=App_Data/pmwds-v1.sqlite"
 dotnet ef migrations add InitialCreate ...
 ```
 
@@ -327,7 +327,7 @@ For SQLite-only development:
 {
   "Database": {
     "ForceSqlite": true,
-    "SqliteConnectionString": "Data Source=App_Data/pmwds-dev.sqlite"
+    "SqliteConnectionString": "Data Source=App_Data/pmwds-v1.sqlite"
   }
 }
 ```
@@ -341,7 +341,7 @@ For SQLite-only development:
 | Program.cs | `PMWDS.API/Program.cs` |
 | DbContext | `PMWDS.Persistence/Context/ApplicationDbContext.cs` |
 | DbSettings | `PMWDS.Infrastructure/Settings/AppSettings.cs` |
-| SQLite DB | `PMWDS.API/App_Data/pmwds-dev.sqlite` |
+| SQLite DB | `PMWDS.API/App_Data/pmwds-v1.sqlite` |
 | Auth Controller | `PMWDS.API/Controllers/AuthController.cs` |
 | Seed Data | `PMWDS.Persistence/Migrations/SeedData.cs` |
 | Domain Entities | `PMWDS.Domain/Entities/*.cs` |
