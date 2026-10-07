@@ -17,7 +17,7 @@ type DiscoveredElement = {
   group: string;
 };
 
-type PageInventory = {
+export type PageInventory = {
   title: string;
   url: string;
   forms: string[];

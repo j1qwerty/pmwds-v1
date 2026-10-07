@@ -2,6 +2,10 @@ import type { Page } from "@playwright/test";
 import { E2E_BASE_URL, E2E_PASSWORD, type TestUser } from "../config.js";
 
 export async function login(page: Page, user: TestUser): Promise<void> {
+  if (!E2E_PASSWORD) {
+    throw new Error("E2E_PASSWORD is required for browser tests.");
+  }
+
   await page.goto(`${E2E_BASE_URL}/login`, { waitUntil: "domcontentloaded" });
 
   const email = page
