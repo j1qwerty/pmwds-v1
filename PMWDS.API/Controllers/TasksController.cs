@@ -208,6 +208,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpGet("by-project/{projectId:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.TasksView)]
     public async Task<IActionResult> GetByProject(Guid projectId, CancellationToken ct)
     {
         if (!await _scope.CanAccessProjectAsync(projectId, ct))
@@ -219,7 +220,7 @@ public class TasksController : BaseApiController
             .Include(t => t.SubTasks)
             .Where(task => task.ProjectId == projectId);
 
-        if (!_scope.IsDirector && !_scope.IsSuperAdmin && _scope.IsDepartmentHead)
+        if (!await _scope.CanSeeFullProjectDetailsAsync(projectId, ct))
         {
             var departmentIds = await _scope.GetDepartmentIdsAsync(ct);
             var visibleMilestoneIds = await _db.Milestones
@@ -277,6 +278,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.TasksView)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
@@ -294,10 +296,12 @@ public class TasksController : BaseApiController
     }
 
     [HttpPost]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.TasksCreate)]
     public async Task<IActionResult> Create([FromBody] CreateTaskDto dto, CancellationToken ct)
     {
-        if (!await _scope.CanManageProjectAsync(dto.ProjectId, ct))
+        if (!await _scope.CanCreateProjectChildAsync(dto.ProjectId, await ResolveTaskDepartmentIdAsync(dto.ProjectId, dto.MilestoneId, ct), ct,
+            PermissionCodes.TaskOwnCreate, PermissionCodes.TaskAllCreate,
+            PermissionCodes.TaskOwnManage, PermissionCodes.TaskAllManage))
         {
             return Forbid();
         }
@@ -338,20 +342,16 @@ public class TasksController : BaseApiController
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.TaskEditor)]
+    [Authorize(Policy = AuthorizationPolicies.TasksEdit)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateTaskDto dto, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
         if (task == null)
             return NotFound();
 
-        if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct))
-        {
-            return Forbid();
-        }
-
-        if (!await _scope.CanManageProjectAsync(task.ProjectId, ct) &&
-            task.AssignedToUserId != _scope.CurrentUserId)
+        if (!await _scope.CanModifyProjectChildAsync(task.ProjectId, await ResolveTaskDepartmentIdAsync(task.ProjectId, task.MilestoneId, ct), ct,
+            PermissionCodes.TaskOwnEdit, PermissionCodes.TaskAllEdit,
+            PermissionCodes.TaskOwnManage, PermissionCodes.TaskAllManage))
         {
             return Forbid();
         }
@@ -402,9 +402,14 @@ public class TasksController : BaseApiController
     }
 
     [HttpPatch("{id:guid}/progress")]
+    [Authorize(Policy = AuthorizationPolicies.TasksEdit)]
     public async Task<IActionResult> UpdateProgress(Guid id, [FromBody] UpdateTaskProgressDto dto, CancellationToken ct)
     {
-        if (!await _taskWorkflow.CanWorkOnTaskAsync(id, ct))
+        var taskForWrite = await _uow.Tasks.GetByIdAsync(id, ct);
+        if (taskForWrite == null ||
+            !await _scope.CanModifyProjectChildAsync(taskForWrite.ProjectId, await ResolveTaskDepartmentIdAsync(taskForWrite.ProjectId, taskForWrite.MilestoneId, ct), ct,
+            PermissionCodes.TaskOwnEdit, PermissionCodes.TaskAllEdit,
+                PermissionCodes.TaskOwnManage, PermissionCodes.TaskAllManage))
         {
             return Forbid();
         }
@@ -473,7 +478,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpPost("{id:guid}/assign")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = "Tasks.Assign")]
     public async Task<IActionResult> Assign(Guid id, [FromBody] AssignTaskRequest req, CancellationToken ct)
     {
         var assigneeIds = req.AssigneeIds?.Where(value => !string.IsNullOrWhiteSpace(value)).Distinct().ToList();
@@ -591,7 +596,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpGet("{id:guid}/ai/recommend-assignee")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.TasksView)]
     public async Task<IActionResult> GetAIAssignee(Guid id, CancellationToken ct)
         => Ok(await Mediator.Send(new GetAIAssigneeRecommendationQuery(id), ct));
 
@@ -607,7 +612,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpPost("{id:guid}/escalate")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.TasksEdit)]
     public async Task<IActionResult> Escalate(Guid id, CancellationToken ct)
     {
         if (!await _taskWorkflow.CanManageTaskAsync(id, ct))
@@ -621,6 +626,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpPost("{id:guid}/comments")]
+    [Authorize(Policy = "Tasks.Comments")]
     public async Task<IActionResult> AddComment(Guid id, [FromBody] AddCommentRequest req, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
@@ -658,6 +664,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpPost("{id:guid}/attachments")]
+    [Authorize(Policy = "Tasks.Attachments")]
     public async Task<IActionResult> UploadAttachment(Guid id, IFormFile file, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
@@ -702,7 +709,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpGet("overdue")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.TasksView)]
     public async Task<IActionResult> GetOverdue([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         var allowedProjectIds = await _taskWorkflow.GetAccessibleProjectIdsAsync(ct);
@@ -741,7 +748,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpGet("escalated")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.TasksView)]
     public async Task<IActionResult> GetEscalated([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         var allowedProjectIds = await _taskWorkflow.GetAccessibleProjectIdsAsync(ct);
@@ -762,7 +769,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpGet("unassigned")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.TasksView)]
     public async Task<IActionResult> GetUnassigned([FromQuery] PaginationQuery pagination, CancellationToken ct)
     {
         var allowedProjectIds = await _taskWorkflow.GetAccessibleProjectIdsAsync(ct);
@@ -876,7 +883,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpPut("subtasks/{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.TaskEditor)]
+    [Authorize(Policy = AuthorizationPolicies.SubtasksEdit)]
     public async Task<IActionResult> UpdateSubtask(Guid id, [FromBody] UpdateTaskDto dto, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
@@ -957,7 +964,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpPost("subtasks/{id:guid}/assign")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.SubtasksEdit)]
     public async Task<IActionResult> AssignSubtask(Guid id, [FromBody] AssignTaskRequest req, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(req.AssigneeId))
@@ -982,7 +989,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpDelete("subtasks/{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.SubtasksDelete)]
     public async Task<IActionResult> DeleteSubtask(Guid id, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
@@ -1034,7 +1041,7 @@ public class TasksController : BaseApiController
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.TasksDelete)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetByIdAsync(id, ct);
@@ -1042,7 +1049,9 @@ public class TasksController : BaseApiController
         var milestoneId = task.MilestoneId;
         var taskTitle = task.Title;
         var projectId = task.ProjectId;
-        if (!await _scope.CanManageProjectAsync(projectId, ct)) return Forbid();
+        if (!await _scope.CanModifyProjectChildAsync(projectId, await ResolveTaskDepartmentIdAsync(projectId, task.MilestoneId, ct), ct,
+            PermissionCodes.TaskOwnDelete, PermissionCodes.TaskAllDelete,
+            PermissionCodes.TaskOwnManage, PermissionCodes.TaskAllManage)) return Forbid();
         await _uow.Tasks.DeleteTaskGraphAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
         if (milestoneId.HasValue)
@@ -1208,4 +1217,20 @@ public class TasksController : BaseApiController
 
         return NoContent();
     }
+    private async Task<Guid?> ResolveTaskDepartmentIdAsync(Guid projectId, Guid? milestoneId, CancellationToken ct)
+    {
+        if (milestoneId.HasValue)
+        {
+            return await _db.Milestones
+                .Where(milestone => milestone.Id == milestoneId.Value && milestone.ProjectId == projectId)
+                .Select(milestone => milestone.DepartmentId)
+                .FirstOrDefaultAsync(ct);
+        }
+
+        return await _db.Projects
+            .Where(project => project.Id == projectId)
+            .Select(project => (Guid?)project.DepartmentId)
+            .FirstOrDefaultAsync(ct);
+    }
+
 }

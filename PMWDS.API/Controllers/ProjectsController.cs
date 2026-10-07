@@ -47,6 +47,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpGet("dashboard")]
+    [Authorize(Policy = AuthorizationPolicies.ProjectsView)]
     public async Task<IActionResult> GetDashboard([FromQuery] Guid? departmentId, CancellationToken ct)
     {
         if (departmentId.HasValue && !await _scope.CanAccessDepartmentAsync(departmentId.Value, ct))
@@ -198,6 +199,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpGet]
+    [Authorize(Policy = AuthorizationPolicies.ProjectsView)]
     public async Task<IActionResult> GetAll(
         [FromQuery] Guid? departmentId,
         [FromQuery] ProjectStatus? status,
@@ -392,6 +394,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.ProjectsView)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         if (!await _scope.CanAccessProjectAsync(id, ct))
@@ -403,7 +406,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpPost]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.ProjectsCreate)]
     public async Task<IActionResult> Create([FromBody] CreateProjectDto dto, CancellationToken ct)
     {
         var departmentIds = ResolveDepartmentIds(dto.DepartmentId, dto.DepartmentIds);
@@ -412,14 +415,9 @@ public class ProjectsController : BaseApiController
             return Forbid();
         }
 
-        if (!_scope.IsSuperAdmin && !_scope.IsDirector && _scope.IsDepartmentHead && _currentUser.UserId is not null)
+        if (!await _scope.CanCreateProjectAsync(dto.DepartmentId, ct))
         {
-            var userHeadedDepts = await _db.Departments
-                .Where(d => d.DepartmentHeadUserId == _currentUser.UserId)
-                .Select(d => d.Id)
-                .ToListAsync(ct);
-            if (userHeadedDepts.Count > 0 && !departmentIds.Any(id => userHeadedDepts.Contains(id)))
-                return Forbid();
+            return Forbid();
         }
 
         if (!string.IsNullOrEmpty(dto.ProjectManagerId) &&
@@ -447,10 +445,10 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.ProjectsEdit)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateProjectDto dto, CancellationToken ct)
     {
-        if (!await _scope.CanManageProjectAsync(id, ct))
+        if (!await _scope.CanEditProjectAsync(id, ct))
         {
             return Forbid();
         }
@@ -486,10 +484,10 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpPatch("{id:guid}/status")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.ProjectsEdit)]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateProjectStatusRequest req, CancellationToken ct)
     {
-        if (!await _scope.CanManageProjectAsync(id, ct))
+        if (!await _scope.CanEditProjectAsync(id, ct))
         {
             return Forbid();
         }
@@ -679,7 +677,7 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.ProjectsDelete)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var project = await _uow.Projects.GetByIdAsync(id, ct);
@@ -688,7 +686,7 @@ public class ProjectsController : BaseApiController
             return NotFound();
         }
 
-        if (!await _scope.CanManageProjectAsync(id, ct))
+        if (!await _scope.CanDeleteProjectAsync(id, ct))
         {
             return Forbid();
         }

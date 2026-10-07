@@ -68,7 +68,7 @@ public class UtilizationCertificatesController : ControllerBase
     /// <summary>Uploads the certificate file and its finance metadata as a draft.</summary>
     [HttpPost]
     [RequestSizeLimit(MaxFileSizeBytes)]
-    [Authorize(Policy = AuthorizationPolicies.UtilizationCertificateCreate)]
+    [Authorize(Policy = AuthorizationPolicies.UtilizationCertificatesUpload)]
     public async Task<IActionResult> SubmitCertificate(
         IFormFile file,
         [FromForm] SubmitUtilizationCertificateDto dto,

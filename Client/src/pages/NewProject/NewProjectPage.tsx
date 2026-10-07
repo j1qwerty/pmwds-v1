@@ -9,9 +9,10 @@ import {
   GlassCard,
   useToast,
   LoadingPage,
+  usePermission,
 } from "../shared";
 import { Icon } from "../../components/ui/Icon";
-import { RoleKey, hasRoleKey } from "../../permissions";
+import { Permission, RoleKey, hasRoleKey } from "../../permissions";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { ProjectDetailsStep } from "./steps/ProjectDetailsStep";
 import { DepartmentsStep } from "./steps/DepartmentsStep";
@@ -80,6 +81,7 @@ const EXECUTIVE_STEPS: StepConfig[] = [
 export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const navigate = useNavigate();
   const { auth } = useAuth();
+  const perm = usePermission();
   const { data, refresh } = useAppData();
   const { addToast } = useToast();
   const [liveDepartments, setLiveDepartments] = useState<Department[] | null>(null);
@@ -150,6 +152,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const isSuperAdmin = hasRoleKey(auth?.roleKeys, RoleKey.SuperAdmin);
   const isDirector = hasRoleKey(auth?.roleKeys, RoleKey.Director);
   const isDepartmentHead = hasRoleKey(auth?.roleKeys, RoleKey.DepartmentHead);
+  const canManagePrimaryDepartment = perm.has(Permission.ProjectPrimaryDepartmentManage);
   const usesExecutiveFlow = isSuperAdmin || isDirector || isDepartmentHead;
   const steps = usesExecutiveFlow ? EXECUTIVE_STEPS : LEGACY_STEPS;
   const currentStepKey = steps[currentStep]?.key ?? "details";
@@ -170,7 +173,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
       const dept = data.departments.find(d => d.departmentHeadUserId === auth.userId);
       if (dept) setPrimaryDepartmentId(dept.id);
     }
-  }, [isDepartmentHead, auth, data.departments, primaryDepartmentId]);
+  }, [isDepartmentHead, canManagePrimaryDepartment, auth, data.departments, primaryDepartmentId]);
 
   const handleDetailsChange = (field: string, value: string | number) => {
     switch (field) {
@@ -336,6 +339,19 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
     return filtered;
   }, [allDepartments, shouldFilterByOrg, userOrganizationId]);
 
+  const primaryDepartmentOptions = useMemo(() => {
+    if (isSuperAdmin || perm.has(Permission.ProjectAllCreate) || perm.has(Permission.ProjectAllManage)) {
+      return scopedDepartments;
+    }
+    if (!auth || !perm.has(Permission.ProjectPrimaryDepartmentManage)) {
+      return [];
+    }
+    const headed = scopedDepartments.filter((department) => department.departmentHeadUserId === auth.userId);
+    return headed.length > 0
+      ? headed
+      : scopedDepartments.filter((department) => department.id === data.users.find((user) => user.id === auth.userId)?.departmentId);
+  }, [auth, data.users, isSuperAdmin, perm, scopedDepartments]);
+
   const departmentUsers = useMemo(() => {
     const effectiveDepartmentIds = usesExecutiveFlow
       ? milestones.map((milestone) => milestone.departmentId).filter(Boolean) as string[]
@@ -463,8 +479,8 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
               endDate={endDate}
               onChange={handleDetailsChange}
               primaryDepartmentId={primaryDepartmentId}
-              departments={isSuperAdmin || isDirector ? scopedDepartments : undefined}
-              onPrimaryDepartmentChange={isSuperAdmin || isDirector ? setPrimaryDepartmentId : undefined}
+              departments={primaryDepartmentOptions}
+              onPrimaryDepartmentChange={primaryDepartmentOptions.length > 0 ? setPrimaryDepartmentId : undefined}
             />
           )}
           {currentStepKey === "departments" && (
@@ -498,6 +514,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
               milestones={milestones}
               departments={scopedDepartments}
               organizations={data.organizations}
+              showOrganization={isSuperAdmin}
               loading={departmentsLoading}
               onChange={setMilestones}
             />

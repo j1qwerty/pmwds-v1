@@ -67,14 +67,16 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpPost("dependencies")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.MilestonesEdit)]
     public async Task<IActionResult> CreateDependency([FromBody] CreateMilestoneDependencyDto dto, CancellationToken ct)
     {
         var project = await _db.Projects.FirstOrDefaultAsync(p => p.Id == dto.ProjectId, ct);
         if (project == null)
             return NotFound(new { message = "Project not found" });
 
-        if (!await _scope.CanManageProjectAsync(dto.ProjectId, ct))
+        if (!await _scope.CanModifyProjectChildAsync(dto.ProjectId, null, ct,
+            PermissionCodes.MilestoneOwnEdit, PermissionCodes.MilestoneAllEdit,
+            PermissionCodes.MilestoneOwnManage, PermissionCodes.MilestoneAllManage))
             return Forbid();
 
         if (dto.PrerequisiteMilestoneId == dto.DependentMilestoneId)
@@ -147,7 +149,7 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpPut("dependencies/{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.MilestonesEdit)]
     public async Task<IActionResult> UpdateDependency(Guid id, [FromBody] UpdateMilestoneDependencyDto dto, CancellationToken ct)
     {
         var dep = await _db.MilestoneDependencies
@@ -194,7 +196,7 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpDelete("dependencies/{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.MilestonesDelete)]
     public async Task<IActionResult> DeleteDependency(Guid id, CancellationToken ct)
     {
         var dep = await _db.MilestoneDependencies
@@ -255,6 +257,7 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpGet("by-project/{projectId:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.MilestonesView)]
     public async Task<IActionResult> GetByProject(Guid projectId, CancellationToken ct)
     {
         if (!await _scope.CanAccessProjectAsync(projectId, ct))
@@ -268,13 +271,10 @@ public class MilestonesController : BaseApiController
                 .ThenInclude(d => d.PrerequisiteMilestone)
             .Where(m => m.ProjectId == projectId);
 
-        if (!_scope.IsDirector && !_scope.IsSuperAdmin && _scope.IsDepartmentHead)
+        if (!await _scope.CanSeeFullProjectDetailsAsync(projectId, ct))
         {
             var departmentIds = await _scope.GetDepartmentIdsAsync(ct);
-            if (!await _scope.CanAccessProjectAsPrimaryDepartmentAsync(projectId, ct))
-            {
-                query = query.Where(m => m.DepartmentId.HasValue && departmentIds.Contains(m.DepartmentId.Value));
-            }
+            query = query.Where(m => m.DepartmentId.HasValue && departmentIds.Contains(m.DepartmentId.Value));
         }
 
         var milestones = await query
@@ -284,6 +284,7 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.MilestonesView)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var milestone = await _db.Milestones
@@ -308,10 +309,12 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpPost]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.MilestonesCreate)]
     public async Task<IActionResult> Create([FromBody] CreateMilestoneDto dto, CancellationToken ct)
     {
-        if (!await _scope.CanManageProjectAsync(dto.ProjectId, ct))
+        if (!await _scope.CanCreateProjectChildAsync(dto.ProjectId, dto.DepartmentId, ct,
+            PermissionCodes.MilestoneOwnCreate, PermissionCodes.MilestoneAllCreate,
+            PermissionCodes.MilestoneOwnManage, PermissionCodes.MilestoneAllManage))
         {
             return Forbid();
         }
@@ -348,7 +351,7 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.MilestonesEdit)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateMilestoneDto dto, CancellationToken ct)
     {
         var milestone = await _db.Milestones
@@ -360,7 +363,9 @@ public class MilestonesController : BaseApiController
             return NotFound();
         }
 
-        if (!await _scope.CanManageProjectAsync(milestone.ProjectId, ct))
+        if (!await _scope.CanModifyProjectChildAsync(milestone.ProjectId, milestone.DepartmentId, ct,
+            PermissionCodes.MilestoneOwnEdit, PermissionCodes.MilestoneAllEdit,
+            PermissionCodes.MilestoneOwnManage, PermissionCodes.MilestoneAllManage))
         {
             return Forbid();
         }
@@ -414,7 +419,7 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpPatch("{id:guid}/complete")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.MilestonesEdit)]
     public async Task<IActionResult> Complete(Guid id, CancellationToken ct, [FromQuery] bool forceComplete = false)
     {
         var milestone = await _db.Milestones
@@ -426,7 +431,9 @@ public class MilestonesController : BaseApiController
             return NotFound();
         }
 
-        if (!await _scope.CanManageProjectAsync(milestone.ProjectId, ct))
+        if (!await _scope.CanModifyProjectChildAsync(milestone.ProjectId, milestone.DepartmentId, ct,
+            PermissionCodes.MilestoneOwnEdit, PermissionCodes.MilestoneAllEdit,
+            PermissionCodes.MilestoneOwnManage, PermissionCodes.MilestoneAllManage))
         {
             return Forbid();
         }
@@ -484,7 +491,7 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpPatch("{id:guid}/status")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.MilestonesEdit)]
     public async Task<IActionResult> SetStatus(Guid id, [FromBody] SetMilestoneStatusDto dto, CancellationToken ct)
     {
         var milestone = await _db.Milestones
@@ -565,7 +572,7 @@ public class MilestonesController : BaseApiController
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.Manager)]
+    [Authorize(Policy = AuthorizationPolicies.MilestonesDelete)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var milestone = await _uow.Milestones.GetByIdAsync(id, ct);
@@ -576,7 +583,9 @@ public class MilestonesController : BaseApiController
 
         var projectId = milestone.ProjectId;
 
-        if (!await _scope.CanManageProjectAsync(projectId, ct))
+        if (!await _scope.CanModifyProjectChildAsync(projectId, milestone.DepartmentId, ct,
+            PermissionCodes.MilestoneOwnDelete, PermissionCodes.MilestoneAllDelete,
+            PermissionCodes.MilestoneOwnManage, PermissionCodes.MilestoneAllManage))
         {
             return Forbid();
         }
@@ -658,18 +667,15 @@ public class MilestonesController : BaseApiController
             .ToList();
     }
 
-    private async Task<bool> CanAccessMilestoneAsync(Milestone milestone, CancellationToken ct)
-    {
-        if (!_scope.IsDepartmentHead || _scope.IsDirector || _scope.IsSuperAdmin)
-        {
-            return true;
-        }
-
-        var departmentIds = await _scope.GetDepartmentIdsAsync(ct);
-        if (milestone.DepartmentId.HasValue && departmentIds.Contains(milestone.DepartmentId.Value))
-            return true;
-        return await _scope.CanAccessProjectAsPrimaryDepartmentAsync(milestone.ProjectId, ct);
-    }
+    private Task<bool> CanAccessMilestoneAsync(Milestone milestone, CancellationToken ct)
+        => _scope.CanAccessProjectDataAsync(
+            milestone.ProjectId,
+            milestone.DepartmentId,
+            ct,
+            PermissionCodes.MilestoneOwnView,
+            PermissionCodes.MilestoneAllView,
+            PermissionCodes.MilestoneOwnManage,
+            PermissionCodes.MilestoneAllManage);
 
     private Task<bool> IsDepartmentAssignedToProjectAsync(Guid projectId, Guid departmentId, CancellationToken ct)
         => _db.Projects.AnyAsync(project =>

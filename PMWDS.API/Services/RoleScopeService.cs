@@ -44,6 +44,17 @@ public class RoleScopeService
             return query;
         }
 
+        if (!await HasAnyPermissionAsync(
+            ct,
+            PermissionCodes.OrganizationView,
+            PermissionCodes.OrganizationManage,
+            PermissionCodes.OrganizationCreate,
+            PermissionCodes.OrganizationEdit,
+            PermissionCodes.OrganizationDelete))
+        {
+            return query.Where(_ => false);
+        }
+
         var organizationIds = await GetOrganizationIdsAsync(ct);
         return query.Where(organization => organizationIds.Contains(organization.Id));
     }
@@ -55,8 +66,37 @@ public class RoleScopeService
             return query;
         }
 
-        var organizationIds = await GetOrganizationIdsAsync(ct);
-        return query.Where(department => department.OrganizationId.HasValue && organizationIds.Contains(department.OrganizationId.Value));
+        var hasAll = await HasAnyPermissionAsync(
+            ct,
+            PermissionCodes.DepartmentAllView,
+            PermissionCodes.DepartmentAllManage,
+            PermissionCodes.DepartmentAllCreate,
+            PermissionCodes.DepartmentAllEdit,
+            PermissionCodes.DepartmentAllDelete);
+
+        if (hasAll)
+        {
+            var organizationIds = await GetOrganizationIdsAsync(ct);
+            return query.Where(department =>
+                department.OrganizationId.HasValue &&
+                organizationIds.Contains(department.OrganizationId.Value));
+        }
+
+        var hasOwn = await HasAnyPermissionAsync(
+            ct,
+            PermissionCodes.DepartmentOwnView,
+            PermissionCodes.DepartmentOwnManage,
+            PermissionCodes.DepartmentOwnCreate,
+            PermissionCodes.DepartmentOwnEdit,
+            PermissionCodes.DepartmentOwnDelete);
+
+        if (!hasOwn)
+        {
+            return query.Where(_ => false);
+        }
+
+        var departmentIds = await GetDepartmentIdsAsync(ct);
+        return query.Where(department => departmentIds.Contains(department.Id));
     }
 
     public async Task<IQueryable<Project>> ScopeProjectsAsync(IQueryable<Project> query, CancellationToken ct)
@@ -66,28 +106,49 @@ public class RoleScopeService
             return query;
         }
 
-        if (IsDepartmentHead && !IsDirector)
+        var organizationIds = await GetOrganizationIdsAsync(ct);
+        var hasAll = await HasAnyPermissionAsync(
+            ct,
+            PermissionCodes.ProjectAllView,
+            PermissionCodes.ProjectAllManage,
+            PermissionCodes.ProjectAllEdit,
+            PermissionCodes.ProjectAllDelete);
+
+        if (hasAll)
         {
-            var departmentIds = await GetDepartmentIdsAsync(ct);
-            var canAccessPrimaryDepartmentProjects = await HasPermissionAsync(PermissionCodes.ProjectPrimaryDepartmentManage, ct);
             return query.Where(project =>
-                (canAccessPrimaryDepartmentProjects && departmentIds.Contains(project.DepartmentId)) ||
-                project.ProjectDepartments.Any(pd =>
-                    departmentIds.Contains(pd.DepartmentId)) ||
-                project.Milestones.Any(m =>
-                    m.DepartmentId.HasValue &&
-                    departmentIds.Contains(m.DepartmentId.Value)));
+                (project.Department != null &&
+                 project.Department.OrganizationId.HasValue &&
+                 organizationIds.Contains(project.Department.OrganizationId.Value)) ||
+                project.ProjectDepartments.Any(assignment =>
+                    assignment.Department != null &&
+                    assignment.Department.OrganizationId.HasValue &&
+                    organizationIds.Contains(assignment.Department.OrganizationId.Value)));
         }
 
-        var organizationIds = await GetOrganizationIdsAsync(ct);
+        var hasOwn = await HasAnyPermissionAsync(
+            ct,
+            PermissionCodes.ProjectOwnView,
+            PermissionCodes.ProjectOwnManage,
+            PermissionCodes.ProjectOwnEdit,
+            PermissionCodes.ProjectOwnDelete,
+            PermissionCodes.ProjectPrimaryDepartmentManage);
+
+        if (!hasOwn)
+        {
+            return query.Where(_ => false);
+        }
+
+        var departmentIds = await GetDepartmentIdsAsync(ct);
         return query.Where(project =>
-            (project.Department != null &&
-                project.Department.OrganizationId.HasValue &&
-                organizationIds.Contains(project.Department.OrganizationId.Value)) ||
+            (departmentIds.Contains(project.DepartmentId) &&
+             project.ProjectDepartments.Any(assignment =>
+                 assignment.ProjectId == project.Id && assignment.IsPrimary)) ||
             project.ProjectDepartments.Any(assignment =>
-                assignment.Department != null &&
-                assignment.Department.OrganizationId.HasValue &&
-                organizationIds.Contains(assignment.Department.OrganizationId.Value)));
+                departmentIds.Contains(assignment.DepartmentId)) ||
+            project.Milestones.Any(milestone =>
+                milestone.DepartmentId.HasValue &&
+                departmentIds.Contains(milestone.DepartmentId.Value)));
     }
 
     public async Task<IQueryable<ApplicationUser>> ScopeUsersAsync(IQueryable<ApplicationUser> query, CancellationToken ct)
@@ -97,36 +158,47 @@ public class RoleScopeService
             return query;
         }
 
-        var organizationIds = await GetOrganizationIdsAsync(ct);
+        var hasAll = await HasAnyPermissionAsync(
+            ct,
+            PermissionCodes.UserAllView,
+            PermissionCodes.UserAllManage,
+            PermissionCodes.UserAllCreate,
+            PermissionCodes.UserAllEdit,
+            PermissionCodes.UserAllDelete);
 
-        if (IsDepartmentHead && !IsDirector)
+        if (hasAll)
         {
-            var departmentIds = await GetDepartmentIdsAsync(ct);
+            var organizationIds = await GetOrganizationIdsAsync(ct);
             return query.Where(user =>
-                !user.Roles.Any(role => role.Key == RoleKeys.SuperAdmin) &&
+                !user.Roles.Any(role => role.Permissions.Any(permission => permission.Code == PermissionCodes.SystemAdmin)) &&
                 (
                     (user.OrganizationId.HasValue && organizationIds.Contains(user.OrganizationId.Value)) ||
-                    user.DepartmentAssignments.Any(assignment => departmentIds.Contains(assignment.DepartmentId)) ||
-                    (user.DepartmentId.HasValue && departmentIds.Contains(user.DepartmentId.Value)) ||
-                    user.Roles.Any(role => (role.Key == RoleKeys.Director || role.Key == RoleKeys.DepartmentHead) &&
-                        user.DepartmentAssignments.Any(assignment =>
-                            assignment.Department != null &&
-                            assignment.Department.OrganizationId.HasValue &&
-                            organizationIds.Contains(assignment.Department.OrganizationId.Value)))
+                    user.DepartmentAssignments.Any(assignment =>
+                        assignment.Department != null &&
+                        assignment.Department.OrganizationId.HasValue &&
+                        organizationIds.Contains(assignment.Department.OrganizationId.Value))
                 ));
         }
 
+        var hasOwn = await HasAnyPermissionAsync(
+            ct,
+            PermissionCodes.UserOwnView,
+            PermissionCodes.UserOwnManage,
+            PermissionCodes.UserOwnCreate,
+            PermissionCodes.UserOwnEdit,
+            PermissionCodes.UserOwnDelete);
+
+        if (!hasOwn)
+        {
+            return query.Where(_ => false);
+        }
+
+        var departmentIds = await GetDepartmentIdsAsync(ct);
         return query.Where(user =>
-            !user.Roles.Any(role => role.Key == RoleKeys.SuperAdmin) &&
+            !user.Roles.Any(role => role.Permissions.Any(permission => permission.Code == PermissionCodes.SystemAdmin)) &&
             (
-                (user.OrganizationId.HasValue && organizationIds.Contains(user.OrganizationId.Value)) ||
-                user.DepartmentAssignments.Any(assignment =>
-                    assignment.Department != null &&
-                    assignment.Department.OrganizationId.HasValue &&
-                    organizationIds.Contains(assignment.Department.OrganizationId.Value)) ||
-                (user.Department != null &&
-                    user.Department.OrganizationId.HasValue &&
-                    organizationIds.Contains(user.Department.OrganizationId.Value))
+                (user.DepartmentId.HasValue && departmentIds.Contains(user.DepartmentId.Value)) ||
+                user.DepartmentAssignments.Any(assignment => departmentIds.Contains(assignment.DepartmentId))
             ));
     }
 
@@ -135,6 +207,17 @@ public class RoleScopeService
         if (IsSuperAdmin)
         {
             return true;
+        }
+
+        if (!await HasAnyPermissionAsync(
+            ct,
+            PermissionCodes.OrganizationView,
+            PermissionCodes.OrganizationManage,
+            PermissionCodes.OrganizationCreate,
+            PermissionCodes.OrganizationEdit,
+            PermissionCodes.OrganizationDelete))
+        {
+            return false;
         }
 
         var organizationIds = await GetOrganizationIdsAsync(ct);
@@ -148,26 +231,46 @@ public class RoleScopeService
             return true;
         }
 
-        if (IsDepartmentHead && CurrentUserId is not null)
-        {
-            var deptHeadUserId = await _db.Departments
-                .Where(d => d.Id == departmentId)
-                .Select(d => d.DepartmentHeadUserId)
-                .FirstOrDefaultAsync(ct);
-            if (deptHeadUserId == CurrentUserId.ToString()) return true;
-        }
-
         var department = await _db.Departments
             .Where(item => item.Id == departmentId)
             .Select(item => new { item.OrganizationId })
             .FirstOrDefaultAsync(ct);
 
-        return department?.OrganizationId is { } organizationId &&
-            await CanAccessOrganizationAsync(organizationId, ct);
+        if (department == null)
+        {
+            return false;
+        }
+
+        if (await HasAnyPermissionAsync(
+            ct,
+            PermissionCodes.DepartmentAllView,
+            PermissionCodes.DepartmentAllManage,
+            PermissionCodes.DepartmentAllCreate,
+            PermissionCodes.DepartmentAllEdit,
+            PermissionCodes.DepartmentAllDelete))
+        {
+            return department.OrganizationId.HasValue &&
+                await CanAccessOrganizationScopeAsync(department.OrganizationId.Value, ct);
+        }
+
+        return await HasAnyPermissionAsync(
+            ct,
+            PermissionCodes.DepartmentOwnView,
+            PermissionCodes.DepartmentOwnManage,
+            PermissionCodes.DepartmentOwnCreate,
+            PermissionCodes.DepartmentOwnEdit,
+            PermissionCodes.DepartmentOwnDelete) &&
+            (await GetDepartmentIdsAsync(ct)).Contains(departmentId);
     }
 
     public async Task<bool> CanManageOrganizationAsync(Guid organizationId, CancellationToken ct)
-        => IsSuperAdmin || (IsDirector && await CanAccessOrganizationAsync(organizationId, ct));
+        => IsSuperAdmin ||
+           await HasAnyPermissionAsync(
+               ct,
+               PermissionCodes.OrganizationManage,
+               PermissionCodes.OrganizationEdit,
+               PermissionCodes.OrganizationDelete) &&
+           await CanAccessOrganizationScopeAsync(organizationId, ct);
 
     public async Task<bool> CanManageDepartmentAsync(Guid departmentId, CancellationToken ct)
     {
@@ -176,27 +279,313 @@ public class RoleScopeService
             return true;
         }
 
-        var department = await _db.Departments
-            .Where(item => item.Id == departmentId)
-            .Select(item => new { item.OrganizationId, item.DepartmentHeadUserId })
-            .FirstOrDefaultAsync(ct);
-
-        if (department == null)
+        var all = await HasAnyPermissionAsync(
+            ct,
+            PermissionCodes.DepartmentAllManage,
+            PermissionCodes.DepartmentAllEdit,
+            PermissionCodes.DepartmentAllDelete);
+        if (all)
         {
-            return false;
+            var organizationId = await _db.Departments
+                .Where(item => item.Id == departmentId)
+                .Select(item => item.OrganizationId)
+                .FirstOrDefaultAsync(ct);
+            return organizationId.HasValue && await CanAccessOrganizationScopeAsync(organizationId.Value, ct);
         }
 
-        if (IsDirector && department.OrganizationId.HasValue &&
-            await CanAccessOrganizationAsync(department.OrganizationId.Value, ct))
+        return await HasAnyPermissionAsync(
+            ct,
+            PermissionCodes.DepartmentOwnManage,
+            PermissionCodes.DepartmentOwnEdit,
+            PermissionCodes.DepartmentOwnDelete) &&
+            (await GetDepartmentIdsAsync(ct)).Contains(departmentId);
+    }
+
+    private async Task<bool> CanAccessOrganizationScopeAsync(Guid organizationId, CancellationToken ct)
+    {
+        if (IsSuperAdmin)
         {
             return true;
         }
 
-        return IsDepartmentHead &&
-            CurrentUserId?.ToString() == department.DepartmentHeadUserId;
+        var organizationIds = await GetOrganizationIdsAsync(ct);
+        return organizationIds.Contains(organizationId);
     }
 
+    public async Task<bool> CanAccessProjectDocumentAsync(
+        Guid projectId,
+        Guid? milestoneId,
+        Guid? taskId,
+        CancellationToken ct,
+        string ownViewPermission,
+        string allViewPermission,
+        string ownManagePermission,
+        string allManagePermission)
+    {
+        if (!await CanAccessProjectAsync(projectId, ct))
+        {
+            return false;
+        }
+
+        if (await CanSeeFullProjectDetailsAsync(projectId, ct) ||
+            await HasAnyPermissionAsync(ct, allViewPermission, allManagePermission))
+        {
+            return true;
+        }
+
+        if (!await HasAnyPermissionAsync(ct, ownViewPermission, ownManagePermission))
+        {
+            return false;
+        }
+
+        var departmentId = await ResolveWorkItemDepartmentIdAsync(projectId, milestoneId, taskId, ct);
+        return departmentId.HasValue &&
+            (await GetDepartmentIdsAsync(ct)).Contains(departmentId.Value);
+    }
+
+    public async Task<bool> CanUploadProjectDocumentAsync(
+        Guid projectId,
+        Guid? milestoneId,
+        Guid? taskId,
+        CancellationToken ct,
+        string ownUploadPermission,
+        string allUploadPermission)
+    {
+        if (!await CanAccessProjectAsync(projectId, ct))
+        {
+            return false;
+        }
+
+        if (await HasAnyPermissionAsync(ct, allUploadPermission))
+        {
+            return true;
+        }
+
+        if (!await HasAnyPermissionAsync(ct, ownUploadPermission))
+        {
+            return false;
+        }
+
+        var departmentId = await ResolveWorkItemDepartmentIdAsync(projectId, milestoneId, taskId, ct);
+        return departmentId.HasValue &&
+            (await GetDepartmentIdsAsync(ct)).Contains(departmentId.Value);
+    }
+
+    private async Task<Guid?> ResolveWorkItemDepartmentIdAsync(
+        Guid projectId,
+        Guid? milestoneId,
+        Guid? taskId,
+        CancellationToken ct)
+    {
+        if (taskId.HasValue)
+        {
+            return await _db.Tasks
+                .Where(task => task.Id == taskId.Value && task.ProjectId == projectId)
+                .Select(task => task.Milestone != null
+                    ? task.Milestone.DepartmentId
+                    : (Guid?)null)
+                .FirstOrDefaultAsync(ct);
+        }
+
+        if (milestoneId.HasValue)
+        {
+            return await _db.Milestones
+                .Where(milestone => milestone.Id == milestoneId.Value && milestone.ProjectId == projectId)
+                .Select(milestone => milestone.DepartmentId)
+                .FirstOrDefaultAsync(ct);
+        }
+
+        return await _db.Projects
+            .Where(project => project.Id == projectId)
+            .Select(project => (Guid?)project.DepartmentId)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<List<Guid>> GetAccessibleProjectIdsAsync(CancellationToken ct)
+    {
+        var scoped = await ScopeProjectsAsync(_db.Projects.AsNoTracking(), ct);
+        return await scoped.Select(project => project.Id).ToListAsync(ct);
+    }
+
+    public async Task<bool> CanAccessKnowledgeAsync(Guid? projectId, CancellationToken ct)
+    {
+        if (IsSuperAdmin ||
+            await HasAnyPermissionAsync(
+                ct,
+                PermissionCodes.KnowledgeAllView,
+                PermissionCodes.KnowledgeAllManage,
+                PermissionCodes.KnowledgeAllCreate,
+                PermissionCodes.KnowledgeAllEdit,
+                PermissionCodes.KnowledgeAllDelete))
+        {
+            return !projectId.HasValue || await CanAccessProjectAsync(projectId.Value, ct);
+        }
+
+        if (!projectId.HasValue)
+        {
+            return false;
+        }
+
+        return await CanAccessProjectDataAsync(
+            projectId.Value,
+            null,
+            ct,
+            PermissionCodes.KnowledgeOwnView,
+            PermissionCodes.KnowledgeAllView,
+            PermissionCodes.KnowledgeOwnManage,
+            PermissionCodes.KnowledgeAllManage);
+    }
+
+    public async Task<bool> CanAccessProjectDataAsync(
+        Guid projectId,
+        Guid? departmentId,
+        CancellationToken ct,
+        string ownPermission,
+        string allPermission,
+        string ownManagePermission,
+        string allManagePermission)
+    {
+        if (!await CanAccessProjectAsync(projectId, ct))
+        {
+            return false;
+        }
+
+        if (await HasAnyPermissionAsync(ct, allPermission, allManagePermission) ||
+            await CanSeeFullProjectDetailsAsync(projectId, ct))
+        {
+            return true;
+        }
+
+        if (!await HasAnyPermissionAsync(ct, ownPermission, ownManagePermission))
+        {
+            return false;
+        }
+
+        var effectiveDepartmentId = departmentId ?? await _db.Projects
+            .Where(project => project.Id == projectId)
+            .Select(project => (Guid?)project.DepartmentId)
+            .FirstOrDefaultAsync(ct);
+
+        return effectiveDepartmentId.HasValue &&
+            (await GetDepartmentIdsAsync(ct)).Contains(effectiveDepartmentId.Value);
+    }
+
+    public async Task<bool> CanCreateProjectChildAsync(
+        Guid projectId,
+        Guid? departmentId,
+        CancellationToken ct,
+        string ownPermission,
+        string allPermission,
+        string ownManagePermission,
+        string allManagePermission)
+    {
+        if (!await CanAccessProjectAsync(projectId, ct))
+        {
+            return false;
+        }
+
+        if (await HasAnyPermissionAsync(ct, allPermission, allManagePermission))
+        {
+            return true;
+        }
+
+        if (!await HasAnyPermissionAsync(ct, ownPermission, ownManagePermission))
+        {
+            return false;
+        }
+
+        var effectiveDepartmentId = departmentId ?? await _db.Projects
+            .Where(project => project.Id == projectId)
+            .Select(project => (Guid?)project.DepartmentId)
+            .FirstOrDefaultAsync(ct);
+
+        return effectiveDepartmentId.HasValue &&
+            (await GetDepartmentIdsAsync(ct)).Contains(effectiveDepartmentId.Value);
+    }
+
+    public async Task<bool> CanModifyProjectChildAsync(
+        Guid projectId,
+        Guid? departmentId,
+        CancellationToken ct,
+        string ownPermission,
+        string allPermission,
+        string ownManagePermission,
+        string allManagePermission)
+    {
+        if (!await CanAccessProjectAsync(projectId, ct))
+        {
+            return false;
+        }
+
+        if (await HasAnyPermissionAsync(ct, allPermission, allManagePermission))
+        {
+            return true;
+        }
+
+        if (!await HasAnyPermissionAsync(ct, ownPermission, ownManagePermission))
+        {
+            return false;
+        }
+
+        var effectiveDepartmentId = departmentId ?? await _db.Projects
+            .Where(project => project.Id == projectId)
+            .Select(project => (Guid?)project.DepartmentId)
+            .FirstOrDefaultAsync(ct);
+
+        return effectiveDepartmentId.HasValue &&
+            (await GetDepartmentIdsAsync(ct)).Contains(effectiveDepartmentId.Value);
+    }
+
+    public async Task<bool> CanCreateProjectAsync(Guid primaryDepartmentId, CancellationToken ct)
+    {
+        if (IsSuperAdmin)
+        {
+            return true;
+        }
+
+        if (await HasAnyPermissionAsync(ct, PermissionCodes.ProjectAllCreate, PermissionCodes.ProjectAllManage))
+        {
+            return await CanAccessDepartmentAsync(primaryDepartmentId, ct);
+        }
+
+        return await HasAnyPermissionAsync(ct, PermissionCodes.ProjectOwnCreate, PermissionCodes.ProjectOwnManage) &&
+            (await GetDepartmentIdsAsync(ct)).Contains(primaryDepartmentId);
+    }
+
+    public async Task<bool> CanEditProjectAsync(Guid projectId, CancellationToken ct)
+        => await CanModifyProjectAsync(
+            projectId,
+            ct,
+            PermissionCodes.ProjectOwnEdit,
+            PermissionCodes.ProjectAllEdit,
+            PermissionCodes.ProjectOwnManage,
+            PermissionCodes.ProjectAllManage);
+
+    public async Task<bool> CanDeleteProjectAsync(Guid projectId, CancellationToken ct)
+        => await CanModifyProjectAsync(
+            projectId,
+            ct,
+            PermissionCodes.ProjectOwnDelete,
+            PermissionCodes.ProjectAllDelete,
+            PermissionCodes.ProjectOwnManage,
+            PermissionCodes.ProjectAllManage);
+
     public async Task<bool> CanManageProjectAsync(Guid projectId, CancellationToken ct)
+        => await CanModifyProjectAsync(
+            projectId,
+            ct,
+            PermissionCodes.ProjectOwnEdit,
+            PermissionCodes.ProjectAllEdit,
+            PermissionCodes.ProjectOwnDelete,
+            PermissionCodes.ProjectAllDelete,
+            PermissionCodes.ProjectOwnManage,
+            PermissionCodes.ProjectAllManage,
+            PermissionCodes.ProjectPrimaryDepartmentManage);
+
+    private async Task<bool> CanModifyProjectAsync(
+        Guid projectId,
+        CancellationToken ct,
+        params string[] permissionCodes)
     {
         if (IsSuperAdmin)
         {
@@ -207,11 +596,77 @@ public class RoleScopeService
             .Where(item => item.Id == projectId)
             .Select(item => new
             {
-                item.ProjectManagerId,
                 item.DepartmentId,
                 OrganizationId = item.Department != null ? item.Department.OrganizationId : null,
-                AssignedDepartmentIds = item.ProjectDepartments
-                    .Select(assignment => assignment.DepartmentId)
+                AssignedOrganizationIds = item.ProjectDepartments
+                    .Where(assignment => assignment.Department != null && assignment.Department.OrganizationId.HasValue)
+                    .Select(assignment => assignment.Department!.OrganizationId!.Value)
+                    .ToList()
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (project == null)
+        {
+            return false;
+        }
+
+        var permissions = await GetPermissionSnapshotAsync(ct);
+        var hasAll = permissionCodes
+            .Where(code => code.Contains("_All", StringComparison.Ordinal))
+            .Any(permissions.Contains);
+        if (hasAll)
+        {
+            if (project.OrganizationId.HasValue && await CanAccessOrganizationAsync(project.OrganizationId.Value, ct))
+            {
+                return true;
+            }
+
+            foreach (var organizationId in project.AssignedOrganizationIds)
+            {
+                if (await CanAccessOrganizationAsync(organizationId, ct))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        var departmentIds = await GetDepartmentIdsAsync(ct);
+        if (departmentIds.Contains(project.DepartmentId))
+        {
+            if (permissionCodes.Any(code => code.Contains("PrimaryDepartment", StringComparison.OrdinalIgnoreCase)) &&
+                permissions.Contains(PermissionCodes.ProjectPrimaryDepartmentManage))
+            {
+                return true;
+            }
+
+            return permissionCodes
+                .Where(code => code.Contains("_Own", StringComparison.Ordinal))
+                .Any(permissions.Contains);
+        }
+
+        return false;
+    }
+
+
+    public async Task<bool> CanAccessProjectAsync(Guid projectId, CancellationToken ct)
+    {
+        if (IsSuperAdmin)
+        {
+            return true;
+        }
+
+        var project = await _db.Projects
+            .Where(item => item.Id == projectId)
+            .Select(item => new
+            {
+                item.DepartmentId,
+                OrganizationId = item.Department != null ? item.Department.OrganizationId : null,
+                AssignedDepartmentIds = item.ProjectDepartments.Select(assignment => assignment.DepartmentId).ToList(),
+                MilestoneDepartmentIds = item.Milestones
+                    .Where(milestone => milestone.DepartmentId.HasValue)
+                    .Select(milestone => milestone.DepartmentId!.Value)
                     .ToList(),
                 AssignedOrganizationIds = item.ProjectDepartments
                     .Where(assignment => assignment.Department != null && assignment.Department.OrganizationId.HasValue)
@@ -225,26 +680,18 @@ public class RoleScopeService
             return false;
         }
 
-        if (IsProjectManager && CurrentUserId == project.ProjectManagerId)
+        if (await HasAnyPermissionAsync(
+            ct,
+            PermissionCodes.ProjectAllView,
+            PermissionCodes.ProjectAllManage,
+            PermissionCodes.ProjectAllEdit,
+            PermissionCodes.ProjectAllDelete))
         {
-            return true;
-        }
+            if (project.OrganizationId.HasValue && await CanAccessOrganizationAsync(project.OrganizationId.Value, ct))
+            {
+                return true;
+            }
 
-        if (IsDepartmentHead && !IsDirector)
-        {
-            var departmentIds = await GetDepartmentIdsAsync(ct);
-            return departmentIds.Contains(project.DepartmentId) &&
-                await HasPermissionAsync(PermissionCodes.ProjectPrimaryDepartmentManage, ct);
-        }
-
-        if (IsDirector && project.OrganizationId.HasValue &&
-            await CanAccessOrganizationAsync(project.OrganizationId.Value, ct))
-        {
-            return true;
-        }
-
-        if (IsDirector)
-        {
             foreach (var organizationId in project.AssignedOrganizationIds)
             {
                 if (await CanAccessOrganizationAsync(organizationId, ct))
@@ -254,66 +701,18 @@ public class RoleScopeService
             }
         }
 
-        return false;
-    }
-
-    public async Task<bool> CanAccessProjectAsync(Guid projectId, CancellationToken ct)
-    {
-        if (IsSuperAdmin)
+        var departmentIds = await GetDepartmentIdsAsync(ct);
+        if (await HasAnyPermissionAsync(
+            ct,
+            PermissionCodes.ProjectOwnView,
+            PermissionCodes.ProjectOwnManage,
+            PermissionCodes.ProjectOwnEdit,
+            PermissionCodes.ProjectOwnDelete,
+            PermissionCodes.ProjectPrimaryDepartmentManage))
         {
-            return true;
-        }
-
-        var projectOrganizations = await _db.Projects
-            .Where(project => project.Id == projectId)
-            .Select(project => new
-            {
-                PrimaryOrganizationId = project.Department != null ? project.Department.OrganizationId : null,
-                project.DepartmentId,
-                AssignedDepartmentIds = project.ProjectDepartments
-                    .Select(assignment => assignment.DepartmentId)
-                    .ToList(),
-                MilestoneDepartmentIds = project.Milestones
-                    .Where(milestone => milestone.DepartmentId.HasValue)
-                    .Select(milestone => milestone.DepartmentId!.Value)
-                    .ToList(),
-                AssignedOrganizationIds = project.ProjectDepartments
-                    .Where(assignment => assignment.Department != null && assignment.Department.OrganizationId.HasValue)
-                    .Select(assignment => assignment.Department!.OrganizationId!.Value)
-                    .ToList()
-            })
-            .FirstOrDefaultAsync(ct);
-
-        if (projectOrganizations == null)
-        {
-            return false;
-        }
-
-        if (IsDepartmentHead && !IsDirector)
-        {
-            var departmentIds = await GetDepartmentIdsAsync(ct);
-            if (departmentIds.Contains(projectOrganizations.DepartmentId) &&
-                await HasPermissionAsync(PermissionCodes.ProjectPrimaryDepartmentManage, ct))
-            {
-                return true;
-            }
-
-            return projectOrganizations.AssignedDepartmentIds.Any(departmentIds.Contains) ||
-                projectOrganizations.MilestoneDepartmentIds.Any(departmentIds.Contains);
-        }
-
-        if (projectOrganizations.PrimaryOrganizationId.HasValue &&
-            await CanAccessOrganizationAsync(projectOrganizations.PrimaryOrganizationId.Value, ct))
-        {
-            return true;
-        }
-
-        foreach (var organizationId in projectOrganizations.AssignedOrganizationIds)
-        {
-            if (await CanAccessOrganizationAsync(organizationId, ct))
-            {
-                return true;
-            }
+            return departmentIds.Contains(project.DepartmentId) ||
+                project.AssignedDepartmentIds.Any(departmentIds.Contains) ||
+                project.MilestoneDepartmentIds.Any(departmentIds.Contains);
         }
 
         return false;
@@ -321,20 +720,40 @@ public class RoleScopeService
 
     public async Task<bool> CanAccessProjectAsPrimaryDepartmentAsync(Guid projectId, CancellationToken ct)
     {
-        if (IsSuperAdmin || IsDirector)
+        if (IsSuperAdmin)
         {
             return true;
         }
 
-        if (!IsDepartmentHead || !await HasPermissionAsync(PermissionCodes.ProjectPrimaryDepartmentManage, ct))
+        if (await HasAnyPermissionAsync(
+            ct,
+            PermissionCodes.ProjectAllView,
+            PermissionCodes.ProjectAllManage,
+            PermissionCodes.ProjectAllEdit,
+            PermissionCodes.ProjectAllDelete))
+        {
+            return await CanAccessProjectAsync(projectId, ct);
+        }
+
+        if (!await HasAnyPermissionAsync(ct, PermissionCodes.ProjectPrimaryDepartmentManage))
         {
             return false;
         }
 
         var departmentIds = await GetDepartmentIdsAsync(ct);
-        return await _db.Projects
-            .AnyAsync(project => project.Id == projectId && departmentIds.Contains(project.DepartmentId), ct);
+        return await _db.Projects.AnyAsync(
+            project => project.Id == projectId && departmentIds.Contains(project.DepartmentId),
+            ct);
     }
+
+    public async Task<bool> CanSeeFullProjectDetailsAsync(Guid projectId, CancellationToken ct)
+        => await CanAccessProjectAsPrimaryDepartmentAsync(projectId, ct) ||
+           await HasAnyPermissionAsync(
+               ct,
+               PermissionCodes.ProjectAllView,
+               PermissionCodes.ProjectAllManage,
+               PermissionCodes.ProjectAllEdit,
+               PermissionCodes.ProjectAllDelete);
 
     public async Task<bool> CanAccessUserAsync(Guid userId, CancellationToken ct)
     {
@@ -450,17 +869,6 @@ public class RoleScopeService
         return _scopeSnapshot;
     }
 
-    private async Task<bool> HasPermissionAsync(string permissionCode, CancellationToken ct)
-    {
-        var permissions = await GetPermissionSnapshotAsync(ct);
-        if (permissions.Contains(PermissionCodes.SystemAdmin) || permissions.Contains(permissionCode))
-        {
-            return true;
-        }
-
-        return permissionCode == PermissionCodes.ProjectPrimaryDepartmentManage &&
-            permissions.Contains(PermissionCodes.ProjectManage);
-    }
 
     /// <summary>
     /// Checks any of <paramref name="permissionCodes"/>, expanding the
@@ -479,14 +887,17 @@ public class RoleScopeService
         var effective = new HashSet<string>(permissions, StringComparer.OrdinalIgnoreCase);
         foreach (var permission in permissions)
         {
-            if (!PermissionCatalog.ManagePermissionCoverage.TryGetValue(permission, out var covered))
+            if (PermissionCatalog.ManagePermissionCoverage.TryGetValue(permission, out var covered))
             {
-                continue;
+                foreach (var coveredPermission in covered)
+                {
+                    effective.Add(coveredPermission);
+                }
             }
 
-            foreach (var coveredPermission in covered)
+            if (permission.Contains("_ALL_", StringComparison.Ordinal))
             {
-                effective.Add(coveredPermission);
+                effective.Add(permission.Replace("_ALL_", "_OWN_", StringComparison.Ordinal));
             }
         }
 

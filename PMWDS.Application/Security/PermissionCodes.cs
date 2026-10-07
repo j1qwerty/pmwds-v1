@@ -3,6 +3,156 @@ namespace PMWDS.Application.Security;
 public static class PermissionCodes
 {
     public const string PermissionClaimType = "permission";
+    // Department-scoped permissions. OWN applies to the caller's assigned departments;
+    // ALL applies to every department inside the organizations the caller can access.
+    public const string DepartmentOwnManage = "DEPARTMENT_OWN_MANAGE";
+    public const string DepartmentOwnView = "DEPARTMENT_OWN_VIEW";
+    public const string DepartmentOwnCreate = "DEPARTMENT_OWN_CREATE";
+    public const string DepartmentOwnEdit = "DEPARTMENT_OWN_EDIT";
+    public const string DepartmentOwnDelete = "DEPARTMENT_OWN_DELETE";
+    public const string DepartmentAllManage = "DEPARTMENT_ALL_MANAGE";
+    public const string DepartmentAllView = "DEPARTMENT_ALL_VIEW";
+    public const string DepartmentAllCreate = "DEPARTMENT_ALL_CREATE";
+    public const string DepartmentAllEdit = "DEPARTMENT_ALL_EDIT";
+    public const string DepartmentAllDelete = "DEPARTMENT_ALL_DELETE";
+
+    public const string ProjectOwnManage = "PROJECT_OWN_MANAGE";
+    public const string ProjectOwnView = "PROJECT_OWN_VIEW";
+    public const string ProjectOwnCreate = "PROJECT_OWN_CREATE";
+    public const string ProjectOwnEdit = "PROJECT_OWN_EDIT";
+    public const string ProjectOwnDelete = "PROJECT_OWN_DELETE";
+    public const string ProjectAllManage = "PROJECT_ALL_MANAGE";
+    public const string ProjectAllView = "PROJECT_ALL_VIEW";
+    public const string ProjectAllCreate = "PROJECT_ALL_CREATE";
+    public const string ProjectAllEdit = "PROJECT_ALL_EDIT";
+    public const string ProjectAllDelete = "PROJECT_ALL_DELETE";
+
+    public const string MilestoneOwnManage = "MILESTONE_OWN_MANAGE";
+    public const string MilestoneOwnView = "MILESTONE_OWN_VIEW";
+    public const string MilestoneOwnCreate = "MILESTONE_OWN_CREATE";
+    public const string MilestoneOwnEdit = "MILESTONE_OWN_EDIT";
+    public const string MilestoneOwnDelete = "MILESTONE_OWN_DELETE";
+    public const string MilestoneAllManage = "MILESTONE_ALL_MANAGE";
+    public const string MilestoneAllView = "MILESTONE_ALL_VIEW";
+    public const string MilestoneAllCreate = "MILESTONE_ALL_CREATE";
+    public const string MilestoneAllEdit = "MILESTONE_ALL_EDIT";
+    public const string MilestoneAllDelete = "MILESTONE_ALL_DELETE";
+
+    public const string TaskOwnManage = "TASK_OWN_MANAGE";
+    public const string TaskOwnView = "TASK_OWN_VIEW";
+    public const string TaskOwnCreate = "TASK_OWN_CREATE";
+    public const string TaskOwnEdit = "TASK_OWN_EDIT";
+    public const string TaskOwnDelete = "TASK_OWN_DELETE";
+    public const string TaskAllManage = "TASK_ALL_MANAGE";
+    public const string TaskAllView = "TASK_ALL_VIEW";
+    public const string TaskAllCreate = "TASK_ALL_CREATE";
+    public const string TaskAllEdit = "TASK_ALL_EDIT";
+    public const string TaskAllDelete = "TASK_ALL_DELETE";
+    public const string TaskOwnAssign = "TASK_OWN_ASSIGN";
+    public const string TaskAllAssign = "TASK_ALL_ASSIGN";
+    public const string TaskOwnCommentCreate = "TASK_OWN_COMMENT_CREATE";
+    public const string TaskAllCommentCreate = "TASK_ALL_COMMENT_CREATE";
+    public const string TaskOwnAttachmentCreate = "TASK_OWN_ATTACHMENT_CREATE";
+    public const string TaskAllAttachmentCreate = "TASK_ALL_ATTACHMENT_CREATE";
+
+    public const string SubtaskOwnManage = "SUBTASK_OWN_MANAGE";
+    public const string SubtaskOwnView = "SUBTASK_OWN_VIEW";
+    public const string SubtaskOwnCreate = "SUBTASK_OWN_CREATE";
+    public const string SubtaskOwnEdit = "SUBTASK_OWN_EDIT";
+    public const string SubtaskOwnDelete = "SUBTASK_OWN_DELETE";
+    public const string SubtaskAllManage = "SUBTASK_ALL_MANAGE";
+    public const string SubtaskAllView = "SUBTASK_ALL_VIEW";
+    public const string SubtaskAllCreate = "SUBTASK_ALL_CREATE";
+    public const string SubtaskAllEdit = "SUBTASK_ALL_EDIT";
+    public const string SubtaskAllDelete = "SUBTASK_ALL_DELETE";
+
+    public const string UserOwnManage = "USER_OWN_MANAGE";
+    public const string UserOwnView = "USER_OWN_VIEW";
+    public const string UserOwnCreate = "USER_OWN_CREATE";
+    public const string UserOwnEdit = "USER_OWN_EDIT";
+    public const string UserOwnDelete = "USER_OWN_DELETE";
+    public const string UserAllManage = "USER_ALL_MANAGE";
+    public const string UserAllView = "USER_ALL_VIEW";
+    public const string UserAllCreate = "USER_ALL_CREATE";
+    public const string UserAllEdit = "USER_ALL_EDIT";
+    public const string UserAllDelete = "USER_ALL_DELETE";
+
+    public const string NotificationOwnManage = "NOTIFICATION_OWN_MANAGE";
+    public const string NotificationOwnView = "NOTIFICATION_OWN_VIEW";
+    public const string NotificationOwnCreate = "NOTIFICATION_OWN_CREATE";
+    public const string NotificationOwnEdit = "NOTIFICATION_OWN_EDIT";
+    public const string NotificationOwnDelete = "NOTIFICATION_OWN_DELETE";
+    public const string NotificationAllManage = "NOTIFICATION_ALL_MANAGE";
+    public const string NotificationAllView = "NOTIFICATION_ALL_VIEW";
+    public const string NotificationAllCreate = "NOTIFICATION_ALL_CREATE";
+    public const string NotificationAllEdit = "NOTIFICATION_ALL_EDIT";
+    public const string NotificationAllDelete = "NOTIFICATION_ALL_DELETE";
+
+    public const string ReportOwnManage = "REPORT_OWN_MANAGE";
+    public const string ReportOwnView = "REPORT_OWN_VIEW";
+    public const string ReportOwnCreate = "REPORT_OWN_CREATE";
+    public const string ReportOwnEdit = "REPORT_OWN_EDIT";
+    public const string ReportOwnDelete = "REPORT_OWN_DELETE";
+    public const string ReportAllManage = "REPORT_ALL_MANAGE";
+    public const string ReportAllView = "REPORT_ALL_VIEW";
+    public const string ReportAllCreate = "REPORT_ALL_CREATE";
+    public const string ReportAllEdit = "REPORT_ALL_EDIT";
+    public const string ReportAllDelete = "REPORT_ALL_DELETE";
+
+    public const string KnowledgeOwnManage = "KNOWLEDGE_OWN_MANAGE";
+    public const string KnowledgeOwnView = "KNOWLEDGE_OWN_VIEW";
+    public const string KnowledgeOwnCreate = "KNOWLEDGE_OWN_CREATE";
+    public const string KnowledgeOwnEdit = "KNOWLEDGE_OWN_EDIT";
+    public const string KnowledgeOwnDelete = "KNOWLEDGE_OWN_DELETE";
+    public const string KnowledgeAllManage = "KNOWLEDGE_ALL_MANAGE";
+    public const string KnowledgeAllView = "KNOWLEDGE_ALL_VIEW";
+    public const string KnowledgeAllCreate = "KNOWLEDGE_ALL_CREATE";
+    public const string KnowledgeAllEdit = "KNOWLEDGE_ALL_EDIT";
+    public const string KnowledgeAllDelete = "KNOWLEDGE_ALL_DELETE";
+
+    public const string ActivityLogOwnManage = "ACTIVITY_LOG_OWN_MANAGE";
+    public const string ActivityLogOwnView = "ACTIVITY_LOG_OWN_VIEW";
+    public const string ActivityLogOwnCreate = "ACTIVITY_LOG_OWN_CREATE";
+    public const string ActivityLogAllManage = "ACTIVITY_LOG_ALL_MANAGE";
+    public const string ActivityLogAllView = "ACTIVITY_LOG_ALL_VIEW";
+    public const string ActivityLogAllCreate = "ACTIVITY_LOG_ALL_CREATE";
+
+    public const string DocumentOwnManage = "DOCUMENT_OWN_MANAGE";
+    public const string DocumentOwnView = "DOCUMENT_OWN_VIEW";
+    public const string DocumentOwnCreate = "DOCUMENT_OWN_CREATE";
+    public const string DocumentOwnEdit = "DOCUMENT_OWN_EDIT";
+    public const string DocumentOwnDelete = "DOCUMENT_OWN_DELETE";
+    public const string DocumentAllManage = "DOCUMENT_ALL_MANAGE";
+    public const string DocumentAllView = "DOCUMENT_ALL_VIEW";
+    public const string DocumentAllCreate = "DOCUMENT_ALL_CREATE";
+    public const string DocumentAllEdit = "DOCUMENT_ALL_EDIT";
+    public const string DocumentAllDelete = "DOCUMENT_ALL_DELETE";
+    public const string DocumentOwnProjectUpload = "DOCUMENT_OWN_PROJECT_UPLOAD";
+    public const string DocumentOwnMilestoneUpload = "DOCUMENT_OWN_MILESTONE_UPLOAD";
+    public const string DocumentOwnTaskUpload = "DOCUMENT_OWN_TASK_UPLOAD";
+    public const string DocumentAllProjectUpload = "DOCUMENT_ALL_PROJECT_UPLOAD";
+    public const string DocumentAllMilestoneUpload = "DOCUMENT_ALL_MILESTONE_UPLOAD";
+    public const string DocumentAllTaskUpload = "DOCUMENT_ALL_TASK_UPLOAD";
+
+    public const string UtilizationCertificateOwnManage = "UTILIZATION_CERTIFICATE_OWN_MANAGE";
+    public const string UtilizationCertificateOwnView = "UTILIZATION_CERTIFICATE_OWN_VIEW";
+    public const string UtilizationCertificateOwnCreate = "UTILIZATION_CERTIFICATE_OWN_CREATE";
+    public const string UtilizationCertificateOwnEdit = "UTILIZATION_CERTIFICATE_OWN_EDIT";
+    public const string UtilizationCertificateOwnDelete = "UTILIZATION_CERTIFICATE_OWN_DELETE";
+    public const string UtilizationCertificateOwnReview = "UTILIZATION_CERTIFICATE_OWN_REVIEW";
+    public const string UtilizationCertificateAllManage = "UTILIZATION_CERTIFICATE_ALL_MANAGE";
+    public const string UtilizationCertificateAllView = "UTILIZATION_CERTIFICATE_ALL_VIEW";
+    public const string UtilizationCertificateAllCreate = "UTILIZATION_CERTIFICATE_ALL_CREATE";
+    public const string UtilizationCertificateAllEdit = "UTILIZATION_CERTIFICATE_ALL_EDIT";
+    public const string UtilizationCertificateAllDelete = "UTILIZATION_CERTIFICATE_ALL_DELETE";
+    public const string UtilizationCertificateAllReview = "UTILIZATION_CERTIFICATE_ALL_REVIEW";
+    public const string UtilizationCertificateOwnProjectUpload = "UTILIZATION_CERTIFICATE_OWN_PROJECT_UPLOAD";
+    public const string UtilizationCertificateOwnMilestoneUpload = "UTILIZATION_CERTIFICATE_OWN_MILESTONE_UPLOAD";
+    public const string UtilizationCertificateOwnTaskUpload = "UTILIZATION_CERTIFICATE_OWN_TASK_UPLOAD";
+    public const string UtilizationCertificateAllProjectUpload = "UTILIZATION_CERTIFICATE_ALL_PROJECT_UPLOAD";
+    public const string UtilizationCertificateAllMilestoneUpload = "UTILIZATION_CERTIFICATE_ALL_MILESTONE_UPLOAD";
+    public const string UtilizationCertificateAllTaskUpload = "UTILIZATION_CERTIFICATE_ALL_TASK_UPLOAD";
+
 
     public const string SystemAdmin = "SYSTEM_ADMIN";
     public const string SystemDatabaseView = "SYSTEM_DATABASE_VIEW";

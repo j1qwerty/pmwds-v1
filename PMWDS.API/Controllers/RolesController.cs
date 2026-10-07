@@ -351,11 +351,21 @@ public class RolesController : BaseApiController
             .ToList();
 
         var expanded = new HashSet<string>(codes, StringComparer.OrdinalIgnoreCase);
-        foreach (var manageCode in codes)
+        foreach (var grantedCode in codes)
         {
-            if (PermissionCatalog.ManagePermissionCoverage.TryGetValue(manageCode, out var covered))
+            if (PermissionCatalog.ManagePermissionCoverage.TryGetValue(grantedCode, out var covered))
             {
-                foreach (var c in covered) expanded.Add(c);
+                foreach (var coveredCode in covered) expanded.Add(coveredCode);
+            }
+
+            foreach (var alias in PermissionCatalog.GetScopedAliases(grantedCode))
+            {
+                expanded.Add(alias);
+            }
+
+            if (grantedCode.Contains("_ALL_", StringComparison.Ordinal))
+            {
+                expanded.Add(grantedCode.Replace("_ALL_", "_OWN_", StringComparison.Ordinal));
             }
         }
 
