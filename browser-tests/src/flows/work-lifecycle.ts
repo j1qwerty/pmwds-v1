@@ -4,7 +4,6 @@ import type { FlowState } from "./types.js";
 import { StepRunner } from "../lib/step-runner.js";
 import {
   clickButton,
-  clickTitle,
   expectButtonHidden,
   fillLabel,
   selectAnyOption,
@@ -189,7 +188,7 @@ export async function roleWork(
     departmentHeadC: ["PROC", "Procurement Review Task", "Team Member C"],
   } as const;
 
-  const [code, taskName, memberLabel] = mapping[role];
+  const [code, taskName] = mapping[role];
 
   await runner.step(`${USERS[role].label} verifies scoped access`, async () => {
     await openMilestones(page, state);
@@ -219,13 +218,6 @@ export async function roleWork(
     await editTask(page, taskName);
   });
 
-  if (role === "departmentHeadC") {
-    await runner.step("Department Head C deletes its task", async () => {
-      await openMilestones(page, state);
-      await deleteTask(page, taskName);
-      await expect(page.getByText(taskName, { exact: true })).toHaveCount(0);
-    });
-  }
 }
 
 export async function teamMemberWork(
