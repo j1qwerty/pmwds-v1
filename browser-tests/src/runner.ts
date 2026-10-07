@@ -239,7 +239,7 @@ async function main(): Promise<void> {
       console.log(`Run directory: ${runDir}`);
       const browser = await launchBrowser(browserMode);
       try {
-        await runManualSession(browser, browserMode, runDir);
+        await runManualSession(browser, runDir);
       } finally {
         await browser.close();
       }
