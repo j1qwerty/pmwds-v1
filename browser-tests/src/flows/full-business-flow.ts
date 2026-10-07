@@ -1,90 +1,169 @@
-import { expect, type Browser, type Page } from "@playwright/test";
-import fs from "node:fs/promises";
+import { expect, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import path from "node:path";
-import { StepRunner } from "../lib/step-runner.js";
 import { newContext } from "../lib/browser.js";
-import { USERS } from "../config.js";
-import { newFlowState } from "./types.js";
-import { loginAs, createProject, verifyProjectForUser } from "./project-lifecycle.js";
+import { StepRunner } from "../lib/step-runner.js";
+import { USERS, ROUTES, type TestUserId } from "../config.js";
+import { createProject, loginAs, verifyProjectForUser } from "./project-lifecycle.js";
+import type { FlowState } from "./types.js";
 import {
   adminMilestonesAndTasks,
   roleWork,
   teamMemberWork,
   verifyViewer,
 } from "./work-lifecycle.js";
+import { fillLabel } from "../lib/ui-actions.js";
+
+type ActiveSession = {
+  context: BrowserContext;
+  page: Page;
+  flushNetwork: () => Promise<string>;
+};
+
+async function openUserSession(
+  browser: Browser,
+  runDir: string,
+  runner: StepRunner,
+  user: TestUserId,
+): Promise<ActiveSession> {
+  const userDir = path.join(
+    runDir,
+    "users",
+    user,
+  );
+  const resources = await newContext(browser, userDir);
+  runner.setPage(resources.page);
+  await loginAs(resources.page, runner, user);
+  return {
+    context: resources.context,
+    page: resources.page,
+    flushNetwork: resources.flushNetwork,
+  };
+}
+
+async function closeUserSession(session: ActiveSession): Promise<void> {
+  await session.flushNetwork().catch(() => {});
+  await session.context.close();
+}
 
 export async function runFullBusinessFlow(
   browser: Browser,
   runDir: string,
   interactive = false,
-): Promise<void> {
-  const rootDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../..");
+): Promise<FlowState> {
   const projectName = `Browser E2E ${Date.now()}`;
-  const state = newFlowState(projectName);
+  const state = {
+    projectName,
+    projectId: "",
+    milestoneByDepartment: {},
+    taskByRole: {},
+    subtaskByRole: {},
+  } satisfies FlowState;
 
-  const resources = await newContext(browser, runDir);
-  const { page, context, flushNetwork } = resources;
-  const runner = new StepRunner(page, runDir, interactive, USERS.superAdmin.label);
+  const bootstrap = await newContext(browser, path.join(runDir, "users", "bootstrap"));
+  const runner = new StepRunner(
+    bootstrap.page,
+    runDir,
+    interactive,
+    USERS.projectManager.label,
+  );
   await runner.init();
+  await closeUserSession(bootstrap);
+
+  let session: ActiveSession | null = null;
+  const use = async (user: TestUserId): Promise<Page> => {
+    if (session) await closeUserSession(session);
+    session = await openUserSession(browser, runDir, runner, user);
+    return session.page;
+  };
 
   try {
-    await loginAs(page, runner, "projectManager");
-    await createProject(page, runner, state, rootDir);
+    const projectManager = await use("projectManager");
+    await createProject(projectManager, runner, state, process.cwd());
 
-    await loginAs(page, runner, "superAdmin");
-    await verifyProjectForUser(page, runner, state, "SuperAdmin");
+    const superAdmin = await use("superAdmin");
+    await verifyProjectForUser(superAdmin, runner, state, "SuperAdmin");
 
-    await loginAs(page, runner, "director");
-    await verifyProjectForUser(page, runner, state, "Director");
-    await adminMilestonesAndTasks(page, runner, state);
+    const director = await use("director");
+    await verifyProjectForUser(director, runner, state, "Director");
+    await adminMilestonesAndTasks(director, runner, state);
 
-    for (const role of ["departmentHeadA", "departmentHeadB", "departmentHeadC"] as const) {
-      await loginAs(page, runner, role);
+    for (const role of [
+      "departmentHeadA",
+      "departmentHeadB",
+      "departmentHeadC",
+    ] as const) {
+      const page = await use(role);
       await roleWork(page, runner, state, role);
     }
 
-    for (const role of ["teamMemberA", "teamMemberB"] as const) {
-      await loginAs(page, runner, role);
+    for (const role of [
+      "teamMemberA",
+      "teamMemberB",
+      "teamMemberC",
+    ] as const) {
+      const page = await use(role);
       await teamMemberWork(page, runner, state, role);
     }
 
-    await loginAs(page, runner, "chiefEngineer");
-    await verifyProjectForUser(page, runner, state, "Chief Engineer");
+    const chiefEngineer = await use("chiefEngineer");
+    await verifyProjectForUser(
+      chiefEngineer,
+      runner,
+      state,
+      "Chief Engineer / Project Manager",
+    );
 
-    await loginAs(page, runner, "viewer");
-    await verifyViewer(page, runner, state);
+    const viewer = await use("viewer");
+    await verifyViewer(viewer, runner, state);
 
-    await loginAs(page, runner, "director");
+    const headC = await use("departmentHeadC");
+    await runner.step("Department Head C deletes its task", async () => {
+      await headC.goto(
+        `${ROUTES.projects}/${state.projectId}/milestones`,
+        { waitUntil: "domcontentloaded" },
+      );
+      const taskName = "Procurement Review Task";
+      await headC.getByText(taskName, { exact: true }).first().click();
+      await headC.getByRole("button", { name: /delete task/i }).last().click();
+      await headC.getByRole("button", { name: /delete|confirm/i }).last().click();
+      await expect(headC.getByText(taskName, { exact: true })).toHaveCount(0);
+    });
+
+    const admin = await use("director");
     await runner.step("Director edits the project", async () => {
-      await page.goto(`/projects/${state.projectId}`, { waitUntil: "domcontentloaded" });
-      await page.locator('button[title="Edit project"]').click();
-      await fillProjectEdit(page, state);
+      await admin.goto(`${ROUTES.projects}/${state.projectId}`, {
+        waitUntil: "domcontentloaded",
+      });
+      await admin.locator('button[title="Edit project"]').click();
+      await fillLabel(admin, /^Name$/, "Browser E2E Updated");
+      await fillLabel(
+        admin,
+        /^Description$/,
+        "Updated through the real project edit modal.",
+      );
+      await admin.getByRole("button", { name: /^Save$/ }).click();
+      await expect(admin.getByText("Browser E2E Updated", { exact: true })).toBeVisible();
     });
 
-    await runner.step("Director verifies the edited project", async () => {
-      await expect(page.getByText("Browser E2E Updated", { exact: false })).toBeVisible();
+    const finalAdmin = await use("superAdmin");
+    await runner.step("SuperAdmin performs final project deletion", async () => {
+      await finalAdmin.goto(`${ROUTES.projects}/${state.projectId}`, {
+        waitUntil: "domcontentloaded",
+      });
+      await finalAdmin.locator('button[title="Delete project"]').click();
+      await finalAdmin.getByRole("button", { name: /^Delete$/ }).last().click();
+      await finalAdmin.waitForURL(/\/projects(\/)?$/, { timeout: 60_000 });
     });
 
-    await loginAs(page, runner, "superAdmin");
-    await runner.step("SuperAdmin deletes the project as final cleanup", async () => {
-      await page.goto(`/projects/${state.projectId}`, { waitUntil: "domcontentloaded" });
-      await page.locator('button[title="Delete project"]').click();
-      await page.getByRole("button", { name: /delete/i }).last().click();
-      await expect(page).toHaveURL(/\/projects(\/)?$/);
+    await runner.step("SuperAdmin verifies the project disappeared", async () => {
+      await finalAdmin.goto(ROUTES.projects, { waitUntil: "domcontentloaded" });
+      await expect(
+        finalAdmin.getByText(projectName, { exact: true }),
+      ).toHaveCount(0);
     });
 
-    await runner.step("SuperAdmin verifies the project is gone", async () => {
-      await page.goto("/projects", { waitUntil: "domcontentloaded" });
-      await expect(page.getByText(state.projectName, { exact: true })).toHaveCount(0);
-    });
+    return state;
   } finally {
-    await flushNetwork().catch(() => {});
-    await context.close();
+    if (session) await closeUserSession(session);
   }
-}
-
-async function fillProjectEdit(page: Page, state: ReturnType<typeof newFlowState>) {
-  await page.getByLabel(/^Name$/).fill("Browser E2E Updated");
-  await page.getByLabel(/^Description$/).fill("Updated through the real project edit modal.");
-  await page.getByRole("button", { name: /^Save$/ }).click();
 }
