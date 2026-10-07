@@ -14,13 +14,13 @@ namespace PMWDS.Persistence.Migrations
             migrationBuilder.AddColumn<Guid>(
                 name: "MilestoneId",
                 table: "ProjectDocuments",
-                type: "TEXT",
+                type: "uniqueidentifier",
                 nullable: true);
 
             migrationBuilder.AddColumn<Guid>(
                 name: "TaskId",
                 table: "ProjectDocuments",
-                type: "TEXT",
+                type: "uniqueidentifier",
                 nullable: true);
 
             migrationBuilder.CreateIndex(
