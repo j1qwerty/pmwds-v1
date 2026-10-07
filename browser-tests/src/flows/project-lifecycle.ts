@@ -11,7 +11,6 @@ import {
   fillPlaceholder,
   openProjectByName,
   selectLabel,
-  uploadFirstFile,
   waitForToast,
 } from "../lib/ui-actions.js";
 import { login } from "../lib/auth.js";
@@ -50,8 +49,8 @@ export async function createProject(
     await page.getByLabel(/budget/i).first().fill("12.5");
     await page.getByLabel(/^Start Date/i).fill("2026-11-01");
     await page.getByLabel(/^End Date/i).fill("2027-06-30");
-    const files = page.locator('input[type="file"]');
-    if (await files.count()) await files.first().setInputFiles(file);
+    const fileInputs = page.locator('input[type="file"]');
+    if (await fileInputs.count()) await fileInputs.first().setInputFiles(file);
   });
 
   await runner.step("Select PWD and PWD Civil departments", async () => {
