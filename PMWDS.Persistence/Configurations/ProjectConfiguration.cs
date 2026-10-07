@@ -48,8 +48,11 @@ public class ProjectConfiguration
         .WithOne(t => t.Project)
         .HasForeignKey(t => t.ProjectId)
         .OnDelete(DeleteBehavior.Cascade);
+        // Bind the reference side explicitly. A bare WithOne() leaves ProjectDocument.Project
+        // unmatched, so EF keeps this configured relationship *and* convention adds a second
+        // one over the navigation, producing a phantom shadow FK column (ProjectId1).
         b.HasMany(e => e.Documents)
-        .WithOne()
+        .WithOne(d => d.Project)
         .HasForeignKey(d => d.ProjectId)
         .OnDelete(DeleteBehavior.Cascade);
         b.HasOne<ApplicationUser>()
