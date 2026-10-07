@@ -1,5 +1,9 @@
+// "localhost" rather than 127.0.0.1 on purpose. Vite's dev server binds to
+// "localhost", which on Windows resolves to IPv6 ::1 first, so a literal
+// 127.0.0.1 is refused with ECONNREFUSED while localhost works. Using the
+// hostname works whichever stack the listener is on.
 export const E2E_BASE_URL =
-  process.env.E2E_BASE_URL ?? "http://127.0.0.1:5175";
+  process.env.E2E_BASE_URL ?? "http://localhost:5175";
 
 export const E2E_PASSWORD =
   process.env.E2E_PASSWORD ?? "";

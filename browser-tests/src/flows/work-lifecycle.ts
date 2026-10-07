@@ -42,7 +42,13 @@ async function editMilestone(
   const row = page
     .getByText(oldName, { exact: true })
     .first()
-    .locator("xpath=ancestor::*[self::div or self::article][1]");
+    // Nearest ancestor that actually contains the edit control.
+    //
+    // "Nearest div ancestor" is not good enough here: the milestone name sits in a
+    // title row inside the card, so the closest div is that title row, which has no
+    // buttons in it and never matches. Anchoring on the ancestor that owns an
+    // "Edit milestone" button selects the card itself, whatever the markup nesting is.
+    .locator('xpath=ancestor::*[.//button[@title="Edit milestone"]][1]');
 
   await row.getByTitle("Edit milestone").click();
   await fillLabel(page, /^Name$/, newName);
@@ -124,7 +130,12 @@ export async function adminMilestonesAndTasks(
 ): Promise<void> {
   await runner.step("Director opens project milestones", async () => {
     await openMilestones(page, state);
-    await expect(page.getByRole("heading", { name: /milestones/i })).toBeVisible();
+    // Readiness is checked on the milestone filter field, not on a heading. This page
+    // renders its title as a tab button rather than a heading element, so a
+    // getByRole("heading", /milestones/) assertion never matched anything. The
+    // filter field is present for every role that can reach the route, which makes
+    // it a role-independent "the panel actually rendered" signal.
+    await expect(page.getByPlaceholder(/filter milestones/i)).toBeVisible();
   });
 
   const departments = [
@@ -162,8 +173,14 @@ export async function adminMilestonesAndTasks(
   }
 
   await runner.step("Director verifies task and milestone counts", async () => {
-    await expect(page.getByText(/Civil Site Review Task/i)).toBeVisible();
-    await expect(page.getByText(/Procurement Review Task/i)).toBeVisible();
+    // Assert on the Tasks tab. The milestone cards show a task count, not task
+    // names, so a task name is only ever rendered on the task list.
+    await page.goto(`${ROUTES.projects}/${state.projectId}/tasks`, {
+      waitUntil: "domcontentloaded",
+    });
+    await page.waitForLoadState("networkidle").catch(() => {});
+    await expect(page.getByText(/Civil Site Review Task/i).first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(/Procurement Review Task/i).first()).toBeVisible({ timeout: 30_000 });
   });
 }
 

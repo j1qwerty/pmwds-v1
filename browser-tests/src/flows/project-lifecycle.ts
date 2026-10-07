@@ -10,6 +10,7 @@ import {
   fillLabel,
   fillPlaceholder,
   openProjectByName,
+  projectCard,
   selectLabel,
   waitForToast,
 } from "../lib/ui-actions.js";
@@ -53,10 +54,14 @@ export async function createProject(
     if (await fileInputs.count()) await fileInputs.first().setInputFiles(file);
   });
 
-  await runner.step("Select PWD and PWD Civil departments", async () => {
+  await runner.step("Select PWD, PWD Civil and Procurement departments", async () => {
     await clickNextWizard(page);
     await clickDepartmentRow(page, "Public Works Department");
     await clickDepartmentRow(page, "PWD Civil Division");
+    // Also Procurement: the work flow later creates a milestone scoped to it, and
+    // the API rejects a milestone whose department is not assigned to the project
+    // (POST /milestones returns 400 for an unassigned department).
+    await clickDepartmentRow(page, "Procurement & Finance");
   });
 
   await runner.step("Review project users", async () => {
@@ -103,8 +108,7 @@ export async function verifyProjectForUser(
 ): Promise<void> {
   await runner.step(`${label}: verify project visibility`, async () => {
     await page.goto(ROUTES.projects, { waitUntil: "domcontentloaded" });
-    await expect(page.getByText(state.projectName, { exact: true }).first()).toBeVisible({
-      timeout: 30_000,
-    });
+    const card = await projectCard(page, state.projectName);
+    await expect(card).toBeVisible({ timeout: 30_000 });
   });
 }

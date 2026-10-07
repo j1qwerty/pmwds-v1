@@ -3,3 +3,9 @@ runs/
 reports/
 playwright-report/
 test-results/
+pnpm-lock.yaml
+
+# Generated UI inventories. The directory keeps its .gitkeep so the output path
+# exists in a fresh clone; every inventory file in it is produced by a run.
+ui-map/*
+!ui-map/.gitkeep

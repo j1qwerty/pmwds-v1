@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "typecheck": "tsc --noEmit",
     "test": "playwright test",
     "test:headed": "playwright test --headed",
     "test:ui": "playwright test --ui",
@@ -10,6 +11,12 @@
     "e2e:interactive": "tsx src/runner.ts interactive",
     "e2e:discover": "tsx src/discover.ts",
     "install:browsers": "playwright install chromium"
+  },
+  "pnpm": {
+    "//": "tsx loads esbuild's native binary in a postinstall script. pnpm blocks dependency build scripts by default, which leaves tsx (and therefore e2e:discover) unable to start.",
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

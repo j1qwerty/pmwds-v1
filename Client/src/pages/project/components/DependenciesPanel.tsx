@@ -34,7 +34,7 @@ export function DependenciesPanel({
             onClick={onNew}
             className="flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-500 text-white text-[10px] font-semibold hover:bg-amber-600 transition-colors"
           >
-            <span className="material-symbols-outlined text-sm">add</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-sm">add</span>
             New
           </button>
         )}

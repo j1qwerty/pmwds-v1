@@ -63,9 +63,27 @@ export async function selectLabel(
       ? await visibleLocator(semantic, `select "${String(label)}"`)
       : byLabelContainer(page, label);
   await field.waitFor({ state: "visible" });
-  await field.selectOption({ label: value }).catch(async () => {
-    await field.selectOption(value);
-  });
+
+  // Option labels are routinely decorated - the milestone dependency modal renders
+  // "PWD Coordination Milestone (Not Started)" - so an exact match on the milestone
+  // name alone never resolves. Resolve the option by prefix and select it by value,
+  // which keeps callers passing the plain name.
+  const prefixed = field
+    .locator("option")
+    .filter({ hasText: new RegExp(`^${escapeRegExp(value)}`) })
+    .first();
+
+  if ((await prefixed.count()) > 0) {
+    const optionValue = await prefixed.getAttribute("value");
+    if (optionValue !== null) {
+      await field.selectOption(optionValue);
+      return;
+    }
+  }
+
+  await field
+    .selectOption({ label: value })
+    .catch(() => field.selectOption(value));
 }
 
 export async function selectAnyOption(
@@ -135,12 +153,35 @@ export async function clickDepartmentRow(
   }
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * The project card in the projects list.
+ *
+ * Matched by accessible name containing the project name rather than by exact
+ * text. On the projects page the name is not its own element: the card button
+ * concatenates progress, name, status, code, priority and departments into one
+ * text node, so `getByText(name, { exact: true })` matches nothing there and only
+ * ever resolved against the sidebar entry - which is not part of the list under
+ * test. Scoped to <main> so the sidebar cannot satisfy the assertion.
+ */
+export async function projectCard(page: Page, projectName: string): Promise<Locator> {
+  const name = new RegExp(escapeRegExp(projectName));
+  const main = page.locator("main");
+  if ((await main.count()) > 0) {
+    return main.getByRole("button", { name }).first();
+  }
+  return page.getByRole("button", { name }).first();
+}
+
 export async function openProjectByName(
   page: Page,
   projectName: string,
 ): Promise<string> {
-  const projectMatches = page.getByText(projectName, { exact: true });
-  const project = await visibleLocator(projectMatches, `project "${projectName}"`);
+  const project = await projectCard(page, projectName);
+  await project.waitFor({ state: "visible", timeout: 30_000 });
   await project.click();
   await page.waitForURL(/\/projects\/[0-9a-f-]+/i, { timeout: 30_000 });
   const match = page.url().match(/\/projects\/([0-9a-f-]+)/i);

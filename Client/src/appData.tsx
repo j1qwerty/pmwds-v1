@@ -194,6 +194,10 @@ export function AppDataProvider({ children }: PropsWithChildren) {
   const [error, setError] = useState("");
   const inFlightRef = useRef(false);
   const referenceLoadRef = useRef<string | null>(null);
+  // Tracks whether the provider itself is still mounted, as opposed to whether the
+  // current effect run is still current. Reference data is loaded once per signed-in
+  // user, so it must survive effect re-runs: see loadInitialReferenceData below.
+  const providerMountedRef = useRef(true);
 
   const refresh = useCallback(async () => {
     if (!auth) {
@@ -258,6 +262,13 @@ export function AppDataProvider({ children }: PropsWithChildren) {
   }, [auth]);
 
   useEffect(() => {
+    providerMountedRef.current = true;
+    return () => {
+      providerMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!auth) {
       referenceLoadRef.current = null;
       return;
@@ -266,9 +277,18 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     if (referenceLoadRef.current === auth.userId) return;
     referenceLoadRef.current = auth.userId;
 
-    let disposed = false;
     let userLoadTimer: number | undefined;
 
+    // Deliberately not aborted on effect cleanup.
+    //
+    // This loads once per signed-in user and is guarded by referenceLoadRef, so
+    // cancelling it when the effect re-runs loses data permanently: any re-render
+    // that changes the auth identity (a token refresh, a profile update) tears this
+    // run down mid-sequence, while the ref guard then blocks the replacement run.
+    // That left departments and users permanently empty for every user, which is
+    // why the milestone and task department selectors offered nothing but "None".
+    //
+    // Only a genuine unmount should stop it, hence providerMountedRef.
     const loadInitialReferenceData = async () => {
       try {
         // Bootstrap renders the app first. Organizations and departments are needed by the
@@ -276,13 +296,10 @@ export function AppDataProvider({ children }: PropsWithChildren) {
         // Keep it out of the initial request burst so a login does not compete with the first
         // page data and SignalR negotiate.
         await refreshReferenceData(REALTIME_SCOPES.organizations);
-        if (disposed) return;
-
         await refreshReferenceData(REALTIME_SCOPES.departments);
-        if (disposed) return;
 
         userLoadTimer = window.setTimeout(() => {
-          if (!disposed) {
+          if (providerMountedRef.current) {
             void refreshReferenceData(REALTIME_SCOPES.users);
           }
         }, 750);
@@ -294,7 +311,6 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     void loadInitialReferenceData();
 
     return () => {
-      disposed = true;
       if (userLoadTimer !== undefined) window.clearTimeout(userLoadTimer);
     };
   }, [auth, refreshReferenceData]);

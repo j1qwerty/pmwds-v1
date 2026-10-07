@@ -1,6 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const baseURL = process.env.E2E_BASE_URL ?? "http://127.0.0.1:5175";
+// Matches the default in src/config.ts. "localhost" rather than 127.0.0.1
+// because Vite binds to localhost, which resolves to IPv6 on Windows and would
+// refuse a literal 127.0.0.1 connection.
+const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:5175";
 
 export default defineConfig({
   testDir: "./src/specs",

@@ -97,10 +97,14 @@ export function DependencyFormModal({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">
-                Prerequisite <span className="text-red-500">*</span>
-              </label>
+              <div className="flex items-center gap-1 mb-1">
+                <label htmlFor="dependency-prerequisite" className="text-[10px] font-bold text-slate-400 uppercase">
+                  Prerequisite
+                </label>
+                <span aria-hidden="true" className="text-[10px] font-bold text-red-500">*</span>
+              </div>
               <select
+                id="dependency-prerequisite"
                 value={form.prerequisiteMilestoneId}
                 onChange={(e) => setForm({ ...form, prerequisiteMilestoneId: e.target.value })}
                 disabled={!!editDep}
@@ -115,10 +119,14 @@ export function DependencyFormModal({
               </select>
             </div>
             <div>
-              <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">
-                Dependent <span className="text-red-500">*</span>
-              </label>
+              <div className="flex items-center gap-1 mb-1">
+                <label htmlFor="dependency-dependent" className="text-[10px] font-bold text-slate-400 uppercase">
+                  Dependent
+                </label>
+                <span aria-hidden="true" className="text-[10px] font-bold text-red-500">*</span>
+              </div>
               <select
+                id="dependency-dependent"
                 value={form.dependentMilestoneId}
                 onChange={(e) => setForm({ ...form, dependentMilestoneId: e.target.value })}
                 disabled={!!editDep}

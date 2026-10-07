@@ -1,6 +1,7 @@
 import { chromium, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import path from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
+import { E2E_BASE_URL } from "../config.js";
 
 export type BrowserMode = "headless" | "headed";
 
@@ -59,6 +60,10 @@ export async function newContext(
   await mkdir(path.join(runDir, "video"), { recursive: true });
 
   const context = await browser.newContext({
+    // Playwright resolves relative page.goto() paths against this. The spec gets it
+    // from playwright.config.ts, but these scripts launch Chromium directly, so
+    // without it every route in ROUTES throws "Cannot navigate to invalid URL".
+    baseURL: E2E_BASE_URL,
     viewport: { width: 1440, height: 1000 },
     recordVideo: {
       dir: path.join(runDir, "video"),

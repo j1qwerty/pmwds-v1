@@ -1,6 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { USERS, ROUTES } from "./config.js";
+import { USERS, ROUTES, E2E_BASE_URL } from "./config.js";
 import { launchBrowser, newContext } from "./lib/browser.js";
 import { login } from "./lib/auth.js";
 import { discoverPage, writeInventory, type PageInventory } from "./lib/discovery.js";
@@ -48,7 +48,7 @@ function controlSignature(inventory: PageInventory): Set<string> {
 
 async function main(): Promise<void> {
   console.log("PMWDS browser UI discovery");
-  console.log(`Base URL: ${process.env.E2E_BASE_URL ?? "http://127.0.0.1:5175"}`);
+  console.log(`Base URL: ${E2E_BASE_URL}`);
   console.log(`Output:   ${outputDir}`);
 
   const browser = await launchBrowser(

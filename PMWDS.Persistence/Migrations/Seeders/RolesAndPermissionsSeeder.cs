@@ -329,6 +329,11 @@ internal static class RolesAndPermissionsSeeder
         var projectManagerPermissionCodes = new[]
         {
             PermissionCodes.DepartmentOwnView,
+            // All-department read so a project manager can pick the departments a
+            // project spans. Without it RoleScopeService.ScopeDepartmentsAsync falls
+            // back to DepartmentOwn* and offers only the manager's own department,
+            // which makes a cross-department project impossible to create.
+            PermissionCodes.DepartmentAllView,
             PermissionCodes.ProjectAllManage,
             PermissionCodes.ProjectPrimaryDepartmentManage,
             PermissionCodes.MilestoneAllManage,

@@ -1,0 +1,18 @@
+{
+  "name": "pmwds-v1",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Root task runner for PMWDS v1. The application itself is the .NET solution and the Vite client in Client/; this package exists only to drive the Playwright browser tests in browser-tests/.",
+  "type": "module",
+  "scripts": {
+    "btest": "node scripts/run-browser-tests.mjs",
+    "btest:headed": "node scripts/run-browser-tests.mjs --headed",
+    "btest:list": "node scripts/run-browser-tests.mjs --list",
+    "btest:discover": "node scripts/run-browser-tests.mjs discover",
+    "btest:setup": "node scripts/run-browser-tests.mjs setup",
+    "btest:report": "node scripts/run-browser-tests.mjs report"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

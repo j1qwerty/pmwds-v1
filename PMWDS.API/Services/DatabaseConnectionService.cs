@@ -750,6 +750,23 @@ WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = @tableName AND COLUMN_NAME = @column
                 await ExecuteSqliteAsync(connection, "ALTER TABLE \"AIProviderCredentials\" ADD COLUMN \"ApiKey\" TEXT NULL", ct);
             }
 
+            // Document hierarchy. A development SQLite database can predate the
+            // AddDocumentHierarchy migration - EnsureCreated builds the schema from the
+            // model without recording migrations - so these columns are absent while the
+            // model expects them. Every project read then failed with
+            // "no such column: p0.MilestoneId" and the project detail page returned 500.
+            if (!await HasSqliteColumnAsync(connection, "ProjectDocuments", "MilestoneId", ct))
+            {
+                await ExecuteSqliteAsync(connection, "ALTER TABLE \"ProjectDocuments\" ADD COLUMN \"MilestoneId\" TEXT NULL", ct);
+                await ExecuteSqliteAsync(connection, "CREATE INDEX IF NOT EXISTS \"IX_ProjectDocuments_MilestoneId\" ON \"ProjectDocuments\" (\"MilestoneId\")", ct);
+            }
+
+            if (!await HasSqliteColumnAsync(connection, "ProjectDocuments", "TaskId", ct))
+            {
+                await ExecuteSqliteAsync(connection, "ALTER TABLE \"ProjectDocuments\" ADD COLUMN \"TaskId\" TEXT NULL", ct);
+                await ExecuteSqliteAsync(connection, "CREATE INDEX IF NOT EXISTS \"IX_ProjectDocuments_TaskId\" ON \"ProjectDocuments\" (\"TaskId\")", ct);
+            }
+
             await NormalizeSqliteNullableGuidColumnsAsync(connection, ct);
         }
         finally
@@ -771,6 +788,8 @@ WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = @tableName AND COLUMN_NAME = @column
             ("KnowledgeArticles", "ProjectId"),
             ("Milestones", "DepartmentId"),
             ("PredictionResults", "TaskId"),
+            ("ProjectDocuments", "MilestoneId"),
+            ("ProjectDocuments", "TaskId"),
             ("Projects", "ProjectManagerId"),
             ("Skills", "OrganizationId"),
             ("TaskComments", "UserId"),

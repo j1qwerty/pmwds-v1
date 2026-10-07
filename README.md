@@ -335,6 +335,56 @@ npm run lint
 
 The browser suite lives in `browser-tests` and uses Playwright with real Chromium. It is separate from the existing .NET API integration tests.
 
+### Quick start
+
+One command from the repository root does everything - it reads the seeded password from `.env`, installs dependencies and Chromium if they are missing, checks the client is reachable, and runs the suite.
+
+```powershell
+cd D:\code\pmwds-v1
+
+# The client and API must already be running (see Local Development above)
+pnpm btest
+```
+
+The password is read from `Seed__DefaultPassword` in the repository `.env` - the same value the database seeder assigns to every seeded account. It is never printed or written anywhere, and `.env` is gitignored. Set `E2E_PASSWORD` in the shell to override it.
+
+| Command | What it does |
+| --- | --- |
+| `pnpm btest` | Run the full business lifecycle, headless |
+| `pnpm btest:headed` | Run it with a visible browser window |
+| `pnpm btest:list` | List the tests without running anything |
+| `pnpm btest:discover` | Read-only UI discovery pass, no writes |
+| `pnpm btest:setup` | Install dependencies and Chromium only |
+| `pnpm btest:report` | Open the last Playwright HTML report |
+
+Extra arguments are forwarded to Playwright:
+
+```powershell
+pnpm btest -- --headed --grep "login"
+```
+
+### Pointing at a different target
+
+The default target is `http://127.0.0.1:5175`, matching the pinned Vite port in `Client/vite.config.ts`. Override it when the client runs elsewhere - this is how the suite is pointed at staging or a deployed environment.
+
+```powershell
+$env:E2E_BASE_URL = "https://your-host"
+pnpm btest
+```
+
+If the client is not reachable the runner warns before launching, rather than failing deep inside Playwright with a navigation timeout.
+
+### Running the runner script directly
+
+The root `pnpm` scripts are a thin wrapper. The underlying script can also be invoked directly, and understands `--dry-run`, which resolves the password and target and then exits without installing anything or launching a browser.
+
+```powershell
+node scripts\run-browser-tests.mjs --dry-run   # verify configuration only
+node scripts\run-browser-tests.mjs --headed     # visible browser
+```
+
+### Existing .NET test suite
+
 The existing `PMWDS.Tests` commands remain the API/integration test commands:
 
 ```powershell
@@ -356,19 +406,15 @@ dotnet test PMWDS.Tests\PMWDS.Tests.csproj --collect:"XPlat Code Coverage"
 
 ### Browser-test setup
 
-The browser suite connects to an already-running PMWDS client by default. The API used by the client can therefore be local, staging, or deployed.
+The browser suite connects to an already-running PMWDS client. The API used by the client can therefore be local, staging, or deployed.
 
 ```powershell
 cd browser-tests
 pnpm install
 pnpm install:browsers
-
-# Point the browser runner at the client
-$env:E2E_BASE_URL = "http://127.0.0.1:5175"
-
-# Seeded test account password. Set this to the password configured for the target database.
-$env:E2E_PASSWORD = "<seeded-password>"
 ```
+
+`pnpm btest:setup` from the repository root performs both steps, but only when `browser-tests/node_modules` is absent.
 
 The current seeded test identities are defined in `browser-tests/src/config.ts`. Do not hard-code a production password into the repository.
 
@@ -377,6 +423,12 @@ The current seeded test identities are defined in `browser-tests/src/config.ts`.
 Discovery walks selected authenticated routes, opens the New Project wizard when available, detects visible inputs/buttons/links, groups them by nearby form/dialog/section heading, and writes text inventories under `browser-tests/ui-map`.
 
 ```powershell
+# From the repository root (recommended)
+pnpm btest:discover
+```
+
+```powershell
+# Or from browser-tests directly
 cd browser-tests
 
 # Headless discovery
@@ -387,6 +439,8 @@ pnpm e2e:discover
 $env:E2E_BROWSER = "headed"
 pnpm e2e:discover
 ```
+
+Discovery only logs in and reads pages, so it is safe against a real database. Run it first when the full flow fails - it surfaces seed or credential mismatches without writing anything.
 
 The inventories are intended to be consumed by the browser flow runner. They contain semantic attributes such as role, label, placeholder, name, id, type, aria-label, href, and disabled state.
 
