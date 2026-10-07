@@ -74,7 +74,6 @@ async function chooseRoute(): Promise<string> {
 
 async function runManualSession(
   browser: Awaited<ReturnType<typeof launchBrowser>>,
-  browserMode: BrowserMode,
   runDir: string,
 ): Promise<void> {
   console.log("");
