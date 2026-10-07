@@ -45,6 +45,7 @@ import type {
   StoredReportDetailRecord,
   StoredReportRecord,
   Task,
+  TaskDashboardStats,
   TaskDependency,
   TrainingDataPointRecord,
   ActivityLogRecord,
@@ -148,7 +149,13 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
       let message = responseText;
       try {
         const json = JSON.parse(responseText);
-        message = json.error?.message || json.message || json.error || responseText;
+        message =
+          json.error?.message ||
+          json.message ||
+          json.detail ||
+          json.title ||
+          (typeof json.error === "string" ? json.error : undefined) ||
+          responseText;
       } catch {
         // Keep the server-provided response text when it is not valid JSON.
       }
@@ -407,6 +414,9 @@ export const api = {
   },
   getTasks(token: string, query: TaskListQuery = {}) {
     return request<PaginatedResponse<Task>>("tasks", { token, query });
+  },
+  getTaskDashboardSummary(token: string) {
+    return request<TaskDashboardStats>("tasks/dashboard-summary", { token });
   },
   /**
    * Every task the caller can see, for portfolio-level counts on the dashboard.

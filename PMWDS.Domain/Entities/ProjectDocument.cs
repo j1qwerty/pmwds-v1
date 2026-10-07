@@ -84,21 +84,36 @@ public class ProjectDocument : BaseEntity
         return string.IsNullOrWhiteSpace(cleaned) ? "document" : cleaned;
     }
 
+    /// <summary>
+    /// Guards against meaningless work-item links. A milestone reference is optional even for a
+    /// task document: a task is not required to sit under a milestone, and <see cref="Level"/>
+    /// already resolves the task level from <see cref="TaskId"/> alone. Requiring the milestone
+    /// here would reject every document uploaded against a standalone task.
+    /// </summary>
     public void ValidateHierarchy()
     {
-        if (TaskId.HasValue && !MilestoneId.HasValue)
-        {
-            throw new InvalidOperationException("Task documents must be linked to their milestone.");
-        }
-
-        if (MilestoneId.HasValue && TaskId.HasValue && MilestoneId == Guid.Empty)
+        if (MilestoneId == Guid.Empty)
         {
             throw new InvalidOperationException("Milestone link is invalid.");
+        }
+
+        if (TaskId == Guid.Empty)
+        {
+            throw new InvalidOperationException("Task link is invalid.");
         }
     }
 
     /// <summary>A Utilization Certificate carries a finance approval lifecycle.</summary>
     public bool IsUtilizationCertificate() => Category == DocumentCategory.UtilizationCertificate;
+
+    /// <summary>
+    /// Detaches the task link. A document is uploaded evidence and the task is only the context
+    /// it was filed under, so removing the task must never take the document with it.
+    /// </summary>
+    public void UnlinkTask() => TaskId = null;
+
+    /// <summary>Detaches the milestone link, for the same reason as <see cref="UnlinkTask"/>.</summary>
+    public void UnlinkMilestone() => MilestoneId = null;
 
     public void UpdateMetadata(string title, string? description, DocumentCategory category)
     {

@@ -432,12 +432,12 @@ You MUST respond with ONLY valid JSON matching this schema:
         }
         catch (Exception ex)
         {
-            // Log the provider error instead of silently degrading, so a wrong
-            // provider/model pairing stays diagnosable.
+            // Report generation is an explicit user action. Return a real failure instead of
+            // persisting a placeholder report that looks successful to the client.
             _logger.LogError(ex, "AI report generation failed for report type {ReportType}", reportType);
-            var fallback = BuildFallbackReport(reportId, reportType, ex);
-            await StoreReportAsync(reportType, fallback, ct);
-            return fallback;
+            throw new InvalidOperationException(
+                $"Report generation failed for {ReportTitle(reportType)}. {Truncate(ex.Message, 500)}",
+                ex);
         }
     }
 
@@ -530,17 +530,16 @@ You MUST respond with ONLY valid JSON matching this schema:
         }
         catch (JsonException ex)
         {
-            // Log the offending prefix: models that ignore "ONLY valid JSON" emit a preamble, a
-            // markdown fence, or trailing prose, and the bare parse error is impossible to act on.
+            // Log enough context to diagnose malformed model output, but do not turn it into a
+            // successful report containing empty sections.
             var preview = responseText.Length > 300 ? responseText[..300] : responseText;
             _logger.LogWarning(
                 "Could not parse AI report response for {ReportType}: {Message}. Response began: {Preview}",
                 reportType, ex.Message, preview);
 
-            return (ReportTitle(reportType),
-                $"AI report generation returned an unexpected format: {ex.Message}",
-                new List<ReportMetric>(), new List<ReportTable>(), new List<ReportSection>(),
-                new List<string>(), new List<string>());
+            throw new InvalidOperationException(
+                "The AI provider returned an invalid report format. Please try again or verify the configured model.",
+                ex);
         }
     }
 
