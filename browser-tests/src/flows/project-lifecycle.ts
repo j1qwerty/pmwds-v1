@@ -46,9 +46,9 @@ export async function createProject(
     await fillPlaceholder(page, /enter project name/i, state.projectName);
     await fillPlaceholder(page, /brief description/i, "Browser E2E lifecycle project.");
     await selectLabel(page, /^Priority$/, "High");
-    await page.getByLabel(/budget/i).first().fill("12.5");
-    await page.getByLabel(/^Start Date/i).fill("2026-11-01");
-    await page.getByLabel(/^End Date/i).fill("2027-06-30");
+    await fillLabel(page, /budget/i, "12.5");
+    await fillLabel(page, /^Start Date/i, "2026-11-01");
+    await fillLabel(page, /^End Date/i, "2027-06-30");
     const fileInputs = page.locator('input[type="file"]');
     if (await fileInputs.count()) await fileInputs.first().setInputFiles(file);
   });
