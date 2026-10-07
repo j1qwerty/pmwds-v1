@@ -1,10 +1,13 @@
 import { expect, type Page } from "@playwright/test";
+import path from "node:path";
 import type { FlowState } from "./types.js";
 import { StepRunner } from "../lib/step-runner.js";
 import {
   clickButton,
   clickTitle,
+  expectButtonHidden,
   fillLabel,
+  selectAnyOption,
   selectLabel,
   uploadFirstFile,
   waitForToast,
@@ -28,15 +31,23 @@ async function createMilestone(
   await fillLabel(page, /^Description$/, `Milestone for ${departmentName}.`);
   await fillLabel(page, /^Due Date$/, "2027-03-31");
   await selectLabel(page, /^Department$/, departmentName);
-  await clickButton(page, /^Create$/);
+  await clickButton(page, /^Save$/);
   await waitForToast(page, /milestone created/i).catch(() => {});
 }
 
-async function editMilestone(page: Page, oldName: string, newName: string): Promise<void> {
-  const card = page.getByText(oldName, { exact: true }).first().locator("xpath=ancestor::*[self::div or self::article][1]");
-  await card.getByTitle("Edit milestone").click();
+async function editMilestone(
+  page: Page,
+  oldName: string,
+  newName: string,
+): Promise<void> {
+  const row = page
+    .getByText(oldName, { exact: true })
+    .first()
+    .locator("xpath=ancestor::*[self::div or self::article][1]");
+
+  await row.getByTitle("Edit milestone").click();
   await fillLabel(page, /^Name$/, newName);
-  await clickButton(page, /^Update$/);
+  await clickButton(page, /^Save$/);
   await waitForToast(page, /milestone updated/i).catch(() => {});
 }
 
@@ -44,10 +55,8 @@ async function createTask(
   page: Page,
   milestoneName: string,
   taskName: string,
-  assignee: string,
 ): Promise<void> {
-  const milestone = page.getByText(milestoneName, { exact: true }).first();
-  await milestone.click();
+  await page.getByText(milestoneName, { exact: true }).first().click();
   await clickButton(page, /new task|create first task|add task to this milestone/i);
   await fillLabel(page, /^Title$/, taskName);
   await fillLabel(page, /^Description$/, `Task for ${milestoneName}.`);
@@ -55,45 +64,59 @@ async function createTask(
   await fillLabel(page, /^Due$/, "2027-02-28");
   await fillLabel(page, /^Est\. hours$/i, "24");
   await selectLabel(page, /^Priority$/, "High");
-  const assigneeButton = page.getByText(assignee, { exact: true }).last();
-  if (await assigneeButton.isVisible().catch(() => false)) await assigneeButton.click();
-  await clickButton(page, /create task/i);
+  await clickButton(page, /^Save$/);
   await waitForToast(page, /task created/i).catch(() => {});
 }
 
 async function openTask(page: Page, taskName: string): Promise<void> {
   await page.getByText(taskName, { exact: true }).first().click();
-  await page.getByRole("heading", { name: new RegExp(taskName) }).waitFor().catch(() => {});
+  await page
+    .getByRole("heading", { name: new RegExp(taskName) })
+    .waitFor()
+    .catch(() => {});
 }
 
 async function addSubtask(
   page: Page,
   taskName: string,
   subtaskName: string,
-  assignee: string,
 ): Promise<void> {
   await openTask(page, taskName);
-  const add = page.getByRole("button", { name: /add subtask/i }).last();
-  await add.click();
+  await clickButton(page, /add subtask/i);
   await fillLabel(page, /^Title$/, subtaskName);
   await fillLabel(page, /^Description$/, `Subtask for ${taskName}.`);
+  await fillLabel(page, /^Due$/, "2027-02-15");
   await selectLabel(page, /^Priority$/, "Medium");
-  const assigneeButton = page.getByText(assignee, { exact: true }).last();
-  if (await assigneeButton.isVisible().catch(() => false)) await assigneeButton.click();
   await clickButton(page, /create subtask/i);
   await waitForToast(page, /subtask created/i).catch(() => {});
 }
 
-async function updateSubtask(
-  page: Page,
-  subtaskName: string,
-): Promise<void> {
-  await page.getByText(subtaskName, { exact: true }).first().waitFor();
-  const row = page.getByText(subtaskName, { exact: true }).first().locator("xpath=ancestor::*[self::div or self::li][1]");
+async function editTask(page: Page, taskName: string): Promise<void> {
+  await openTask(page, taskName);
+  await clickButton(page, /edit task/i);
+  await fillLabel(page, /^Description$/, "Edited by Department Head in browser E2E.");
+  await clickButton(page, /^Save$/);
+  await waitForToast(page, /task updated/i).catch(() => {});
+}
+
+async function deleteTask(page: Page, taskName: string): Promise<void> {
+  await openTask(page, taskName);
+  const deleteButton = page.getByRole("button", { name: /delete task/i }).last();
+  await deleteButton.waitFor({ state: "visible" });
+  await deleteButton.click();
+  await clickButton(page, /confirm|delete/i);
+  await waitForToast(page, /task deleted/i).catch(() => {});
+}
+
+async function updateSubtask(page: Page, subtaskName: string): Promise<void> {
+  const row = page
+    .getByText(subtaskName, { exact: true })
+    .first()
+    .locator("xpath=ancestor::*[self::div or self::li][1]");
+
   const slider = row.locator('input[type="range"]').first();
-  if (await slider.count()) {
-    await slider.fill("65");
-  }
+  await slider.waitFor({ state: "visible" });
+  await slider.fill("65");
 
   const comment = row.locator('input[placeholder*="comment" i]').first();
   if (await comment.count()) {
@@ -101,10 +124,7 @@ async function updateSubtask(
     await comment.press("Enter");
   }
 
-  const complete = row.getByRole("button").filter({ hasText: "" }).first();
-  if (await complete.count()) {
-    await complete.click().catch(() => {});
-  }
+  await expect(row).toContainText("65");
 }
 
 export async function adminMilestonesAndTasks(
@@ -137,18 +157,24 @@ export async function adminMilestonesAndTasks(
     state.milestoneByDepartment.PWD = newName;
   });
 
-  const taskSpecs = [
-    ["departmentHeadA", "PWDC", "Civil Site Review Task", "Team Member A"],
-    ["departmentHeadB", "PWD", "Coordination Review Task", "Team Member B"],
-    ["departmentHeadC", "PROC", "Procurement Review Task", "Team Member A"],
+  const tasks = [
+    ["PWDC", "Civil Site Review Task"],
+    ["PWDC", "Civil Quality Review Task"],
+    ["PWD", "Coordination Review Task"],
+    ["PROC", "Procurement Review Task"],
   ] as const;
 
-  for (const [, code, taskName, assigneeLabel] of taskSpecs) {
-    await runner.step(`Create task: ${taskName}`, async () => {
-      await createTask(page, state.milestoneByDepartment[code], taskName, assigneeLabel);
-      state.taskByRole[code] = taskName;
+  for (const [code, taskName] of tasks) {
+    await runner.step(`Director creates task: ${taskName}`, async () => {
+      await createTask(page, state.milestoneByDepartment[code], taskName);
+      state.taskByRole[taskName] = code;
     });
   }
+
+  await runner.step("Director verifies task and milestone counts", async () => {
+    await expect(page.getByText(/Civil Site Review Task/i)).toBeVisible();
+    await expect(page.getByText(/Procurement Review Task/i)).toBeVisible();
+  });
 }
 
 export async function roleWork(
@@ -160,39 +186,37 @@ export async function roleWork(
   const mapping = {
     departmentHeadA: ["PWDC", "Civil Site Review Task", "Team Member A"],
     departmentHeadB: ["PWD", "Coordination Review Task", "Team Member B"],
-    departmentHeadC: ["PROC", "Procurement Review Task", "Team Member A"],
+    departmentHeadC: ["PROC", "Procurement Review Task", "Team Member C"],
   } as const;
 
-  const [code, taskName, member] = mapping[role];
+  const [code, taskName, memberLabel] = mapping[role];
 
-  await runner.step(`${USERS[role].label} verifies scoped task access`, async () => {
+  await runner.step(`${USERS[role].label} verifies scoped access`, async () => {
     await openMilestones(page, state);
     await expect(page.getByText(state.milestoneByDepartment[code], { exact: true })).toBeVisible();
     await expect(page.getByText(taskName, { exact: true })).toBeVisible();
+
+    if (role === "departmentHeadA") {
+      await expectButtonHidden(page, /new milestone/i);
+    }
   });
 
-  await runner.step(`${USERS[role].label} adds a subtask`, async () => {
+  await runner.step(`${USERS[role].label} creates a subtask`, async () => {
     const subtaskName = `${taskName} Subtask`;
-    await addSubtask(page, taskName, subtaskName, member);
+    await addSubtask(page, taskName, subtaskName);
     state.subtaskByRole[role] = subtaskName;
   });
 
-  await runner.step(`${USERS[role].label} edits the task`, async () => {
+  await runner.step(`${USERS[role].label} edits its task`, async () => {
     await openMilestones(page, state);
-    const card = page.getByText(taskName, { exact: true }).first().locator("xpath=ancestor::*[self::div or self::article][1]");
-    await card.getByTitle("Edit task").click();
-    await fillLabel(page, /^Description$/, "Edited by Department Head in browser E2E.");
-    await clickButton(page, /^Update Task$/);
-    await waitForToast(page, /task updated/i).catch(() => {});
+    await editTask(page, taskName);
   });
 
   if (role === "departmentHeadC") {
     await runner.step("Department Head C deletes its task", async () => {
       await openMilestones(page, state);
-      const card = page.getByText(taskName, { exact: true }).first().locator("xpath=ancestor::*[self::div or self::article][1]");
-      await card.getByTitle("Delete task").click();
-      await clickButton(page, /delete/i);
-      await waitForToast(page, /task deleted/i).catch(() => {});
+      await deleteTask(page, taskName);
+      await expect(page.getByText(taskName, { exact: true })).toHaveCount(0);
     });
   }
 }
@@ -201,16 +225,28 @@ export async function teamMemberWork(
   page: Page,
   runner: StepRunner,
   state: FlowState,
-  role: "teamMemberA" | "teamMemberB",
+  role: "teamMemberA" | "teamMemberB" | "teamMemberC",
 ): Promise<void> {
-  const targetCode = role === "teamMemberA" ? "PWDC" : "PWD";
-  const taskName = state.taskByRole[targetCode];
-  const subtaskName = state.subtaskByRole[role === "teamMemberA" ? "departmentHeadA" : "departmentHeadB"];
+  const taskName =
+    role === "teamMemberA"
+      ? "Civil Site Review Task"
+      : role === "teamMemberB"
+        ? "Civil Quality Review Task"
+        : "Procurement Review Task";
 
-  await runner.step(`${USERS[role].label} opens assigned task`, async () => {
+  const headRole =
+    role === "teamMemberA"
+      ? "departmentHeadA"
+      : role === "teamMemberB"
+        ? "departmentHeadA"
+        : "departmentHeadC";
+
+  const subtaskName = state.subtaskByRole[headRole];
+
+  await runner.step(`${USERS[role].label} opens assigned/scoped task`, async () => {
     await openMilestones(page, state);
-    await expect(page.getByText(taskName, { exact: true })).toBeVisible();
-    await page.getByText(taskName, { exact: true }).first().click();
+    await expect(page.getByText(taskName, { exact: true })).toBeVisible({ timeout: 30_000 });
+    await openTask(page, taskName);
   });
 
   await runner.step(`${USERS[role].label} updates subtask progress`, async () => {
@@ -221,14 +257,11 @@ export async function teamMemberWork(
     await page.goto(`${ROUTES.projects}/${state.projectId}/documents`, {
       waitUntil: "domcontentloaded",
     });
-    await clickButton(page, /upload document/i);
+    await page.getByRole("button", { name: /upload document/i }).click();
     const file = path.join(process.cwd(), "fixtures", "dummy-task.txt");
     await uploadFirstFile(page, file);
-    const level = page.getByLabel(/upload level/i).first();
-    if (await level.count()) await level.selectOption("task");
-    const selects = page.locator("select");
-    const target = selects.filter({ hasText: /Select task/i }).first();
-    if (await target.count()) await target.selectOption({ label: taskName });
+    await selectLabel(page, /upload level/i, "task");
+    await selectAnyOption(page, taskName);
     await clickButton(page, /^Upload$/);
     await waitForToast(page, /uploaded|document/i).catch(() => {});
   });
@@ -242,6 +275,7 @@ export async function verifyViewer(
   await runner.step("Viewer verifies the project without write controls", async () => {
     await openMilestones(page, state);
     await expect(page.getByText(state.projectName, { exact: true }).first()).toBeVisible();
-    await expect(page.getByRole("button", { name: /new task|new milestone/i }).first()).toBeHidden();
+    await expectButtonHidden(page, /new task/i);
+    await expectButtonHidden(page, /new milestone/i);
   });
 }
