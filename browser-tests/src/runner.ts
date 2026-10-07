@@ -73,37 +73,8 @@ async function chooseRoute(): Promise<string> {
   return entries[index]?.[1] ?? ROUTES.projects;
 }
 
-async function createManualSession(
-  mode: BrowserMode,
-  runDir: string,
-  runner: StepRunner | null,
-  user: TestUserId,
-): Promise<{
-  context: BrowserContext;
-  page: Page;
-  runner: StepRunner;
-  flushNetwork: () => Promise<string>;
-}> {
-  const resources = await newContext(
-    await launchBrowser(mode),
-    path.join(runDir, "manual", user),
-  );
-  const nextRunner =
-    runner ??
-    new StepRunner(resources.page, runDir, true, USERS[user].label);
-  nextRunner.setPage(resources.page);
-  nextRunner.setUserLabel(USERS[user].label);
-  await loginAs(resources.page, nextRunner, user);
-
-  return {
-    context: resources.context,
-    page: resources.page,
-    runner: nextRunner,
-    flushNetwork: resources.flushNetwork,
-  };
-}
-
 async function runManualSession(
+  browser: Awaited<ReturnType<typeof launchBrowser>>,
   browserMode: BrowserMode,
   runDir: string,
 ): Promise<void> {
@@ -114,7 +85,7 @@ async function runManualSession(
 
   let currentUser = await chooseUser();
   let resources = await newContext(
-    await launchBrowser(browserMode),
+    browser,
     path.join(runDir, "manual", currentUser),
   );
   const runner = new StepRunner(resources.page, runDir, true, USERS[currentUser].label);
@@ -178,7 +149,7 @@ async function runManualSession(
         await resources.context.close();
 
         resources = await newContext(
-          await launchBrowser(browserMode),
+          browser,
           path.join(runDir, "manual", nextUser),
         );
         currentUser = nextUser;
@@ -192,7 +163,7 @@ async function runManualSession(
         await resources.flushNetwork().catch(() => {});
         await resources.context.close();
         await runFullBusinessFlow(
-          await launchBrowser(browserMode),
+          browser,
           path.join(runDir, "full-business"),
           true,
         );
@@ -268,7 +239,12 @@ async function main(): Promise<void> {
         `${timestamp()}-manual`,
       );
       console.log(`Run directory: ${runDir}`);
-      await runManualSession(browserMode, runDir);
+      const browser = await launchBrowser(browserMode);
+      try {
+        await runManualSession(browser, browserMode, runDir);
+      } finally {
+        await browser.close();
+      }
     }
     return;
   }
