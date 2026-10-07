@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using PMWDS.API.Middleware;
 using PMWDS.API.Services;
 using PMWDS.Application.DTOs.Common;
+using PMWDS.Application.DTOs.Documents;
 using PMWDS.Application.DTOs.Projects;
 using PMWDS.Application.Features.Projects.Commands;
 using PMWDS.Application.Features.Projects.Queries;
@@ -76,7 +77,11 @@ public class ProjectsController : BaseApiController
                 ActiveProjects = group.Count(project => project.Status == ProjectStatus.InProgress),
                 CompletedProjects = group.Count(project => project.Status == ProjectStatus.Completed),
                 OnHoldProjects = group.Count(project => project.Status == ProjectStatus.OnHold),
-                DelayedProjects = group.Count(project => project.Status == ProjectStatus.Delayed),
+                DelayedProjects = group.Count(project =>
+                    project.Status == ProjectStatus.Delayed ||
+                    (project.Status != ProjectStatus.Completed &&
+                     project.ProgressPercentage < 100 &&
+                     project.PlannedEndDate < now)),
                 OverdueProjects = group.Count(project =>
                     (project.ActualEndDate.HasValue && project.ActualEndDate > project.PlannedEndDate) ||
                     (!project.ActualEndDate.HasValue && now > project.PlannedEndDate)),
@@ -567,31 +572,131 @@ public class ProjectsController : BaseApiController
         return Ok(await _ai.OptimizeResourceAllocationAsync(id, ct));
     }
 
-    [HttpPost("{id:guid}/documents")]
-    public async Task<IActionResult> UploadDocument(
-    Guid id,
-    IFormFile file,
-    [FromForm] DocumentCategory? category,
-    CancellationToken ct)
+    [HttpGet("{id:guid}/documents/capabilities")]
+    [Authorize(Policy = AuthorizationPolicies.DocumentsView)]
+    public async Task<IActionResult> GetDocumentCapabilities(Guid id, CancellationToken ct)
     {
         var project = await _uow.Projects.GetByIdAsync(id, ct);
         if (project == null)
             return NotFound();
 
-        if (!await _scope.CanManageProjectAsync(id, ct))
-        {
+        var canView = await _scope.GetProjectDocumentAccessScopeAsync(
+            id,
+            ct,
+            PermissionCodes.DocumentOwnView,
+            PermissionCodes.DocumentAllView,
+            PermissionCodes.DocumentOwnManage,
+            PermissionCodes.DocumentAllManage);
+
+        if (canView == DepartmentDataScope.None)
             return Forbid();
+
+        var canProjectUpload = await _scope.HasAnyPermissionAsync(
+            ct,
+            PermissionCodes.DocumentOwnProjectUpload,
+            PermissionCodes.DocumentAllProjectUpload);
+
+        var canMilestoneUpload = await _scope.HasAnyPermissionAsync(
+            ct,
+            PermissionCodes.DocumentOwnMilestoneUpload,
+            PermissionCodes.DocumentAllMilestoneUpload);
+
+        var canTaskUpload = await _scope.HasAnyPermissionAsync(
+            ct,
+            PermissionCodes.DocumentOwnTaskUpload,
+            PermissionCodes.DocumentAllTaskUpload);
+
+        return Ok(new ProjectDocumentCapabilitiesDto(
+            canProjectUpload,
+            canMilestoneUpload,
+            canTaskUpload,
+            await _scope.CanModifyProjectDocumentAsync(
+                id, null, null, ct,
+                PermissionCodes.DocumentOwnEdit,
+                PermissionCodes.DocumentAllEdit,
+                PermissionCodes.DocumentOwnManage,
+                PermissionCodes.DocumentAllManage),
+            await _scope.CanModifyProjectDocumentAsync(
+                id, null, null, ct,
+                PermissionCodes.DocumentOwnDelete,
+                PermissionCodes.DocumentAllDelete,
+                PermissionCodes.DocumentOwnManage,
+                PermissionCodes.DocumentAllManage)));
+    }
+
+    [HttpPost("{id:guid}/documents")]
+    [Authorize(Policy = AuthorizationPolicies.DocumentsUpload)]
+    public async Task<IActionResult> UploadDocument(
+        Guid id,
+        IFormFile? file,
+        [FromForm] Guid? milestoneId,
+        [FromForm] Guid? taskId,
+        [FromForm] DocumentCategory? category,
+        CancellationToken ct)
+    {
+        var project = await _uow.Projects.GetByIdAsync(id, ct);
+        if (project == null)
+            return NotFound();
+
+        if (file == null || file.Length == 0)
+            return BadRequest(new { message = "A document file is required." });
+
+        Guid? resolvedMilestoneId = milestoneId;
+        if (taskId.HasValue)
+        {
+            var task = await _db.Tasks
+                .Where(item => item.Id == taskId.Value && item.ProjectId == id)
+                .Select(item => new { item.MilestoneId })
+                .FirstOrDefaultAsync(ct);
+
+            if (task == null)
+                return BadRequest(new { message = "The selected task does not belong to this project." });
+
+            if (milestoneId.HasValue && task.MilestoneId != milestoneId)
+                return BadRequest(new { message = "The selected task does not belong to the selected milestone." });
+
+            resolvedMilestoneId = task.MilestoneId;
+        }
+        else if (milestoneId.HasValue)
+        {
+            var milestoneExists = await _db.Milestones.AnyAsync(
+                milestone => milestone.Id == milestoneId.Value && milestone.ProjectId == id,
+                ct);
+            if (!milestoneExists)
+                return BadRequest(new { message = "The selected milestone does not belong to this project." });
         }
 
-        // A Utilization Certificate carries extra finance metadata and an approval
-        // lifecycle, so it has to go through the dedicated UC endpoint instead.
+        var levelUploadAllowed = taskId.HasValue
+            ? await _scope.CanUploadProjectDocumentAsync(
+                id, resolvedMilestoneId, taskId, ct,
+                PermissionCodes.DocumentOwnTaskUpload,
+                PermissionCodes.DocumentAllTaskUpload)
+            : resolvedMilestoneId.HasValue
+                ? await _scope.CanUploadProjectDocumentAsync(
+                    id, resolvedMilestoneId, null, ct,
+                    PermissionCodes.DocumentOwnMilestoneUpload,
+                    PermissionCodes.DocumentAllMilestoneUpload)
+                : await _scope.CanUploadProjectDocumentAsync(
+                    id, null, null, ct,
+                    PermissionCodes.DocumentOwnProjectUpload,
+                    PermissionCodes.DocumentAllProjectUpload);
+
+        if (!levelUploadAllowed)
+            return Forbid();
+
         var resolvedCategory = category is null || category == DocumentCategory.UtilizationCertificate
             ? DocumentCategory.General
             : category.Value;
 
         await using var stream = file.OpenReadStream();
         var extension = Path.GetExtension(file.FileName);
-        var filePath = await _localFiles.UploadDocumentAsync(stream, project.ProjectCode, project.Name, extension, file.ContentType, ct);
+        var filePath = await _localFiles.UploadDocumentAsync(
+            stream,
+            project.ProjectCode,
+            project.Name,
+            extension,
+            file.ContentType,
+            ct);
 
         var doc = ProjectDocument.Create(
             id,
@@ -601,7 +706,11 @@ public class ProjectsController : BaseApiController
             file.Length,
             _currentUser.UserId ?? "system",
             description: null,
-            category: resolvedCategory);
+            category: resolvedCategory,
+            milestoneId: resolvedMilestoneId,
+            taskId: taskId);
+        doc.ValidateHierarchy();
+        doc.SetCreatedBy(_currentUser.UserId ?? "system");
 
         await _uow.ProjectDocuments.AddAsync(doc, ct);
         await _uow.SaveChangesAsync(ct);
@@ -615,17 +724,17 @@ public class ProjectsController : BaseApiController
                 ["projectName"] = project.Name,
                 ["documentId"] = doc.Id,
                 ["fileName"] = file.FileName,
-                ["fileSize"] = file.Length
+                ["fileSize"] = file.Length,
+                ["level"] = doc.Level.ToString()
             },
-            ProjectId: id
-        );
+            ProjectId: id);
 
         await _changes.NotifyAsync(DataChangeScopes.Documents, doc.Id.ToString(), id, ct);
-
-        return Ok();
+        return Ok(MapDocument(doc, project.Name));
     }
 
     [HttpGet("{id:guid}/documents")]
+    [Authorize(Policy = AuthorizationPolicies.DocumentsView)]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> GetDocuments(Guid id, CancellationToken ct)
     {
@@ -633,43 +742,139 @@ public class ProjectsController : BaseApiController
         if (project == null)
             return NotFound();
 
-        if (!await _scope.CanAccessProjectAsync(id, ct))
-        {
+        var accessScope = await _scope.GetProjectDocumentAccessScopeAsync(
+            id,
+            ct,
+            PermissionCodes.DocumentOwnView,
+            PermissionCodes.DocumentAllView,
+            PermissionCodes.DocumentOwnManage,
+            PermissionCodes.DocumentAllManage);
+
+        if (accessScope == DepartmentDataScope.None)
             return Forbid();
+
+        var departmentIds = accessScope == DepartmentDataScope.OwnDepartment
+            ? await _scope.GetDepartmentIdsAsync(ct)
+            : [];
+
+        var docs = await _db.ProjectDocuments
+            .AsNoTracking()
+            .Include(document => document.Milestone)
+            .Include(document => document.Task)
+                .ThenInclude(task => task!.Milestone)
+            .Where(document => document.ProjectId == id)
+            .OrderByDescending(document => document.CreatedDate)
+            .ToListAsync(ct);
+
+        if (accessScope == DepartmentDataScope.OwnDepartment)
+        {
+            docs = docs.Where(document =>
+            {
+                var targetDepartmentId = document.Task?.Milestone?.DepartmentId
+                    ?? document.Milestone?.DepartmentId
+                    ?? project.DepartmentId;
+                return departmentIds.Contains(targetDepartmentId);
+            }).ToList();
         }
 
-        var docs = await _uow.ProjectDocuments.FindAsync(d => d.ProjectId == id);
-        return Ok(docs.Select(d => new
-        {
-            d.Id,
-            d.ProjectId,
-            d.Title,
-            d.FilePath,
-            d.ContentType,
-            d.FileSizeBytes,
-            d.UploadedByUserId,
-            d.Description,
-            d.Version,
-            d.Category,
-            d.CreatedDate
-        }));
+        return Ok(docs.Select(document => MapDocument(document, project.Name)));
     }
 
-    [HttpGet("{id:guid}/documents/{docId:guid}/download")]
-    public async Task<IActionResult> DownloadDocument(Guid id, Guid docId, CancellationToken ct)
+    [HttpPut("{id:guid}/documents/{docId:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.DocumentsEdit)]
+    public async Task<IActionResult> UpdateDocument(
+        Guid id,
+        Guid docId,
+        [FromBody] UpdateProjectDocumentDto dto,
+        CancellationToken ct)
     {
-        var docs = await _uow.ProjectDocuments.FindAsync(d => d.Id == docId && d.ProjectId == id);
-        var doc = docs.FirstOrDefault();
+        var doc = await _db.ProjectDocuments
+            .Include(document => document.Milestone)
+            .Include(document => document.Task)
+                .ThenInclude(task => task!.Milestone)
+            .FirstOrDefaultAsync(document => document.Id == docId && document.ProjectId == id, ct);
+
         if (doc == null)
             return NotFound();
 
-        if (!await _scope.CanAccessProjectAsync(id, ct))
-        {
+        if (!await _scope.CanModifyProjectDocumentAsync(
+            id,
+            doc.MilestoneId,
+            doc.TaskId,
+            ct,
+            PermissionCodes.DocumentOwnEdit,
+            PermissionCodes.DocumentAllEdit,
+            PermissionCodes.DocumentOwnManage,
+            PermissionCodes.DocumentAllManage))
             return Forbid();
-        }
+
+        doc.UpdateMetadata(dto.Title, dto.Description, dto.Category);
+        doc.SetModified(_currentUser.UserId ?? "system");
+        await _uow.ProjectDocuments.UpdateAsync(doc, ct);
+        await _uow.SaveChangesAsync(ct);
+        await _changes.NotifyAsync(DataChangeScopes.Documents, doc.Id.ToString(), id, ct);
+        return Ok(MapDocument(doc, null));
+    }
+
+    [HttpGet("{id:guid}/documents/{docId:guid}/download")]
+    [Authorize(Policy = AuthorizationPolicies.DocumentsView)]
+    public async Task<IActionResult> DownloadDocument(Guid id, Guid docId, CancellationToken ct)
+    {
+        var doc = await _db.ProjectDocuments
+            .AsNoTracking()
+            .Include(document => document.Milestone)
+            .Include(document => document.Task)
+                .ThenInclude(task => task!.Milestone)
+            .FirstOrDefaultAsync(document => document.Id == docId && document.ProjectId == id, ct);
+
+        if (doc == null)
+            return NotFound();
+
+        if (!await _scope.CanAccessProjectDocumentAsync(
+            id,
+            doc.MilestoneId,
+            doc.TaskId,
+            ct,
+            PermissionCodes.DocumentOwnView,
+            PermissionCodes.DocumentAllView,
+            PermissionCodes.DocumentOwnManage,
+            PermissionCodes.DocumentAllManage))
+            return Forbid();
 
         var stream = await _localFiles.DownloadFileAsync(doc.FilePath, ct);
         return File(stream, doc.ContentType, doc.Title);
+    }
+
+    [HttpDelete("{id:guid}/documents/{docId:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.DocumentsDelete)]
+    public async Task<IActionResult> DeleteDocument(Guid id, Guid docId, CancellationToken ct)
+    {
+        var doc = await _db.ProjectDocuments
+            .AsNoTracking()
+            .Include(document => document.Milestone)
+            .Include(document => document.Task)
+                .ThenInclude(task => task!.Milestone)
+            .FirstOrDefaultAsync(document => document.Id == docId && document.ProjectId == id, ct);
+
+        if (doc == null)
+            return NotFound();
+
+        if (!await _scope.CanModifyProjectDocumentAsync(
+            id,
+            doc.MilestoneId,
+            doc.TaskId,
+            ct,
+            PermissionCodes.DocumentOwnDelete,
+            PermissionCodes.DocumentAllDelete,
+            PermissionCodes.DocumentOwnManage,
+            PermissionCodes.DocumentAllManage))
+            return Forbid();
+
+        await _uow.ProjectDocuments.DeleteAsync(doc.Id, ct);
+        await _uow.SaveChangesAsync(ct);
+        await _localFiles.DeleteFileAsync(doc.FilePath, ct);
+        await _changes.NotifyAsync(DataChangeScopes.Documents, doc.Id.ToString(), id, ct);
+        return NoContent();
     }
 
     [HttpDelete("{id:guid}")]
@@ -726,6 +931,26 @@ public class ProjectsController : BaseApiController
 
         return NoContent();
     }
+
+    private static ProjectDocumentDto MapDocument(ProjectDocument document, string? projectName)
+        => new(
+            document.Id,
+            document.ProjectId,
+            projectName,
+            document.MilestoneId,
+            document.Milestone?.Name,
+            document.TaskId,
+            document.Task?.Title,
+            document.Level,
+            document.Title,
+            document.FilePath,
+            document.ContentType,
+            document.FileSizeBytes,
+            document.UploadedByUserId,
+            document.Description,
+            document.Version,
+            document.Category,
+            document.CreatedDate);
 
     private async Task<bool> AreDepartmentsInScopeAsync(IReadOnlyCollection<Guid> departmentIds, CancellationToken ct)
     {

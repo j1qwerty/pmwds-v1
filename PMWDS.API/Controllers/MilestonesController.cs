@@ -603,6 +603,18 @@ public class MilestonesController : BaseApiController
             _db.MilestoneDependencies.RemoveRange(deps);
 
         await _uow.Tasks.DeleteTasksByMilestoneAsync(id, ct);
+
+        // A milestone is soft-deleted, so no foreign key fires and nothing at the database level
+        // clears the document links. Do it here: the documents themselves are uploaded evidence
+        // and must survive, while their link to a milestone that no longer exists must not.
+        var milestoneDocuments = await _db.ProjectDocuments
+            .Where(document => document.MilestoneId == id)
+            .ToListAsync(ct);
+        foreach (var document in milestoneDocuments)
+        {
+            document.UnlinkMilestone();
+        }
+
         await _uow.Milestones.DeleteAsync(id, ct);
         await _uow.SaveChangesAsync(ct);
         await RecalculateProjectFromMilestonesAsync(projectId, ct);

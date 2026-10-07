@@ -265,19 +265,37 @@ export function AppDataProvider({ children }: PropsWithChildren) {
 
     if (referenceLoadRef.current === auth.userId) return;
     referenceLoadRef.current = auth.userId;
+
     let disposed = false;
+    let userLoadTimer: number | undefined;
 
     const loadInitialReferenceData = async () => {
       try {
-        await refreshReferenceData();
+        // Bootstrap renders the app first. Organizations and departments are needed by the
+        // shared filters, while the full user directory is the largest reference collection.
+        // Keep it out of the initial request burst so a login does not compete with the first
+        // page data and SignalR negotiate.
+        await refreshReferenceData(REALTIME_SCOPES.organizations);
+        if (disposed) return;
+
+        await refreshReferenceData(REALTIME_SCOPES.departments);
+        if (disposed) return;
+
+        userLoadTimer = window.setTimeout(() => {
+          if (!disposed) {
+            void refreshReferenceData(REALTIME_SCOPES.users);
+          }
+        }, 750);
       } catch {
         // refreshReferenceData records a user-visible error. Keep bootstrap usable.
       }
     };
 
-    if (!disposed) void loadInitialReferenceData();
+    void loadInitialReferenceData();
+
     return () => {
       disposed = true;
+      if (userLoadTimer !== undefined) window.clearTimeout(userLoadTimer);
     };
   }, [auth, refreshReferenceData]);
 

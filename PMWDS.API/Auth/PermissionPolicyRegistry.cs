@@ -9,12 +9,16 @@ public static class PermissionPolicyRegistry
     {
         options.AddPolicy(AuthorizationPolicies.Authenticated, policy => policy.RequireAuthenticatedUser());
         options.AddPolicy(AuthorizationPolicies.SuperAdmin, policy => RequireAny(policy, PermissionCodes.SystemAdmin));
+        // ActivityLogAllView is the scoped code a director actually holds (ActivityLogAllManage
+        // expands down to it). The unscoped aliases are still accepted so custom roles created
+        // before the scoped matrix keep working.
         options.AddPolicy(AuthorizationPolicies.Director, policy => RequireAny(
             policy,
             PermissionCodes.SystemAdmin,
             PermissionCodes.OrganizationManage,
             PermissionCodes.OrganizationView,
             PermissionCodes.OrganizationEdit,
+            PermissionCodes.ActivityLogAllView,
             PermissionCodes.ActivityLogManage,
             PermissionCodes.ActivityLogView));
         options.AddPolicy(AuthorizationPolicies.Manager, policy => RequireAny(

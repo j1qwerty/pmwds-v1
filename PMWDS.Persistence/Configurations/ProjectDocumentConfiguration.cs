@@ -15,6 +15,22 @@ public class ProjectDocumentConfiguration : IEntityTypeConfiguration<ProjectDocu
         // The ProjectId relationship and its index are owned by ProjectConfiguration.
         // Redeclaring them here makes EF create a second shadow FK (ProjectId1).
 
+        // Milestone / task links are contextual only. Deleting the underlying work item must
+        // never take an uploaded document with it, so the link is detached instead - the same
+        // rule UtilizationCertificateConfiguration applies to certificates.
+        b.HasOne(e => e.Milestone)
+            .WithMany()
+            .HasForeignKey(e => e.MilestoneId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        b.HasOne(e => e.Task)
+            .WithMany()
+            .HasForeignKey(e => e.TaskId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        b.HasIndex(e => e.MilestoneId);
+        b.HasIndex(e => e.TaskId);
+
         // Existing columns deliberately keep their original (unbounded) shape so the
         // new migration only ever adds, never narrows, an existing column.
         b.Property(e => e.Category)

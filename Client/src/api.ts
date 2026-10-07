@@ -34,6 +34,7 @@ import type {
   PermissionRecord,
   Project,
   ProjectDocument,
+  ProjectDocumentCapabilities,
   ProjectHealth,
   PredictionResultRecord,
   ReportScheduleRecord,
@@ -44,6 +45,7 @@ import type {
   StoredReportDetailRecord,
   StoredReportRecord,
   Task,
+  TaskDashboardStats,
   TaskDependency,
   TrainingDataPointRecord,
   ActivityLogRecord,
@@ -57,6 +59,7 @@ import type {
   SubmitUtilizationCertificatePayload,
   UpdateUtilizationCertificatePayload,
   UtilizationCertificate,
+  UtilizationCertificateUploadCapabilities,
 } from "./types";
 
 const API_BASE_URL =
@@ -146,7 +149,13 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
       let message = responseText;
       try {
         const json = JSON.parse(responseText);
-        message = json.error?.message || json.message || json.error || responseText;
+        message =
+          json.error?.message ||
+          json.message ||
+          json.detail ||
+          json.title ||
+          (typeof json.error === "string" ? json.error : undefined) ||
+          responseText;
       } catch {
         // Keep the server-provided response text when it is not valid JSON.
       }
@@ -259,16 +268,50 @@ export const api = {
       method: "POST",
     });
   },
-  uploadProjectDocument(token: string, id: string, file: File) {
+  uploadProjectDocument(
+    token: string,
+    id: string,
+    file: File,
+    options: { milestoneId?: string | null; taskId?: string | null; category?: string } = {},
+  ) {
     const form = new FormData();
     form.set("file", file);
-    return request<void>(`projects/${id}/documents`, { token, method: "POST", body: form });
+    if (options.milestoneId) form.set("milestoneId", options.milestoneId);
+    if (options.taskId) form.set("taskId", options.taskId);
+    if (options.category) form.set("category", options.category);
+    return request<ProjectDocument>(`projects/${id}/documents`, {
+      token,
+      method: "POST",
+      body: form,
+    });
+  },
+  getProjectDocumentCapabilities(token: string, id: string) {
+    return request<ProjectDocumentCapabilities>(`projects/${id}/documents/capabilities`, { token });
   },
   getProjectDocuments(token: string, id: string) {
     return request<ProjectDocument[]>(`projects/${id}/documents`, { token });
   },
+  updateProjectDocument(token: string, id: string, docId: string, payload: { title: string; description?: string | null; category: string }) {
+    return request<ProjectDocument>(`projects/${id}/documents/${docId}`, {
+      token,
+      method: "PUT",
+      body: payload,
+    });
+  },
+  deleteProjectDocument(token: string, id: string, docId: string) {
+    return request<void>(`projects/${id}/documents/${docId}`, {
+      token,
+      method: "DELETE",
+    });
+  },
   downloadProjectDocument(token: string, id: string, docId: string) {
     return request<Blob>(`projects/${id}/documents/${docId}/download`, { token });
+  },
+  getUtilizationCertificateUploadCapabilities(token: string, projectId: string) {
+    return request<UtilizationCertificateUploadCapabilities>(
+      `utilization-certificates/project/${projectId}/capabilities`,
+      { token },
+    );
   },
   getProjectUtilizationCertificates(token: string, projectId: string) {
     return request<UtilizationCertificate[]>(`utilization-certificates/project/${projectId}`, { token });
@@ -371,6 +414,9 @@ export const api = {
   },
   getTasks(token: string, query: TaskListQuery = {}) {
     return request<PaginatedResponse<Task>>("tasks", { token, query });
+  },
+  getTaskDashboardSummary(token: string) {
+    return request<TaskDashboardStats>("tasks/dashboard-summary", { token });
   },
   /**
    * Every task the caller can see, for portfolio-level counts on the dashboard.

@@ -565,6 +565,31 @@ export interface ProjectDashboardData {
   recentProjectPreviews: ProjectSummary[];
 }
 
+export interface TaskDashboardPreview {
+  id: string;
+  title: string;
+  status: string;
+  projectId: string;
+  projectName?: string | null;
+  milestoneId?: string | null;
+  milestoneName?: string | null;
+  progressPercentage: number;
+  createdDate: string;
+}
+
+export interface TaskDashboardStats {
+  totalTasks: number;
+  inProgressTasks: number;
+  onHoldTasks: number;
+  completedTasks: number;
+  delayedTasks: number;
+  recentTasks: TaskDashboardPreview[];
+  recentInProgressTasks: TaskDashboardPreview[];
+  recentOnHoldTasks: TaskDashboardPreview[];
+  recentCompletedTasks: TaskDashboardPreview[];
+  recentDelayedTasks: TaskDashboardPreview[];
+}
+
 export interface DashboardData {
   totalProjects: number;
   activeProjects: number;
@@ -893,9 +918,25 @@ export type DocumentCategory =
   | "Financial"
   | "UtilizationCertificate";
 
+export type ProjectDocumentLevel = "Project" | "Milestone" | "Task";
+
+export interface ProjectDocumentCapabilities {
+  canUploadProject: boolean;
+  canUploadMilestone: boolean;
+  canUploadTask: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+}
+
 export interface ProjectDocument {
   id: string;
   projectId: string;
+  projectName?: string | null;
+  milestoneId?: string | null;
+  milestoneName?: string | null;
+  taskId?: string | null;
+  taskTitle?: string | null;
+  level: ProjectDocumentLevel;
   title: string;
   filePath: string;
   contentType: string;
@@ -965,6 +1006,12 @@ export type UpdateUtilizationCertificatePayload = Omit<
   SubmitUtilizationCertificatePayload,
   "projectId"
 >;
+
+export interface UtilizationCertificateUploadCapabilities {
+  canUploadProject: boolean;
+  canUploadMilestone: boolean;
+  canUploadTask: boolean;
+}
 
 export interface UtilizationCertificateCapabilities {
   /** Resolved server-side, so the UI never disagrees with the API. */

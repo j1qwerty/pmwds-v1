@@ -41,7 +41,7 @@ public sealed class HubListener : IAsyncDisposable
         var connection = new HubConnectionBuilder()
             .WithUrl($"{baseAddress.TrimEnd('/')}/hubs/dashboard", options =>
             {
-                options.AccessTokenProvider = () => Task.FromResult(token);
+                options.AccessTokenProvider = () => Task.FromResult<string?>(token);
                 options.HttpMessageHandlerFactory = _ => handlerFactory();
             })
             .AddJsonProtocol(options =>

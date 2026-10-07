@@ -223,6 +223,18 @@ public class TaskRepository
             certificate.UnlinkTask();
         }
 
+        // Documents follow the same rule for the same reason: the file is the evidence, the task
+        // is only where it was filed. Unlinked here for the same portability reason as the
+        // certificates above - tasks are hard-deleted while milestones are only soft-deleted, so
+        // leaving it to the database would behave differently per provider and per path.
+        var documents = await _context.ProjectDocuments
+            .Where(d => d.TaskId.HasValue && taskIds.Contains(d.TaskId.Value))
+            .ToListAsync(ct);
+        foreach (var document in documents)
+        {
+            document.UnlinkTask();
+        }
+
         var tasks = await _dbSet
         .Where(t => taskIds.Contains(t.Id))
         .OrderByDescending(t => t.ParentTaskId.HasValue)
