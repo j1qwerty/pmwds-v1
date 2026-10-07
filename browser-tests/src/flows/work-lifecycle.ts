@@ -248,7 +248,7 @@ export async function teamMemberWork(
     await page.getByRole("button", { name: /upload document/i }).click();
     const file = path.join(process.cwd(), "fixtures", "dummy-task.txt");
     await uploadFirstFile(page, file);
-    await selectLabel(page, /upload level/i, "task");
+    await selectLabel(page, /document level/i, "task");
     await selectAnyOption(page, taskName);
     await clickButton(page, /^Upload$/);
     await waitForToast(page, /uploaded|document/i).catch(() => {});
