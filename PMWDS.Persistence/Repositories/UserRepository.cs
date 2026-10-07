@@ -99,6 +99,89 @@ public class UserRepository : EfRepository<ApplicationUser>, IUserRepository
         return user?.AIWorkloadScore ?? 0;
     }
 
+    public async Task<IReadOnlyDictionary<Guid, (int ActiveTasks, int OverdueTasks, double EstimatedHours)>>
+        GetLiveWorkloadAsync(Guid? departmentId = null, CancellationToken ct = default)
+    {
+        var userQuery = _dbSet
+            .AsNoTracking()
+            .Where(user => user.IsActive);
+
+        if (departmentId.HasValue)
+        {
+            userQuery = userQuery.Where(user =>
+                user.DepartmentId == departmentId.Value ||
+                user.DepartmentAssignments.Any(assignment => assignment.DepartmentId == departmentId.Value));
+        }
+
+        var userIds = await userQuery
+            .Select(user => user.Id)
+            .ToListAsync(ct);
+
+        if (userIds.Count == 0)
+        {
+            return new Dictionary<Guid, (int, int, double)>();
+        }
+
+        var activeStatuses = new[]
+        {
+            Domain.Enums.TaskStatus.NotStarted,
+            Domain.Enums.TaskStatus.InProgress,
+            Domain.Enums.TaskStatus.OnHold,
+            Domain.Enums.TaskStatus.Delayed
+        };
+
+        var now = DateTime.UtcNow;
+
+        var directTasks = await _context.Tasks
+            .AsNoTracking()
+            .Where(task =>
+                task.AssignedToUserId.HasValue &&
+                userIds.Contains(task.AssignedToUserId.Value) &&
+                activeStatuses.Contains(task.Status))
+            .Select(task => new
+            {
+                UserId = task.AssignedToUserId!.Value,
+                TaskId = task.Id,
+                task.DueDate,
+                task.EstimatedHours
+            })
+            .ToListAsync(ct);
+
+        var additionalAssignments = await _context.TaskAssignments
+            .AsNoTracking()
+            .Where(assignment =>
+                assignment.IsActive &&
+                userIds.Contains(assignment.UserId))
+            .Join(
+                _context.Tasks.AsNoTracking().Where(task => activeStatuses.Contains(task.Status)),
+                assignment => assignment.TaskId,
+                task => task.Id,
+                (assignment, task) => new
+                {
+                    assignment.UserId,
+                    TaskId = task.Id,
+                    task.DueDate,
+                    task.EstimatedHours
+                })
+            .ToListAsync(ct);
+
+        var rows = directTasks
+            .Concat(additionalAssignments)
+            .GroupBy(row => new { row.UserId, row.TaskId })
+            .Select(group => group.First())
+            .GroupBy(row => row.UserId)
+            .ToDictionary(
+                group => group.Key,
+                group => (
+                    ActiveTasks: group.Count(),
+                    OverdueTasks: group.Count(row => row.DueDate < now),
+                    EstimatedHours: group.Sum(row => (double)Math.Max(0, row.EstimatedHours))));
+
+        return userIds.ToDictionary(
+            userId => userId,
+            userId => rows.GetValueOrDefault(userId, (0, 0, 0d)));
+    }
+
     private IQueryable<ApplicationUser> IncludeIdentityGraph()
         => _dbSet
             .Include(u => u.Department)
