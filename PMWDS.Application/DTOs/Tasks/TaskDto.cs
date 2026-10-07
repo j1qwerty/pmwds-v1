@@ -177,13 +177,34 @@ public record TaskDto(
         public static TaskSummaryDto FromEntity(ProjectTask t)
         => new(t.Id, t.Title,
         t.Status.ToString(),
-
-
         t.Priority.ToString(),
         t.DueDate,
         t.AIDelayProbability,
         t.IsEscalated);
     }
+
+    public record TaskDashboardPreviewDto(
+        Guid Id,
+        string Title,
+        string Status,
+        Guid ProjectId,
+        string? ProjectName,
+        Guid? MilestoneId,
+        string? MilestoneName,
+        double ProgressPercentage,
+        DateTime CreatedDate);
+
+    public record TaskDashboardStatsDto(
+        int TotalTasks,
+        int InProgressTasks,
+        int OnHoldTasks,
+        int CompletedTasks,
+        int DelayedTasks,
+        List<TaskDashboardPreviewDto> RecentTasks,
+        List<TaskDashboardPreviewDto> RecentInProgressTasks,
+        List<TaskDashboardPreviewDto> RecentOnHoldTasks,
+        List<TaskDashboardPreviewDto> RecentCompletedTasks,
+        List<TaskDashboardPreviewDto> RecentDelayedTasks);
     public record CreateTaskDto(
     string Title,
     string? Description,
