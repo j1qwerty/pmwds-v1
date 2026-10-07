@@ -26,7 +26,6 @@ interface FieldErrors {
   projectId?: string;
   startDate?: string;
   dueDate?: string;
-  estimatedHours?: string;
 }
 
 export function TaskFormModal({
@@ -62,26 +61,27 @@ export function TaskFormModal({
     const ms = milestones.find((m) => m.id === form.milestoneId);
     return ms?.dueDate?.slice(0, 10) || "";
   }, [form.milestoneId, milestones]);
+  const initialMilestoneId = initialData?.milestoneId || defaultMilestoneId;
+  const initialMilestoneDueDate = milestones.find((milestone) => milestone.id === initialMilestoneId)?.dueDate?.slice(0, 10) || "";
 
   useEffect(() => {
     if (open) {
       setErrors({});
-      const editing = !!initialData;
       setForm({
         title: initialData?.title || "",
         description: initialData?.description || "",
-        startDate: initialData?.startDate?.slice(0, 10) || getToday(),
-        dueDate: initialData?.dueDate?.slice(0, 10) || ((!editing && selectedMilestoneDueDate) ? selectedMilestoneDueDate : ""),
+        startDate: initialData?.startDate?.slice(0, 10) || initialMilestoneDueDate || getToday(),
+        dueDate: initialData?.dueDate?.slice(0, 10) || initialMilestoneDueDate,
         estimatedHours: initialData?.estimatedHours || 8,
         projectId: initialData?.projectId || defaultProjectId,
-        milestoneId: initialData?.milestoneId || defaultMilestoneId,
+        milestoneId: initialMilestoneId,
         assignedToUserIds:
           initialData?.assignees?.map((a) => a.userId) ||
           (initialData?.assignedToUserId ? [initialData.assignedToUserId] : []),
         priority: initialData?.priority || "Medium",
       });
     }
-  }, [open, initialData, defaultProjectId, defaultMilestoneId, selectedMilestoneDueDate]);
+  }, [open, initialData, defaultProjectId, initialMilestoneId, initialMilestoneDueDate]);
 
   const assignedUsers = useMemo(() => {
     return form.assignedToUserIds.map((id) => {
@@ -110,7 +110,6 @@ export function TaskFormModal({
     if (!form.dueDate) errs.dueDate = "Due date is required";
     if (form.startDate && form.dueDate && form.startDate > form.dueDate)
       errs.dueDate = "Due date must be after start date";
-    if (form.estimatedHours < 1) errs.estimatedHours = "Must be at least 1 hour";
     return errs;
   };
 
@@ -159,23 +158,27 @@ export function TaskFormModal({
             <div>
               <InputF label="Start" type="date" value={form.startDate} onChange={(v) => setForm({ ...form, startDate: v })} />
               {errors.startDate && <span className="text-xs text-red-500 mt-1 block">{errors.startDate}</span>}
+              {form.startDate && selectedMilestoneDueDate && form.startDate !== selectedMilestoneDueDate && (
+                <DateRangeWarning
+                  direction={form.startDate < selectedMilestoneDueDate ? "before" : "after"}
+                  milestoneDate={selectedMilestoneDueDate}
+                  label="Start date"
+                />
+              )}
             </div>
             <div>
               <InputF label="Due" type="date" value={form.dueDate} onChange={(v) => setForm({ ...form, dueDate: v })} />
               {errors.dueDate && <span className="text-xs text-red-500 mt-1 block">{errors.dueDate}</span>}
-              {form.dueDate && selectedMilestoneDueDate && form.dueDate > selectedMilestoneDueDate && (
-                <div className="flex items-start gap-2 mt-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
-                  <span className="material-symbols-outlined text-base shrink-0 mt-0.5">warning</span>
-                  <span>Due date exceeds milestone due date ({new Date(selectedMilestoneDueDate).toLocaleDateString()})</span>
-                </div>
+              {form.dueDate && selectedMilestoneDueDate && form.dueDate !== selectedMilestoneDueDate && (
+                <DateRangeWarning
+                  direction={form.dueDate < selectedMilestoneDueDate ? "before" : "after"}
+                  milestoneDate={selectedMilestoneDueDate}
+                  label="Due date"
+                />
               )}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <InputF label="Est. hours" type="number" value={form.estimatedHours} onChange={(v) => setForm({ ...form, estimatedHours: Number(v) })} />
-              {errors.estimatedHours && <span className="text-xs text-red-500 mt-1 block">{errors.estimatedHours}</span>}
-            </div>
+          <div>
             <SelectF
               label="Priority"
               value={form.priority}
@@ -198,7 +201,14 @@ export function TaskFormModal({
             <SelectF
               label="Milestone"
               value={form.milestoneId || ""}
-              onChange={(v) => setForm({ ...form, milestoneId: v })}
+              onChange={(v) => {
+                const milestoneDate = milestones.find((milestone) => milestone.id === v)?.dueDate?.slice(0, 10) || "";
+                setForm((current) => ({
+                  ...current,
+                  milestoneId: v,
+                  ...(!initialData && milestoneDate ? { startDate: milestoneDate, dueDate: milestoneDate } : {}),
+                }));
+              }}
               options={[{ value: "", label: "None" }, ...projectMilestones.map((m) => ({ value: m.id, label: m.name }))]}
             />
           )}
@@ -251,5 +261,24 @@ export function TaskFormModal({
         </form>
       </div>
     </ModalOverlay>
+  );
+}
+
+function DateRangeWarning({
+  direction,
+  milestoneDate,
+  label,
+}: {
+  direction: "before" | "after";
+  milestoneDate: string;
+  label: string;
+}) {
+  return (
+    <div className="flex items-start gap-2 mt-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
+      <span className="material-symbols-outlined text-base shrink-0 mt-0.5">warning</span>
+      <span>
+        {label} {direction === "before" ? "precedes" : "exceeds"} milestone date ({new Date(milestoneDate).toLocaleDateString()}).
+      </span>
+    </div>
   );
 }

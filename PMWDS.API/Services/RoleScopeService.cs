@@ -216,13 +216,26 @@ public class RoleScopeService
             return true;
         }
 
+        // Organization-scoped managers can access resources in their organization
+        // through all-department or all-project permissions without being granted
+        // organization administration permissions themselves.
         if (!await HasAnyPermissionAsync(
             ct,
             PermissionCodes.OrganizationView,
             PermissionCodes.OrganizationManage,
             PermissionCodes.OrganizationCreate,
             PermissionCodes.OrganizationEdit,
-            PermissionCodes.OrganizationDelete))
+            PermissionCodes.OrganizationDelete,
+            PermissionCodes.DepartmentAllView,
+            PermissionCodes.DepartmentAllManage,
+            PermissionCodes.DepartmentAllCreate,
+            PermissionCodes.DepartmentAllEdit,
+            PermissionCodes.DepartmentAllDelete,
+            PermissionCodes.ProjectAllView,
+            PermissionCodes.ProjectAllManage,
+            PermissionCodes.ProjectAllCreate,
+            PermissionCodes.ProjectAllEdit,
+            PermissionCodes.ProjectAllDelete))
         {
             return false;
         }
@@ -813,8 +826,10 @@ public class RoleScopeService
         }
 
         var departmentIds = await GetDepartmentIdsAsync(ct);
-        return await _db.Projects.AnyAsync(
-            project => project.Id == projectId && departmentIds.Contains(project.DepartmentId),
+        return await _db.ProjectDepartments.AnyAsync(
+            assignment => assignment.ProjectId == projectId &&
+                assignment.IsPrimary &&
+                departmentIds.Contains(assignment.DepartmentId),
             ct);
     }
 

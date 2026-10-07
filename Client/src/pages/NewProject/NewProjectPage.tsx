@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
@@ -57,18 +57,25 @@ interface StepConfig {
   icon: string;
 }
 
-const LEGACY_STEPS: StepConfig[] = [
-  { key: "details", label: "Project Details", icon: "folder" },
-  { key: "departments", label: "Departments", icon: "groups" },
-  { key: "users", label: "Users", icon: "person" },
-  { key: "milestones", label: "Milestones", icon: "flag" },
-  { key: "dependencies", label: "Dependencies", icon: "account_tree" },
-  { key: "tasks", label: "Tasks", icon: "task_alt" },
-];
+interface ProjectWizardDraft {
+  version: 1;
+  savedAt: string;
+  currentStep: number;
+  name: string;
+  description: string;
+  priority: string;
+  budget: number;
+  startDate: string;
+  endDate: string;
+  primaryDepartmentId: string;
+  selectedDepartmentIds: string[];
+  milestones: MilestoneEntry[];
+  dependencies: DependencyEntry[];
+  tasks: TaskEntry[];
+}
 
-// Executive flow. Steps 5-7 (Departments / Users / Tasks) are intentionally
-// hidden for every executive role - see `visibleSteps` below.
-const EXECUTIVE_STEPS: StepConfig[] = [
+// Shared four-step flow for every role allowed to create projects.
+const PROJECT_WIZARD_STEPS: StepConfig[] = [
   { key: "details", label: "Project Details", icon: "folder" },
   { key: "milestones", label: "Milestones", icon: "flag" },
   { key: "milestoneDepartments", label: "Assign Departments", icon: "account_tree" },
@@ -81,6 +88,16 @@ const EXECUTIVE_STEPS: StepConfig[] = [
 export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const navigate = useNavigate();
   const { auth } = useAuth();
+  const draftStorageKey = `pmwds:new-project-wizard:${auth?.userId ?? "anonymous"}`;
+  const [hasSavedDraft, setHasSavedDraft] = useState(() => {
+    try {
+      return window.localStorage.getItem(draftStorageKey) !== null;
+    } catch {
+      return false;
+    }
+  });
+  const draftHasUserChanges = useRef(false);
+  const draftChangedByUserId = useRef<string | null>(null);
   const perm = usePermission();
   const { data, refresh } = useAppData();
   const { addToast } = useToast();
@@ -150,34 +167,81 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   // Step 5: Tasks
   const [tasks, setTasks] = useState<TaskEntry[]>([]);
 
+  const markDraftDirty = () => {
+    draftHasUserChanges.current = true;
+    draftChangedByUserId.current = auth?.userId ?? null;
+  };
+
+  useEffect(() => {
+    try {
+      setHasSavedDraft(window.localStorage.getItem(draftStorageKey) !== null);
+    } catch {
+      setHasSavedDraft(false);
+    }
+  }, [draftStorageKey]);
+
+  useEffect(() => {
+    const userId = auth?.userId;
+    if (!userId || !draftHasUserChanges.current || draftChangedByUserId.current !== userId) return;
+
+    const draft: ProjectWizardDraft = {
+      version: 1,
+      savedAt: new Date().toISOString(),
+      currentStep,
+      name,
+      description,
+      priority,
+      budget,
+      startDate,
+      endDate,
+      primaryDepartmentId,
+      selectedDepartmentIds,
+      milestones,
+      dependencies,
+      tasks,
+    };
+    try {
+      window.localStorage.setItem(draftStorageKey, JSON.stringify(draft));
+      setHasSavedDraft(true);
+    } catch {
+      // Continue working if browser storage is unavailable or full.
+    }
+  }, [
+    auth?.userId,
+    budget,
+    currentStep,
+    dependencies,
+    description,
+    draftStorageKey,
+    endDate,
+    milestones,
+    name,
+    primaryDepartmentId,
+    priority,
+    selectedDepartmentIds,
+    startDate,
+    tasks,
+  ]);
+
   const isSuperAdmin = hasRoleKey(auth?.roleKeys, RoleKey.SuperAdmin);
-  const isDirector = hasRoleKey(auth?.roleKeys, RoleKey.Director);
   const isDepartmentHead = hasRoleKey(auth?.roleKeys, RoleKey.DepartmentHead);
-  const canManagePrimaryDepartment = perm.has(Permission.ProjectPrimaryDepartmentManage);
   const canUploadProjectDocument = perm.has(Permission.DocumentOwnProjectUpload) || perm.has(Permission.DocumentAllProjectUpload);
-  const usesExecutiveFlow = isSuperAdmin || isDirector || isDepartmentHead;
-  const steps = usesExecutiveFlow ? EXECUTIVE_STEPS : LEGACY_STEPS;
+  const steps = PROJECT_WIZARD_STEPS;
   const currentStepKey = steps[currentStep]?.key ?? "details";
-  const earlyFinishStepIndex = steps.findIndex((step) => step.key === "dependencies");
-  const canEarlyFinish = usesExecutiveFlow && currentStep === earlyFinishStepIndex;
 
   const dependenciesStepIndex = steps.findIndex((step) => step.key === "dependencies");
-  // Executive flows (super admin, director, department head) stop after the
-  // Dependencies step: the Departments / Users / Tasks steps are hidden and the
-  // final visible step submits with "Finish" instead of showing "Next".
-  const visibleSteps = usesExecutiveFlow
-    ? steps.slice(0, dependenciesStepIndex + 1)
-    : steps;
+  const visibleSteps = steps.slice(0, dependenciesStepIndex + 1);
 
   // Auto-default primary department for DepartmentHead to their own department
   useEffect(() => {
     if (isDepartmentHead && auth && !primaryDepartmentId) {
-      const dept = data.departments.find(d => d.departmentHeadUserId === auth.userId);
+      const dept = allDepartments.find(d => d.departmentHeadUserId === auth.userId);
       if (dept) setPrimaryDepartmentId(dept.id);
     }
-  }, [isDepartmentHead, canManagePrimaryDepartment, auth, data.departments, primaryDepartmentId]);
+  }, [isDepartmentHead, auth, allDepartments, primaryDepartmentId]);
 
   const handleDetailsChange = (field: string, value: string | number) => {
+    markDraftDirty();
     switch (field) {
       case "name": setName(value as string); break;
       case "description": setDescription(value as string); break;
@@ -198,7 +262,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
           endDate >= startDate
         );
       case "departments": return selectedDepartmentIds.length > 0;
-      case "milestones": return usesExecutiveFlow ? milestones.length > 0 : true;
+      case "milestones": return milestones.length > 0;
       case "milestoneDepartments": return milestones.length > 0 && milestones.every((milestone) => !!milestone.departmentId);
       case "dependencies": return true;
       case "users": return true;
@@ -212,32 +276,77 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const handleNext = () => {
     if (!canProceed) return;
     if (currentStep < visibleSteps.length - 1) {
+      markDraftDirty();
       setCurrentStep((s) => s + 1);
     }
   };
 
   const handleBack = () => {
     if (currentStep > 0) {
+      markDraftDirty();
       setCurrentStep((s) => s - 1);
     }
   };
 
-  const showSkip = !usesExecutiveFlow && currentStepKey === "milestones" && milestones.length === 0 && dependencies.length === 0;
+  const handleMilestonesChange = (nextMilestones: MilestoneEntry[]) => {
+    markDraftDirty();
+    setMilestones(nextMilestones);
+  };
 
-  const handleSkip = () => {
-    const tasksStepIndex = steps.findIndex((step) => step.key === "tasks");
-    if (tasksStepIndex >= 0) setCurrentStep(tasksStepIndex);
+  const handleDependenciesChange = (nextDependencies: DependencyEntry[]) => {
+    markDraftDirty();
+    setDependencies(nextDependencies);
+  };
+
+  const handleSelectedDepartmentIdsChange = (departmentIds: string[]) => {
+    markDraftDirty();
+    setSelectedDepartmentIds(departmentIds);
+  };
+
+  const handlePrimaryDepartmentChange = (departmentId: string) => {
+    markDraftDirty();
+    setPrimaryDepartmentId(departmentId);
+  };
+
+  const restoreDraft = () => {
+    try {
+      const serialized = window.localStorage.getItem(draftStorageKey);
+      if (!serialized) {
+        setHasSavedDraft(false);
+        return;
+      }
+
+      const draft = JSON.parse(serialized) as Partial<ProjectWizardDraft>;
+      if (draft.version !== 1) {
+        addToast("The saved project draft is no longer supported.", "error");
+        return;
+      }
+
+      markDraftDirty();
+      setCurrentStep(Math.max(0, Math.min(draft.currentStep ?? 0, 3)));
+      setName(draft.name ?? "");
+      setDescription(draft.description ?? "");
+      setPriority(draft.priority ?? "Medium");
+      setBudget(draft.budget ?? 0);
+      setStartDate(draft.startDate ?? "");
+      setEndDate(draft.endDate ?? "");
+      setPrimaryDepartmentId(draft.primaryDepartmentId ?? "");
+      setSelectedDepartmentIds(Array.isArray(draft.selectedDepartmentIds) ? draft.selectedDepartmentIds : []);
+      setMilestones(Array.isArray(draft.milestones) ? draft.milestones : []);
+      setDependencies(Array.isArray(draft.dependencies) ? draft.dependencies : []);
+      setTasks(Array.isArray(draft.tasks) ? draft.tasks : []);
+      setProjectDocumentFile(null);
+      addToast("Saved project wizard data restored.", "success");
+    } catch {
+      addToast("Could not restore the saved project draft.", "error");
+    }
   };
 
   const handleFinish = async () => {
     if (!auth) return;
     const milestoneDeptIds = Array.from(new Set(milestones.map((milestone) => milestone.departmentId).filter(Boolean) as string[]));
-    const assignedDepartmentIds = usesExecutiveFlow
-      ? milestoneDeptIds
-      : selectedDepartmentIds;
-    const execPrimaryDeptId = usesExecutiveFlow && primaryDepartmentId
-      ? primaryDepartmentId
-      : (assignedDepartmentIds[0] || "");
+    const assignedDepartmentIds = milestoneDeptIds;
+    const execPrimaryDeptId = primaryDepartmentId || assignedDepartmentIds[0] || "";
     if (assignedDepartmentIds.length === 0) {
       addToast("Assign at least one department before finishing.", "error");
       return;
@@ -263,6 +372,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
         organizationId: "",
         departmentId: execPrimaryDeptId,
         departmentIds: assignedDepartmentIds,
+        hasPrimaryDepartment: Boolean(primaryDepartmentId),
         projectManagerId: "",
         priority,
       });
@@ -330,6 +440,12 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
       }
 
       await refresh();
+      try {
+        window.localStorage.removeItem(draftStorageKey);
+      } catch {
+        // Project creation succeeds even when browser storage cannot be cleared.
+      }
+      setHasSavedDraft(false);
       addToast("Project created successfully!");
       onClose?.();
       navigate(tasks.length > 0 ? `/projects/${projectId}/tasks` : `/projects/${projectId}/milestones`);
@@ -354,23 +470,13 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
     return filtered;
   }, [allDepartments, shouldFilterByOrg, userOrganizationId]);
 
-  const primaryDepartmentOptions = useMemo(() => {
-    if (isSuperAdmin || perm.has(Permission.ProjectAllCreate) || perm.has(Permission.ProjectAllManage)) {
-      return scopedDepartments;
-    }
-    if (!auth || !perm.has(Permission.ProjectPrimaryDepartmentManage)) {
-      return [];
-    }
-    const headed = scopedDepartments.filter((department) => department.departmentHeadUserId === auth.userId);
-    return headed.length > 0
-      ? headed
-      : scopedDepartments.filter((department) => department.id === data.users.find((user) => user.id === auth.userId)?.departmentId);
-  }, [auth, data.users, isSuperAdmin, perm, scopedDepartments]);
+  // The API already scopes departments to the signed-in user's access. Keep
+  // the primary-department selector aligned with that same list for every role
+  // that can create projects.
+  const primaryDepartmentOptions = scopedDepartments;
 
   const departmentUsers = useMemo(() => {
-    const effectiveDepartmentIds = usesExecutiveFlow
-      ? milestones.map((milestone) => milestone.departmentId).filter(Boolean) as string[]
-      : selectedDepartmentIds;
+    const effectiveDepartmentIds = milestones.map((milestone) => milestone.departmentId).filter(Boolean) as string[];
     if (effectiveDepartmentIds.length === 0) return [];
     const deptSet = new Set(effectiveDepartmentIds);
     const seen = new Set<string>();
@@ -384,11 +490,23 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
         u.departments?.some((d) => deptSet.has(d.departmentId));
       return belongsToDept;
     });
-  }, [selectedDepartmentIds, milestones, data.users, usesExecutiveFlow]);
+  }, [milestones, data.users]);
 
   return (
     <div className="max-w-full mx-auto ">
       <div className=" bg-white shadow-md rounded-2xl p-6 md:p-8">
+        <div className="flex justify-end -mb-3">
+          <button
+            type="button"
+            onClick={restoreDraft}
+            disabled={!hasSavedDraft}
+            title={hasSavedDraft ? "Restore saved project wizard data" : "No saved project wizard data yet"}
+            aria-label="Restore saved project wizard data"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-35 disabled:cursor-not-allowed"
+          >
+            <Icon name="history" size={17} />
+          </button>
+        </div>
         {/* Steps indicator */}
         <div className="mb-8">
           <div className="flex items-center justify-center gap-0">
@@ -405,6 +523,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
                       type="button"
                       onClick={() => {
                         if (idx < currentStep || isStepComplete(currentStep)) {
+                          markDraftDirty();
                           setCurrentStep(idx);
                         }
                       }}
@@ -495,17 +614,17 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
               onChange={handleDetailsChange}
               primaryDepartmentId={primaryDepartmentId}
               departments={primaryDepartmentOptions}
-              primaryDepartmentLocked={!isSuperAdmin && canManagePrimaryDepartment}
+              primaryDepartmentLocked={false}
               projectDocumentFile={projectDocumentFile}
               onProjectDocumentChange={setProjectDocumentFile}
               canUploadProjectDocument={canUploadProjectDocument}
-              onPrimaryDepartmentChange={primaryDepartmentOptions.length > 0 ? setPrimaryDepartmentId : undefined}
+              onPrimaryDepartmentChange={handlePrimaryDepartmentChange}
             />
           )}
           {currentStepKey === "departments" && (
             <DepartmentsStep
               selectedDepartmentIds={selectedDepartmentIds}
-              onDepartmentsChange={setSelectedDepartmentIds}
+              onDepartmentsChange={handleSelectedDepartmentIdsChange}
               departments={scopedDepartments}
               organizations={data.organizations}
               users={data.users}
@@ -524,7 +643,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
           {currentStepKey === "milestones" && (
             <MilestonesStep
               milestones={milestones}
-              onChange={setMilestones}
+              onChange={handleMilestonesChange}
               projectEndDate={endDate}
             />
           )}
@@ -535,14 +654,14 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
               organizations={data.organizations}
               showOrganization={isSuperAdmin}
               loading={departmentsLoading}
-              onChange={setMilestones}
+              onChange={handleMilestonesChange}
             />
           )}
           {currentStepKey === "dependencies" && (
             <DependenciesStep
               milestones={milestones}
               dependencies={dependencies}
-              onChange={setDependencies}
+              onChange={handleDependenciesChange}
             />
           )}
           {currentStepKey === "tasks" && (
@@ -570,38 +689,6 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
             )}
           </div>
           <div className="flex items-center gap-3">
-            {showSkip && (
-              <button
-                type="button"
-                onClick={handleSkip}
-                className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-500 hover:bg-slate-50 transition-colors"
-              >
-                Skip
-              </button>
-            )}
-            {canEarlyFinish && currentStep < visibleSteps.length - 1 && (
-              <button
-                type="button"
-                onClick={handleFinish}
-                disabled={submitting || !canProceed}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-sm font-semibold hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-lg shadow-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {submitting ? (
-                  <>
-                    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Icon name="check-circle" size={16} />
-                    Finish
-                  </>
-                )}
-              </button>
-            )}
             {currentStep < visibleSteps.length - 1 ? (
               <button
                 type="button"

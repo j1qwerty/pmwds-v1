@@ -172,7 +172,8 @@ public record CreateProjectDto(
  string ProjectManagerId = "",
  IReadOnlyCollection<Guid>? DepartmentIds = null,
  Domain.Enums.ProjectPriority Priority =
- Domain.Enums.ProjectPriority.Medium);
+ Domain.Enums.ProjectPriority.Medium,
+ bool HasPrimaryDepartment = true);
 public record UpdateProjectDto(
  string Name,
  string? Description,

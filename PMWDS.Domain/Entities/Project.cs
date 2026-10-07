@@ -133,7 +133,7 @@ public class Project : AuditableEntity, IHasDomainEvents
       Priority = priority;
       AssignDepartments(new[] { departmentId });
    }
-   public void AssignDepartments(IEnumerable<Guid> departmentIds)
+   public void AssignDepartments(IEnumerable<Guid> departmentIds, bool hasPrimaryDepartment = true)
    {
       var requested = departmentIds
       .Append(DepartmentId)
@@ -152,7 +152,7 @@ public class Project : AuditableEntity, IHasDomainEvents
       _projectDepartments.RemoveAll(assignment => !requested.Contains(assignment.DepartmentId));
       foreach (var assignment in _projectDepartments)
       {
-         if (assignment.DepartmentId == DepartmentId)
+         if (hasPrimaryDepartment && assignment.DepartmentId == DepartmentId)
             assignment.MarkPrimary();
          else
             assignment.ClearPrimary();
@@ -160,7 +160,7 @@ public class Project : AuditableEntity, IHasDomainEvents
 
       foreach (var departmentId in requested.Where(id => _projectDepartments.All(assignment => assignment.DepartmentId != id)))
       {
-         _projectDepartments.Add(ProjectDepartment.Create(Id, departmentId, departmentId == DepartmentId));
+         _projectDepartments.Add(ProjectDepartment.Create(Id, departmentId, hasPrimaryDepartment && departmentId == DepartmentId));
       }
    }
    public void UpdateStatus(ProjectStatus newStatus)

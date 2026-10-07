@@ -27,9 +27,9 @@ export function ProjectDetailsStep({ name, description, priority, budget, startD
   const [budgetLakhs, setBudgetLakhs] = useState(budget > 0 ? String(budget) : "");
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       <div>
-        <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+        <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
           Project Name <span className="text-red-500">*</span>
         </label>
         <input
@@ -43,7 +43,7 @@ export function ProjectDetailsStep({ name, description, priority, budget, startD
 
         {departments && onPrimaryDepartmentChange && (
         <div>
-          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
             Primary Department <span className="text-slate-300 font-normal">(creator)</span>
           </label>
           <select
@@ -65,7 +65,7 @@ export function ProjectDetailsStep({ name, description, priority, budget, startD
       )}
 
       <div>
-        <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+        <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
           Description
         </label>
         <textarea
@@ -77,9 +77,9 @@ export function ProjectDetailsStep({ name, description, priority, budget, startD
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Priority</label>
+          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Priority</label>
           <select
             value={priority}
             onChange={(e) => onChange("priority", e.target.value)}
@@ -92,7 +92,7 @@ export function ProjectDetailsStep({ name, description, priority, budget, startD
         </div>
 
         <div>
-          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
             {BUDGET_INPUT_LABEL}
           </label>
           <div className="relative">
@@ -121,7 +121,7 @@ export function ProjectDetailsStep({ name, description, priority, budget, startD
 
       {canUploadProjectDocument && onProjectDocumentChange && (
         <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
-          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
             Project Document <span className="text-slate-300 font-normal">(optional)</span>
           </label>
           <input
@@ -140,9 +140,9 @@ export function ProjectDetailsStep({ name, description, priority, budget, startD
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
             Start Date <span className="text-red-500">*</span>
           </label>
           <input

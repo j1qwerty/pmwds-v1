@@ -83,7 +83,12 @@ export function ProjectOverviewPage() {
   const listRef = useRef<HTMLDivElement>(null);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const currentUser = ws.users.find((u) => u.id === auth?.userId);
-  const isPrimaryDept = currentUser?.departmentId === ws.project?.departmentId;
+  const currentDepartmentId = currentUser?.departmentId;
+  const isPrimaryDept = Boolean(
+    currentDepartmentId && ws.project?.departments?.some(
+      (assignment) => assignment.departmentId === currentDepartmentId && assignment.isPrimary,
+    ),
+  );
   const canUploadProjectDocs = perm.isSuperAdmin || hasRoleKey(perm.roleKeys, RoleKey.Director) || isPrimaryDept;
 
   useEffect(() => {

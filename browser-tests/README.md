@@ -12,7 +12,7 @@ pnpm install
 pnpm install:browsers
 
 $env:E2E_BASE_URL = "http://127.0.0.1:5175"
-$env:E2E_PASSWORD = "<seeded-password>"
+$env:E2E_PASSWORD = "Pmwds@123"
 ```
 
 ## Commands

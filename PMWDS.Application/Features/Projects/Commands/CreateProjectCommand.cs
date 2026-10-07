@@ -61,7 +61,9 @@ public class CreateProjectCommandHandler
         dto.PlannedBudget,
         null,
         dto.ProjectCode);
-        project.AssignDepartments(dto.DepartmentIds ?? new[] { dto.DepartmentId });
+        project.AssignDepartments(
+            dto.DepartmentIds ?? new[] { dto.DepartmentId },
+            dto.HasPrimaryDepartment);
         project.SetCreatedBy(_currentUser.UserId ?? "system");
 
 
