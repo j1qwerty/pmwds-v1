@@ -92,10 +92,29 @@ async function addSubtask(
 
 async function editTask(page: Page, taskName: string): Promise<void> {
   await openTask(page, taskName);
-  await clickButton(page, /edit task/i);
+  await page.locator('button[title="Edit task"]').last().click();
   await fillLabel(page, /^Description$/, "Edited by Department Head in browser E2E.");
   await clickButton(page, /^Save$/);
   await waitForToast(page, /task updated/i).catch(() => {});
+}
+
+async function updateSubtask(page: Page, subtaskName: string): Promise<void> {
+  const title = page.getByText(subtaskName, { exact: true }).first();
+  const item = title.locator(
+    "xpath=ancestor::div[contains(@class, 'border-slate-100')][1]",
+  );
+
+  await title.click();
+
+  const slider = item.locator('input[type="range"]').first();
+  await slider.waitFor({ state: "visible" });
+  await slider.fill("65");
+
+  const comment = item.locator('input[placeholder*="comment" i]').first();
+  await comment.fill("Browser E2E progress update.");
+  await comment.press("Enter");
+
+  await expect(item).toContainText("65");
 }
 
 export async function adminMilestonesAndTasks(
@@ -179,9 +198,9 @@ export async function roleWork(
   role: "departmentHeadA" | "departmentHeadB" | "departmentHeadC",
 ): Promise<void> {
   const mapping = {
-    departmentHeadA: ["PWDC", "Civil Site Review Task", "Team Member A"],
-    departmentHeadB: ["PWD", "Coordination Review Task", "Team Member B"],
-    departmentHeadC: ["PROC", "Procurement Review Task", "Team Member C"],
+    departmentHeadA: ["PWDC", "Civil Site Review Task"],
+    departmentHeadB: ["PWD", "Coordination Review Task"],
+    departmentHeadC: ["PROC", "Procurement Review Task"],
   } as const;
 
   const [code, taskName] = mapping[role];
