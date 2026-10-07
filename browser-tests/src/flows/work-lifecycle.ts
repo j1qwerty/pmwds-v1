@@ -204,7 +204,14 @@ export async function roleWork(
   await runner.step(`${USERS[role].label} creates a subtask`, async () => {
     const subtaskName = `${taskName} Subtask`;
     await addSubtask(page, taskName, subtaskName);
-    state.subtaskByRole[role] = subtaskName;
+    state.subtaskByRole[taskName] = subtaskName;
+
+    if (role === "departmentHeadA") {
+      const secondTask = "Civil Quality Review Task";
+      const secondSubtask = `${secondTask} Subtask`;
+      await addSubtask(page, secondTask, secondSubtask);
+      state.subtaskByRole[secondTask] = secondSubtask;
+    }
   });
 
   await runner.step(`${USERS[role].label} edits its task`, async () => {
@@ -234,14 +241,7 @@ export async function teamMemberWork(
         ? "Civil Quality Review Task"
         : "Procurement Review Task";
 
-  const headRole =
-    role === "teamMemberA"
-      ? "departmentHeadA"
-      : role === "teamMemberB"
-        ? "departmentHeadA"
-        : "departmentHeadC";
-
-  const subtaskName = state.subtaskByRole[headRole];
+  const subtaskName = state.subtaskByRole[taskName];
 
   await runner.step(`${USERS[role].label} opens assigned/scoped task`, async () => {
     await openMilestones(page, state);
