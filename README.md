@@ -342,16 +342,16 @@ The existing `PMWDS.Tests` commands remain the API/integration test commands:
 dotnet test PMWDS.slnx
 
 # API suite only
-dotnet test PMWDS.Tests\\PMWDS.Tests.csproj
+dotnet test PMWDS.Tests\PMWDS.Tests.csproj
 
 # One test class
-dotnet test PMWDS.Tests\\PMWDS.Tests.csproj --filter "FullyQualifiedName~CascadeTests"
+dotnet test PMWDS.Tests\PMWDS.Tests.csproj --filter "FullyQualifiedName~CascadeTests"
 
 # One test
-dotnet test PMWDS.Tests\\PMWDS.Tests.csproj --filter "FullyQualifiedName~RealtimeTests.Deleting_a_task_broadcasts"
+dotnet test PMWDS.Tests\PMWDS.Tests.csproj --filter "FullyQualifiedName~RealtimeTests.Deleting_a_task_broadcasts"
 
 # Coverage
-dotnet test PMWDS.Tests\\PMWDS.Tests.csproj --collect:"XPlat Code Coverage"
+dotnet test PMWDS.Tests\PMWDS.Tests.csproj --collect:"XPlat Code Coverage"
 ```
 
 ### Browser-test setup
@@ -425,6 +425,6 @@ Never point the destructive full-flow tests at production. The flow creates, edi
 - Soft-delete a project's milestones, departments and documents when the project is deleted. Today the project row is only marked deleted, so the `NoAction` foreign keys never cascade and milestone rows are left attached to a project that no longer appears anywhere. `CascadeTests.Deleting_a_project_leaves_its_milestones_undeleted_today` pins the current behaviour.
 - Split SQL Server and SQLite migrations into provider-specific migration sets.
 - Persist AI chat/session history instead of keeping transient in-memory context.
-- Extend the test suite beyond the API - the React client has no test runner at all. Playwright coverage for the wizard and the live-update refresh would be the next step.
+- Extend browser coverage beyond the core lifecycle into deeper notifications, reports, live-update, and negative authorization scenarios.
 - Move secrets to environment variables, user secrets, Azure Key Vault, or another managed secret store.
 - Add production deployment scripts for API, client, SQL Server, Redis, storage, and background workers.
