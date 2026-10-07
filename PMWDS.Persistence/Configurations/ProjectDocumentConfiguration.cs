@@ -16,17 +16,20 @@ public class ProjectDocumentConfiguration : IEntityTypeConfiguration<ProjectDocu
         // Redeclaring them here makes EF create a second shadow FK (ProjectId1).
 
         // Milestone / task links are contextual only. Deleting the underlying work item must
-        // never take an uploaded document with it, so the link is detached instead - the same
-        // rule UtilizationCertificateConfiguration applies to certificates.
+        // never take an uploaded document with it. The unlink happens in application code
+        // (TaskRepository detaches documents before hard-deleting tasks; milestones are
+        // only soft-deleted), so the database FK is NoAction: SQL Server permits only one
+        // cascade path per table and rejects a second ON DELETE SET NULL into Tasks, which
+        // UtilizationCertificates already claims. Same rule as UtilizationCertificateConfiguration.
         b.HasOne(e => e.Milestone)
             .WithMany()
             .HasForeignKey(e => e.MilestoneId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.NoAction);
 
         b.HasOne(e => e.Task)
             .WithMany()
             .HasForeignKey(e => e.TaskId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.NoAction);
 
         b.HasIndex(e => e.MilestoneId);
         b.HasIndex(e => e.TaskId);

@@ -3285,7 +3285,7 @@ namespace PMWDS.Persistence.Migrations
                     b.HasOne("PMWDS.Domain.Entities.Milestone", "Milestone")
                         .WithMany()
                         .HasForeignKey("MilestoneId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("PMWDS.Domain.Entities.Project", "Project")
                         .WithMany("Documents")
@@ -3296,7 +3296,7 @@ namespace PMWDS.Persistence.Migrations
                     b.HasOne("PMWDS.Domain.Entities.ProjectTask", "Task")
                         .WithMany()
                         .HasForeignKey("TaskId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("Milestone");
 
