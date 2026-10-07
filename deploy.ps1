@@ -8,6 +8,11 @@
     over scp, extracts on the server, fixes ownership, restarts the service and
     verifies the result against both public hosts.
 
+    This script handles the pmwds-sqlite and pmwds-mssql deployments only.
+    For the pmwds-v1 deployment (https://pmwds-v1.dharmaatribe.app) use
+    deploy-v1.ps1 instead - it touches v1 paths exclusively and asserts the
+    other two deployments are still active afterwards.
+
 .PARAMETER Target
     api | web | both. Prompted for when omitted.
 

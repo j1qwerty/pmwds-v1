@@ -17,6 +17,7 @@ issue and its fix), [deploy.ps1](deploy.ps1).
 | URL | nginx file | root | backend | TLS |
 |---|---|---|---|---|
 | `https://pmwds.dharmaatribe.app` | `sites-enabled/pmwds.dharmaatribe.app` | `/var/www/pmwds-mssql/html` | `127.0.0.1:5002` | cert `pmwds.dharmaatribe.app`, exp 2026-12-31 |
+| `https://pmwds-v1.dharmaatribe.app` | `sites-enabled/pmwds-v1.dharmaatribe.app` | `/var/www/pmwds-v1/html` | `127.0.0.1:5003` | cert `pmwds-v1.dharmaatribe.app` (certbot) |
 | `http://147.93.155.185/` (bare IP, `default_server` on :80) | `sites-enabled/pmwds-ip` | `/var/www/pmwds-sqlite/html` | `127.0.0.1:5001` | none possible for a bare IP |
 | `https://dharmaatribe.com` (+www) | `sites-enabled/dharmaatribe.com` | `/var/www/dharmaatribe.com/html` | none (static SPA) | cert exp 2026-12-24, also covers `.app`/www |
 | parked `dharmaatribe.in`, `dharmatribe.in`, `dharmaatribe.app` | same file, 2nd `server` | — | `301 → https://dharmaatribe.com$request_uri` | same cert |
@@ -30,22 +31,23 @@ Both PMWDS vhosts proxy the same four prefixes to their own backend:
 
 ---
 
-## The two PMWDS deployments
+## The three PMWDS deployments
 
-Branch `prod-sqlite` → **bare IP**, branch `prod-mssql` → **subdomain**. Nothing is shared:
-separate directories, services, ports and databases.
+Branch `prod-sqlite` → **bare IP**, branch `prod-mssql` → **subdomain**, branch `main` → **pmwds-v1 subdomain**. Nothing is shared:
+separate directories, services, ports, databases and logins.
 
-| | SQLite variant | MSSQL variant |
-|---|---|---|
-| branch | `prod-sqlite` | `prod-mssql` |
-| app | `/var/www/pmwds-sqlite/app` | `/var/www/pmwds-mssql/app` |
-| client | `/var/www/pmwds-sqlite/html` | `/var/www/pmwds-mssql/html` |
-| service | `pmwds-sqlite.service` | `pmwds-mssql.service` |
-| env file | `/etc/pmwds/pmwds-sqlite.env` | `/etc/pmwds/pmwds-mssql.env` |
-| data | `/var/lib/pmwds-sqlite/` | `/var/lib/pmwds-mssql/` |
-| port | `127.0.0.1:5001` | `127.0.0.1:5002` |
-| database | SQLite at `/var/lib/pmwds-sqlite/database/pmwds-v1.sqlite` | SQL Server `pmwds-v1` + `pmwds-v1_Hangfire` |
-| Redis | not used (`ConnectionStrings__Redis=`) | `127.0.0.1:6379` |
+| | SQLite variant | MSSQL variant | pmwds-v1 variant |
+|---|---|---|---|
+| branch | `prod-sqlite` | `prod-mssql` | `main` |
+| app | `/var/www/pmwds-sqlite/app` | `/var/www/pmwds-mssql/app` | `/var/www/pmwds-v1/app` |
+| client | `/var/www/pmwds-sqlite/html` | `/var/www/pmwds-mssql/html` | `/var/www/pmwds-v1/html` |
+| service | `pmwds-sqlite.service` | `pmwds-mssql.service` | `pmwds-v1.service` |
+| env file | `/etc/pmwds/pmwds-sqlite.env` | `/etc/pmwds/pmwds-mssql.env` | `/etc/pmwds/pmwds-v1.env` |
+| data | `/var/lib/pmwds-sqlite/` | `/var/lib/pmwds-mssql/` | `/var/lib/pmwds-v1/` |
+| port | `127.0.0.1:5001` | `127.0.0.1:5002` | `127.0.0.1:5003` |
+| database | SQLite at `/var/lib/pmwds-sqlite/database/pmwds.sqlite` | SQL Server `PMWDS` + `PMWDS_Hangfire` | SQL Server `pmwds-v1` + `pmwds-v1_Hangfire` |
+| SQL login | — | `pmwds_app` (least-privilege) | `pmwds-v1_app` (`CREATE ANY DATABASE`, dbo of its own DBs) |
+| Redis | not used (`ConnectionStrings__Redis=`) | `127.0.0.1:6379` | `127.0.0.1:6379` |
 
 `deploy.ps1` never writes to a data directory, so databases and uploads survive every deploy.
 
@@ -68,6 +70,7 @@ Do not delete either until the split has been stable for a while.
 | `nginx` | active | certbot timer active, auto-renew |
 | `pmwds-sqlite.service` | active, enabled | `User=www-data`, `ReadWritePaths=/var/lib/pmwds-sqlite` |
 | `pmwds-mssql.service` | active, enabled | `ReadWritePaths=/var/lib/pmwds-mssql`, `After=mssql-server` |
+| `pmwds-v1.service` | active, enabled | `ReadWritePaths=/var/lib/pmwds-v1`, `After=mssql-server` |
 | `mssql-server.service` | active, enabled | 2022 CU 16.0.4295.3, Developer Edition |
 | `redis-server.service` | active, enabled | bound to loopback only |
 | `pmwds.dharmaatribe.app.service` | **inactive, disabled** | retired, kept for rollback |
@@ -83,6 +86,7 @@ uploads somewhere unexpected.
 |---|---|---|
 | 5001 | `127.0.0.1` | pmwds-sqlite |
 | 5002 | `127.0.0.1` | pmwds-mssql |
+| 5003 | `127.0.0.1` | pmwds-v1 |
 | 1433 | `0.0.0.0` | SQL Server — ufw-scoped to `152.58.154.0/24` |
 | 6379 | `127.0.0.1` | Redis |
 | 80 / 443 | public | nginx |
@@ -145,21 +149,24 @@ Other runtimes: `.NET runtime 10.0.12` (no SDK on the box — publish locally), 
 
 ## Databases
 
-`pmwds-v1` and `pmwds-v1_Hangfire` on SQL Server. Logins:
+`PMWDS` and `PMWDS_Hangfire` on SQL Server (original deployment). `pmwds-v1` and
+`pmwds-v1_Hangfire` on the same instance (v1 deployment). Logins:
 
 | Login | State | Role |
 |---|---|---|
-| `pmwds_app` | enabled | `db_datareader`, `db_datawriter`, `db_ddladmin` on both databases. Used by the app and SSMS. Verified: SELECT/INSERT/UPDATE/DELETE/transactions/CREATE TABLE all work |
+| `pmwds_app` | enabled | `db_datareader`, `db_datawriter`, `db_ddladmin` on `PMWDS` + `PMWDS_Hangfire` only. Used by the original app and SSMS. Verified: SELECT/INSERT/UPDATE/DELETE/transactions/CREATE TABLE all work |
+| `pmwds-v1_app` | enabled | `db_datareader`, `db_datawriter`, `db_ddladmin` on `pmwds-v1` + `pmwds-v1_Hangfire`, plus server-level `CREATE ANY DATABASE` so future apps self-provision. Used by the v1 app only. Cannot open `PMWDS` at all (verified: login fails) |
 | `sa` | **disabled** | unavailable; recovery via `mssql-conf` |
 | `pmwds_admin` | **disabled** | sysadmin, kept off the network deliberately |
 
-Hangfire has `TRUSTWORTHY` on and creates its own schema at startup — which is why `pmwds_app`
-has `db_ddladmin` on `pmwds-v1_Hangfire`.
+Hangfire has `TRUSTWORTHY` on and creates its own schema at startup — which is why each app
+login has `db_ddladmin` on its own `*_Hangfire` database. `TRUSTWORTHY ON` itself needs
+sysadmin (`CONTROL SERVER`), so it is set once up front per new Hangfire database.
 
-SQLite copies on disk: `/var/lib/pmwds-sqlite/database/pmwds-v1.sqlite` (live, 46 tables) and the
-untouched original `/var/lib/pmwds/database/pmwds-v1.sqlite`.
+SQLite copies on disk: `/var/lib/pmwds-sqlite/database/pmwds.sqlite` (live, 46 tables) and the
+untouched original `/var/lib/pmwds/database/pmwds.sqlite`.
 
-**SQLite backups do not protect the subdomain any more.** Back up `pmwds-v1` with
+**SQLite backups do not protect either subdomain.** Back up `PMWDS` / `pmwds-v1` with
 `BACKUP DATABASE` — see [vps-mssqlserver.md](vps-mssqlserver.md) §6.
 
 ---
@@ -186,7 +193,7 @@ Memory with everything running: **1.9 GiB used of 7.8 GiB**, 5.9 GiB available.
 
 ```powershell
 # both deployments
-ssh contabo "systemctl is-active pmwds-sqlite pmwds-mssql mssql-server redis-server nginx"
+ssh contabo "systemctl is-active pmwds-sqlite pmwds-mssql pmwds-v1 mssql-server redis-server nginx"
 
 # the two settings that keep the subdomain fast (pmwds_app can read these)
 ssh contabo "sudo /opt/mssql-tools18/bin/sqlcmd -S 127.0.0.1,1433 -U pmwds_app -P `$(sudo cat /root/pmwds-secrets/pmwds_app_password.txt) -C -h-1 -W -Q `"SET NOCOUNT ON; SELECT CONCAT(name,'=',value_in_use) FROM sys.configurations WHERE name IN ('max degree of parallelism','max server memory (MB)');`""
@@ -197,8 +204,10 @@ curl -s -o /dev/null -w 'direct 1433 as pmwds_app: %{http_code}\n' --max-time 10
 # end to end, from here
 curl -s -o /dev/null -w 'IP       %{http_code}\n' http://147.93.155.185/
 curl -s -o /dev/null -w 'sub      %{http_code}\n' https://pmwds.dharmaatribe.app/
+curl -s -o /dev/null -w 'v1       %{http_code}\n' https://pmwds-v1.dharmaatribe.app/
 curl -s -o /dev/null -w 'IP hubs  %{http_code}\n' -X POST "http://147.93.155.185/hubs/dashboard/negotiate?negotiateVersion=1"
 curl -s -o /dev/null -w 'sub hubs %{http_code}\n' -X POST "https://pmwds.dharmaatribe.app/hubs/dashboard/negotiate?negotiateVersion=1"
+curl -s -o /dev/null -w 'v1 hubs  %{http_code}\n' -X POST "https://pmwds-v1.dharmaatribe.app/hubs/dashboard/negotiate?negotiateVersion=1"
 # 401 on both hubs = correct: DashboardHub is [Authorize], so an unauthenticated negotiate
 # is supposed to be refused. It proves nginx reached the API rather than serving the SPA.
 
@@ -213,6 +222,9 @@ ssh contabo "certbot certificates"
 ```powershell
 git checkout prod-sqlite   # or prod-mssql
 .\deploy.ps1               # prompts for the variant, defaults to the branch's
+
+git checkout main          # pmwds-v1 deployment
+.\deploy-v1.ps1            # v1 only; asserts sqlite + mssql are still active afterwards
 ```
 
 `deploy.ps1` never touches nginx, so vhost changes are manual. After any nginx edit, confirm both
