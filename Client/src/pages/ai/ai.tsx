@@ -28,6 +28,7 @@ import { NeuralHeatmap } from "./NeuralHeatmap";
 import { AnomalyFeed } from "./AnomalyFeed";
 import { calculateFallbackBurnout, calculateFallbackDelay, calculateFallbackProjectHealth } from "./aiCalculations";
 import { AIInfoHint } from "./AIInfoHint";
+import type { ChatResponse } from "./chatTypes";
 
 export function AIPage() {
   const { auth } = useAuth();
@@ -50,7 +51,8 @@ export function AIPage() {
   const [provider, setProvider] = useState("OpenRouter");
   const [model, setModel] = useState("");
   const [chatPrompt, setChatPrompt] = useState("Summarize the highest operational risk in the current delivery portfolio.");
-  const [chatResult, setChatResult] = useState<any>(null);
+  const [chatResult, setChatResult] = useState<ChatResponse | null>(null);
+  const [chatPending, setChatPending] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const { setNavHeader } = useNavHeader();
@@ -306,14 +308,22 @@ export function AIPage() {
 
   const handleChat = async () => {
     if (!auth || !chatPrompt.trim()) return;
+    setChatPending(true);
     try {
-      setChatResult(null);
       const result = await api.chat(auth.token, chatPrompt, provider, model);
       setChatResult(result);
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : "AI assistant is unavailable.";
-      setChatResult({ message, intent: "error", suggestedActions: [] });
-      addToast(message, "error");
+      // Surface the real reason inline. Replacing every failure with a generic
+      // line gave the user nothing to act on.
+      setChatResult({
+        message:
+          cause instanceof Error && cause.message
+            ? cause.message
+            : "The AI provider could not be reached. Check the API key, provider, and model in AI Settings.",
+        intent: "error",
+      });
+    } finally {
+      setChatPending(false);
     }
   };
 
@@ -376,6 +386,9 @@ export function AIPage() {
             setChatPrompt={setChatPrompt}
             chatResult={chatResult}
             onChat={handleChat}
+            pending={chatPending}
+            provider={provider}
+            model={model}
           />
         </div>
 

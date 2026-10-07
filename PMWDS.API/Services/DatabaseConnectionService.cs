@@ -745,6 +745,11 @@ WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = @tableName AND COLUMN_NAME = @column
                 await ExecuteSqliteAsync(connection, "CREATE INDEX IF NOT EXISTS \"IX_Milestones_DepartmentId\" ON \"Milestones\" (\"DepartmentId\")", ct);
             }
 
+            if (!await HasSqliteColumnAsync(connection, "AIProviderCredentials", "ApiKey", ct))
+            {
+                await ExecuteSqliteAsync(connection, "ALTER TABLE \"AIProviderCredentials\" ADD COLUMN \"ApiKey\" TEXT NULL", ct);
+            }
+
             await NormalizeSqliteNullableGuidColumnsAsync(connection, ct);
         }
         finally

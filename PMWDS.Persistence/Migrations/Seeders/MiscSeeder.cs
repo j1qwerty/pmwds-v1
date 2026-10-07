@@ -366,6 +366,9 @@ internal static class MiscSeeder
                         enabled: true,
                         existing.UseEnvironmentDefault,
                         existing.BaseUrl,
+                        // Null keeps any key saved from AI Settings; the seeder never
+                        // has one because provider secrets come from the environment.
+                        apiKey: null,
                         existing.DefaultModel);
                     existing.SetModified(SeedConstants.SeedUser);
                 }
@@ -379,6 +382,7 @@ internal static class MiscSeeder
                 spec.Enabled,
                 useEnvironmentDefault: true,
                 spec.BaseUrl,
+                apiKey: null,
                 spec.DefaultModel);
             credential.SetCreatedBy(SeedConstants.SeedUser);
             await context.AIProviderCredentials.AddAsync(credential, ct);

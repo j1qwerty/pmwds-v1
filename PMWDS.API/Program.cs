@@ -167,6 +167,11 @@ builder.Services.AddScoped<PMWDS.Application.Interfaces.Repositories.ITaskReposi
 builder.Services.AddScoped<PMWDS.Application.Interfaces.Repositories.IUserRepository, UserRepository>();
 builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<RoleScopeService>();
+
+// Builds the role-scoped data dossier attached to each chat question. Scoped
+// because it depends on the scoped ApplicationDbContext, RoleScopeService and the
+// per-request ICurrentUserService.
+builder.Services.AddScoped<ChatContextBuilder>();
 builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.ITaskWorkflowService, TaskWorkflowService>();
 builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.INotificationService, NotificationService>();
 builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.IEmailService, EmailService>();

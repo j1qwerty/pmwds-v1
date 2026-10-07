@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using PMWDS.Application.Common;
 using PMWDS.Application.DTOs.AI;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Application.Security;
@@ -18,6 +19,7 @@ public interface IChatEngine
     Task<ChatResponseDto> ProcessAsync(
         string userId,
         string message,
+        string contextDossier,
         string? provider = null,
         string? model = null,
         CancellationToken ct = default);
@@ -62,6 +64,8 @@ public class OpenAICompatibleChatEngine : IChatEngine
     private readonly AISettings _settings;
     private readonly IUnitOfWork _uow;
     private readonly ApplicationDbContext _db;
+    private readonly ISensitiveDataProtector _sensitiveData;
+    private readonly ILogger<OpenAICompatibleChatEngine> _logger;
 
     // In-memory session history (production: use Redis)
     private static readonly ConcurrentDictionary<string, List<ChatMessagePayload>> Sessions = new();
@@ -80,12 +84,16 @@ public class OpenAICompatibleChatEngine : IChatEngine
         HttpClient httpClient,
         IOptions<AISettings> settings,
         IUnitOfWork uow,
-        ApplicationDbContext db)
+        ApplicationDbContext db,
+        ISensitiveDataProtector sensitiveData,
+        ILogger<OpenAICompatibleChatEngine> logger)
     {
         _httpClient = httpClient;
         _settings = settings.Value;
         _uow = uow;
         _db = db;
+        _sensitiveData = sensitiveData;
+        _logger = logger;
     }
 
     public async Task<bool> IsConfiguredAsync(string? provider = null, CancellationToken ct = default)
@@ -171,7 +179,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
 
         try
         {
-            var content = await CompleteChatAsync(
+            var completion = await CompleteChatAsync(
                 resolvedProvider,
                 resolvedModel,
                 [
@@ -182,10 +190,15 @@ public class OpenAICompatibleChatEngine : IChatEngine
 
             return new AIProviderTestResultDto(
                 Provider: provider,
-                Model: resolvedModel,
+                // Report the model that actually answered, not the one requested, so
+                // a test that silently fell back does not read as a pass on the
+                // primary model.
+                Model: completion.Model,
                 Success: true,
-                Message: "Provider call succeeded.",
-                RawResponse: content,
+                Message: completion.UsedFallback
+                    ? $"Provider call succeeded on the fallback model (the requested model was rate limited)."
+                    : "Provider call succeeded.",
+                RawResponse: completion.Content,
                 ExecutedAtUtc: DateTime.UtcNow);
         }
         catch (Exception ex)
@@ -200,50 +213,107 @@ public class OpenAICompatibleChatEngine : IChatEngine
         }
     }
 
+    /// <summary>
+    /// The standing instructions for the assistant.
+    ///
+    /// The rule that matters is the first one. The previous prompt said only "You are
+    /// PMWDS AI Assistant, a concise project monitoring expert", and when the context
+    /// block was empty the model had no way to tell the difference between "this user
+    /// has no data" and "I was not given any data". It consistently chose the reading
+    /// that produced the unhelpful answer users reported: "I don't have access to your
+    /// organization's specific project data or database", followed by a menu of things
+    /// it could do instead - connect Jira, upload a CSV, define what a project is. All
+    /// of that advice was wrong, because the data was one section away and attached.
+    ///
+    /// So the prompt now states plainly that the dossier is the authoritative and
+    /// complete source for this conversation, and that a question outside it is a
+    /// genuine limit rather than an invitation to offer a substitute workflow.
+    /// </summary>
+    private static string BuildSystemPrompt()
+        => """
+           You are the PMWDS AI Assistant. You answer questions about the projects, tasks,
+           subtasks, milestones, people and documents of one organisation, using the data
+           dossier supplied with each question.
+
+           How to use the dossier:
+
+           - The dossier IS the data. It has already been filtered to what the person asking
+             is allowed to see under their role. Never ask them to provide, connect, upload or
+             export project data - they already have it and you already have it.
+           - Never say you lack access to their project data, that you are not connected to a
+             database, or that you would need a CSV, JSON export or integration (Jira, Asana,
+           Monday.com, MS Project) to answer. That answer is always wrong here and was the
+             single most common failure of this assistant.
+           - If a question asks about something outside the dossier, say which part of the data
+             you were given does not cover it, and answer everything in the question that you
+             can. Do not offer an alternative workflow in place of an answer.
+           - If the dossier says the user has 0 visible projects, tell them that plainly and
+             explain that it depends on their role. Do not speculate about what they might have.
+           - Quote real names, dates, numbers and statuses from the dossier. Never invent a
+             project, person, figure or date, and never present a guess as a fact.
+
+           How to answer:
+
+           - Lead with the answer. Put the conclusion in the first sentence, then the detail.
+           - Be specific and quantitative: "3 of 6 projects are behind schedule", not "several
+             projects have issues".
+           - Short markdown is fine - a few bullet points or a small table. Do not pad.
+           - Do not open by restating the question or by describing what you are about to do.
+           - If the dossier marks a section as partial or truncated, say your answer is based
+             on a partial view rather than implying you saw everything.
+           """;
+
     public async Task<ChatResponseDto> ProcessAsync(
         string userId,
         string message,
+        string contextDossier,
         string? provider = null,
         string? model = null,
         CancellationToken ct = default)
     {
         var session = Sessions.GetOrAdd(userId, _ =>
             [
-                new ChatMessagePayload(
-                    "system",
-                    "You are PMWDS AI Assistant, a concise project monitoring expert. " +
-                    "Help users with project status, task assignments, risk analysis, and productivity insights.")
+                new ChatMessagePayload("system", BuildSystemPrompt())
             ]);
 
-        var intent = DetectIntent(message);
-        var contextData = await FetchContextData(userId, intent, ct);
+        var intent = ChatIntents.Detect(message);
+
         List<ChatMessagePayload> requestMessages;
         lock (session)
         {
             session.Add(new ChatMessagePayload("user", message));
-            if (contextData != null)
-            {
-                session.Add(new ChatMessagePayload(
-                    "system",
-                    $"System Context: {JsonSerializer.Serialize(contextData, JsonOptions)}"));
-            }
+
+            // The dossier is attached per turn rather than stored in the session.
+            //
+            // Storing it was the old behaviour and it was wrong twice over: it made the
+            // session grow by a full copy of the project data on every question until the
+            // trim cut it, and every question in a session then saw the union of every
+            // earlier question's data, which is both expensive and stale - the answer to
+            // "what changed since yesterday" would be answered from yesterday's numbers.
+            session.Add(new ChatMessagePayload(
+                "system",
+                $"DATA DOSSIER for this question (authoritative, already role-scoped):\n{contextDossier}"));
 
             requestMessages = session.ToList();
         }
 
         var resolvedProvider = await ResolveProviderAsync(provider, ct);
         var resolvedModel = ResolveModel(resolvedProvider, model, !string.IsNullOrWhiteSpace(provider));
-        var reply = await CompleteChatAsync(resolvedProvider, resolvedModel, requestMessages, ct);
+        var completion = await CompleteChatAsync(resolvedProvider, resolvedModel, requestMessages, ct);
 
         lock (session)
         {
-            session.Add(new ChatMessagePayload("assistant", reply));
+            session.Add(new ChatMessagePayload("assistant", completion.Content));
 
-            if (session.Count > 22)
+            // Trim the oldest turns, but always keep the standing instructions at
+            // the front. Without them a long session degrades into the old
+            // instruction-free behaviour and starts refusing to answer.
+            const int keepSystem = 1;
+            if (session.Count > 16)
             {
                 var trimmed = session
-                    .Take(1)
-                    .Concat(session.TakeLast(20))
+                    .Take(keepSystem)
+                    .Concat(session.TakeLast(14))
                     .ToList();
                 session.Clear();
                 session.AddRange(trimmed);
@@ -251,11 +321,19 @@ public class OpenAICompatibleChatEngine : IChatEngine
         }
 
         return new ChatResponseDto(
-            Message: reply,
+            Message: completion.Content,
             Intent: intent,
-            SuggestedActions: GetSuggestedActions(intent),
-            ContextData: contextData,
-            RequiresConfirmation: NeedsConfirmation(intent));
+            SuggestedActions: ChatIntents.SuggestedActions(intent),
+            ContextData: new
+            {
+                dossierCharacters = contextDossier.Length,
+                modelUsed = completion.Model,
+                // Surfaced so the UI can say which model answered. Silently swapping
+                // models would leave the reader believing a 550B model produced the
+                // answer when a random free model did.
+                usedFallbackModel = completion.UsedFallback
+            },
+            RequiresConfirmation: ChatIntents.NeedsConfirmation(intent));
     }
 
     public async Task<string> GenerateSummaryAsync(
@@ -272,7 +350,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
         var resolvedProvider = await ResolveProviderAsync(provider, ct);
         var resolvedModel = ResolveModel(resolvedProvider, model, !string.IsNullOrWhiteSpace(provider));
 
-        return await CompleteChatAsync(
+        return (await CompleteChatAsync(
             resolvedProvider,
             resolvedModel,
             [
@@ -281,7 +359,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
                     "You are a concise project management analyst. Generate a brief 2-3 sentence summary."),
                 new ChatMessagePayload("user", context)
             ],
-            ct);
+            ct)).Content;
     }
 
     public async Task<string> GenerateStructuredReportAsync(
@@ -298,17 +376,104 @@ public class OpenAICompatibleChatEngine : IChatEngine
         var resolvedProvider = await ResolveProviderAsync(null, ct);
         var resolvedModel = ResolveModel(resolvedProvider, null, false);
 
-        return await CompleteChatAsync(
+        return (await CompleteChatAsync(
             resolvedProvider,
             resolvedModel,
             [
                 new ChatMessagePayload("system", systemPrompt),
                 new ChatMessagePayload("user", userContext)
             ],
-            ct);
+            ct)).Content;
     }
 
-    private async Task<string> CompleteChatAsync(
+    /// <summary>
+    /// Runs a completion, retrying once on the fallback model if the primary is rate
+    /// limited.
+    ///
+    /// The result carries which model actually answered rather than keeping it in a
+    /// field. The engine is registered as a transient, so instance state would
+    /// appear to work and then leak between concurrent requests - one caller could
+    /// be told it used the fallback because a different caller triggered it.
+    /// </summary>
+    private async Task<Completion> CompleteChatAsync(
+        ResolvedProviderConfig provider,
+        string model,
+        IReadOnlyList<ChatMessagePayload> messages,
+        CancellationToken ct)
+    {
+        try
+        {
+            return new Completion(
+                await CompleteChatOnceAsync(provider, model, messages, ct), model, false);
+        }
+        catch (AiProviderException failure) when (ShouldRetryOnFallback(provider, model, failure))
+        {
+            var fallback = _settings.RateLimitFallbackModel.Trim();
+
+            // Logged at Information, not Error. Being rate limited is the documented
+            // behaviour of the free tier, not a fault, and an operator watching for
+            // errors should not have to distinguish this from a real one.
+            _logger.LogInformation(
+                "Model {Model} is rate limited on {Provider}; retrying once on {Fallback}.",
+                model,
+                provider.ProviderId,
+                fallback);
+
+            try
+            {
+                var content = await CompleteChatOnceAsync(provider, fallback, messages, ct);
+                return new Completion(content, fallback, true);
+            }
+            catch (AiProviderException fallbackFailure)
+            {
+                // The fallback is rate limited too. Report that rather than the
+                // original, because it is the more recent and more accurate
+                // account-level fact: the whole key has no quota left, not just
+                // one model.
+                throw new AiProviderException(
+                    $"{provider.ProviderId} has rate limited this account on both " +
+                    $"'{model}' and the fallback '{fallback}', so it cannot answer right now. " +
+                    "This is a quota limit on the provider, not a problem with your data. " +
+                    $"Provider said: {fallbackFailure.Message}",
+                    "rate_limited",
+                    fallbackFailure,
+                    429);
+            }
+        }
+    }
+
+    private sealed record Completion(string Content, string Model, bool UsedFallback);
+
+    /// <summary>
+    /// Whether a failed call should be retried on the fallback model.
+    ///
+    /// Narrow on purpose. Only a 429 qualifies: retrying a 401 (bad key) or a 404
+    /// (unknown model) on a different model cannot succeed, and retrying those would
+    /// double the latency of a failure that is already correctly diagnosed.
+    ///
+    /// Also OpenRouter only, because the fallback is an OpenRouter model id. Asking
+    /// OpenAI for "openrouter/free" returns a 404 and turns one clear error into two.
+    /// </summary>
+    private bool ShouldRetryOnFallback(
+        ResolvedProviderConfig provider,
+        string model,
+        AiProviderException failure)
+    {
+        if (!_settings.EnableRateLimitFallback ||
+            failure.UpstreamStatusCode != 429 ||
+            !provider.ProviderId.Equals("OpenRouter", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var fallback = _settings.RateLimitFallbackModel?.Trim();
+
+        return !string.IsNullOrWhiteSpace(fallback)
+            && !string.IsNullOrWhiteSpace(model)
+            && !model.Equals(fallback, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task<string> CompleteChatOnceAsync(
         ResolvedProviderConfig provider,
         string model,
         IReadOnlyList<ChatMessagePayload> messages,
@@ -329,8 +494,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
         var responseText = await response.Content.ReadAsStringAsync(ct);
         if (!response.IsSuccessStatusCode)
         {
-            throw new InvalidOperationException(
-                $"Provider '{provider.ProviderId}' returned {(int)response.StatusCode}: {responseText}");
+            throw ProviderFailure(provider.ProviderId, response.StatusCode, responseText);
         }
 
         var content = ExtractAssistantText(responseText);
@@ -405,15 +569,22 @@ public class OpenAICompatibleChatEngine : IChatEngine
             return environmentProvider;
         }
 
-        // Provider selection and model overrides may be stored as ordinary settings.
-        // Provider secrets always come from environment-backed configuration.
-        var resolved = environmentProvider with
-        {
-            Enabled = stored.Enabled,
-            BaseUrl = string.IsNullOrWhiteSpace(stored.BaseUrl) ? environmentProvider.BaseUrl : stored.BaseUrl,
-            DefaultModel = string.IsNullOrWhiteSpace(stored.DefaultModel) ? environmentProvider.DefaultModel : stored.DefaultModel
-        };
+        var storedApiKey = _sensitiveData.Unprotect(stored.ApiKey);
 
+        var resolved = stored.UseEnvironmentDefault
+            ? environmentProvider with
+            {
+                Enabled = stored.Enabled,
+                BaseUrl = string.IsNullOrWhiteSpace(stored.BaseUrl) ? environmentProvider.BaseUrl : stored.BaseUrl,
+                DefaultModel = string.IsNullOrWhiteSpace(stored.DefaultModel) ? environmentProvider.DefaultModel : stored.DefaultModel
+            }
+            : environmentProvider with
+            {
+                Enabled = stored.Enabled,
+                ApiKey = string.IsNullOrWhiteSpace(storedApiKey) ? environmentProvider.ApiKey : storedApiKey,
+                BaseUrl = string.IsNullOrWhiteSpace(stored.BaseUrl) ? environmentProvider.BaseUrl : stored.BaseUrl,
+                DefaultModel = string.IsNullOrWhiteSpace(stored.DefaultModel) ? environmentProvider.DefaultModel : stored.DefaultModel
+            };
         EnsureAllowedProviderUrl(resolved);
         return resolved;
     }
@@ -430,7 +601,7 @@ public class OpenAICompatibleChatEngine : IChatEngine
             return new ResolvedProviderConfig(
                 ProviderId: "OpenAI",
                 Enabled: options.Enabled,
-                ApiKey: options.ApiKey,
+                ApiKey: string.IsNullOrWhiteSpace(options.ApiKey) ? _settings.OpenAIApiKey : options.ApiKey,
                 BaseUrl: string.IsNullOrWhiteSpace(options.BaseUrl) ? "https://api.openai.com/v1" : options.BaseUrl,
                 DefaultModel: string.IsNullOrWhiteSpace(options.DefaultModel) ? _settings.OpenAIModel : options.DefaultModel,
                 ModelsPath: string.IsNullOrWhiteSpace(options.ModelsPath) ? "/models" : options.ModelsPath,
@@ -507,80 +678,15 @@ public class OpenAICompatibleChatEngine : IChatEngine
                 ? IsOpenAiModel(model)
                 : true;
 
-    private static string DetectIntent(string message)
-    {
-        var lower = message.ToLowerInvariant();
-        if (lower.Contains("assign") || lower.Contains("who should"))
-            return "TaskAssignment";
-        if (lower.Contains("delay") || lower.Contains("at risk") || lower.Contains("overdue"))
-            return "DelayAnalysis";
-        if (lower.Contains("status") || lower.Contains("progress") || lower.Contains("health"))
-            return "ProjectStatus";
-        if (lower.Contains("report") || lower.Contains("summary") || lower.Contains("analytics"))
-            return "Reporting";
-        if (lower.Contains("workload") || lower.Contains("capacity") || lower.Contains("resource"))
-            return "ResourceManagement";
-        return "General";
-    }
-
-    private async Task<object?> FetchContextData(
-        string userId,
-        string intent,
-        CancellationToken ct)
-    {
-        return intent switch
-        {
-            "DelayAnalysis" => new
-            {
-                OverdueTasks = (await _uow.Tasks.GetOverdueTasksAsync(ct))
-                    .Select(t => new
-                    {
-                        t.Title,
-                        t.DueDate,
-                        t.ProgressPercentage
-                    })
-                    .Take(5)
-            },
-            "ProjectStatus" => new
-            {
-                ActiveProjects = (await _uow.Projects.GetByStatusAsync(
-                        Domain.Enums.ProjectStatus.InProgress,
-                        ct))
-                    .Select(p => new
-                    {
-                        p.Name,
-                        p.ProgressPercentage,
-                        p.AIHealthScore
-                    })
-                    .Take(5)
-            },
-            "ResourceManagement" => new
-            {
-                AvailableUsers = (await _uow.Users.GetAvailableUsersAsync(ct))
-                    .Select(u => new
-                    {
-                        u.FullName,
-                        u.AvailabilityPercentage,
-                        u.AIWorkloadScore
-                    })
-                    .Take(5)
-            },
-            _ => null
-        };
-    }
-
-    private static List<string> GetSuggestedActions(string intent)
-        => intent switch
-        {
-            "TaskAssignment" => ["View AI Recommendations", "Assign Task Now", "Check Team Availability"],
-            "DelayAnalysis" => ["View Overdue Tasks", "Escalate Now", "Adjust Timeline"],
-            "ProjectStatus" => ["View Dashboard", "Generate Status Report", "View Milestones"],
-            "ResourceManagement" => ["View Workload Distribution", "Optimize Allocation", "Check Burnout Risk"],
-            _ => ["Go to Dashboard"]
-        };
-
-    private static bool NeedsConfirmation(string intent)
-        => intent is "TaskAssignment";
+    // Intent detection and context assembly used to live here. Both moved:
+    // detection to ChatIntents in Application, because the API layer needs the same
+    // verdict to decide which data to fetch, and context assembly to
+    // ChatContextBuilder in the API layer, because role scoping belongs with
+    // RoleScopeService rather than being reimplemented here.
+    //
+    // The context builder that was here fetched five rows of one entity type and
+    // returned null for every other intent, which is why "tell me about all the
+    // projects" reached the model with no data at all.
 
     private static AIProviderInfoDto BuildProviderInfo(
         string provider,
@@ -608,6 +714,109 @@ public class OpenAICompatibleChatEngine : IChatEngine
     }
 
     /// <summary>Reads choices[0].finish_reason for diagnostics. Returns null if absent.</summary>
+    /// <summary>
+    /// Turns a non-success provider response into an exception that says what to do.
+    ///
+    /// This used to be a bare InvalidOperationException, which the middleware mapped
+    /// to 500 "An unexpected error occurred." So a provider that had run out of quota
+    /// for the day looked identical to a bug in this application: same status, same
+    /// useless message. Users retrying a rate limit and users with a bad API key need
+    /// different things, so the common cases get named.
+    /// </summary>
+    private static AiProviderException ProviderFailure(
+        string providerId,
+        System.Net.HttpStatusCode status,
+        string responseText)
+    {
+        var statusCode = (int)status;
+        var detail = SummariseProviderError(responseText);
+
+        var reason = statusCode switch
+        {
+            401 or 403 =>
+                "authentication",
+            429 =>
+                "rate_limited",
+            404 =>
+                "model_not_found",
+            _ =>
+                "provider_error"
+        };
+
+        var message = statusCode switch
+        {
+            429 =>
+                $"{providerId} has rate limited this account and cannot answer right now. " +
+                "This is a quota limit on the provider, not a problem with your data. " +
+                (detail is null ? "Try again later." : $"Provider said: {detail}"),
+
+            401 or 403 =>
+                $"{providerId} rejected the API key. Check the key under AI Settings. " +
+                (detail is null ? string.Empty : $"Provider said: {detail}"),
+
+            404 =>
+                $"{providerId} does not recognise the selected model. " +
+                "Pick a different model under AI Settings. " +
+                (detail is null ? string.Empty : $"Provider said: {detail}"),
+
+            _ =>
+                $"{providerId} returned {statusCode}. " +
+                (detail is null ? string.Empty : $"Provider said: {detail}")
+        };
+
+        return new AiProviderException(message.TrimEnd(), reason, null, statusCode);
+    }
+
+    /// <summary>
+    /// Pulls the provider's own error message out of the response body.
+    ///
+    /// The body is JSON like {"error":{"message":"...","code":429}}. Returning the
+    /// raw body would put hundreds of characters of headers and metadata in front of
+    /// the user, so extract the message and fall back to null when it is not there.
+    /// </summary>
+    private static string? SummariseProviderError(string responseText)
+    {
+        if (string.IsNullOrWhiteSpace(responseText))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(responseText);
+            if (document.RootElement.TryGetProperty("error", out var error))
+            {
+                if (error.ValueKind == JsonValueKind.String)
+                {
+                    return Truncate(error.GetString());
+                }
+
+                if (error.ValueKind == JsonValueKind.Object &&
+                    error.TryGetProperty("message", out var message))
+                {
+                    return Truncate(message.GetString());
+                }
+            }
+        }
+        catch
+        {
+            // A non-JSON body is unusual; the status code still carries the meaning.
+        }
+
+        return Truncate(responseText);
+    }
+
+    private static string? Truncate(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var trimmed = value.Trim();
+        return trimmed.Length <= 300 ? trimmed : trimmed[..300] + "...";
+    }
+
     private static string? TryGetFinishReason(string responseText)
     {
         try

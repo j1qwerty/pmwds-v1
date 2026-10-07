@@ -14,35 +14,30 @@ export function ProjectList({ projects, selectedProjectId, onSelectProject }: Pr
       <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-1">
         Active Projects
       </div>
-      
-      <div className="flex flex-col gap-1.5">
-        {projects.map((project, index) => {
+
+      <div className="flex flex-col gap-1">
+        {projects.map((project) => {
           const isSelected = selectedProjectId === project.id;
           return (
             <button
               key={project.id}
               onClick={() => onSelectProject(project.id)}
-              className={`
-                p-3 rounded-xl text-left transition-all duration-200 flex flex-col gap-1.5
-                ${isSelected
-                  ? "bg-indigo-50 border-l-4 border-indigo-500 shadow-sm"
-                  : "hover:bg-slate-50 border-l-4 border-transparent"
-                }
-              `}
+              aria-pressed={isSelected}
+              className={`flex gap-2.5 p-2 rounded-lg text-left transition-colors w-full ${
+                isSelected
+                  ? "bg-indigo-50/70 ring-1 ring-indigo-100"
+                  : "hover:bg-slate-50"
+              }`}
             >
-              <div className="flex items-center justify-between">
-                <span className={`text-sm font-bold ${isSelected ? "text-indigo-700" : "text-slate-700"}`}>
+              <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${isSelected ? "bg-indigo-500" : "bg-slate-300"}`} />
+              <div className="flex flex-col min-w-0">
+                <span className={`text-xs font-bold truncate ${isSelected ? "text-indigo-700" : "text-slate-700"}`}>
                   {project.name}
                 </span>
-                <span className={`w-2 h-2 rounded-full ${
-                  isSelected 
-                    ? "bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.4)] animate-pulse" 
-                    : "bg-slate-300"
-                }`}></span>
+                <span className="text-[10px] text-slate-500 leading-tight truncate">
+                  {project.category || "Core Project"} · {Math.round(project.progressPercentage ?? 0)}% done
+                </span>
               </div>
-              <span className="text-[11px] text-slate-400">
-                {project.category || "Core Project"}
-              </span>
             </button>
           );
         })}

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PMWDS.Persistence.Context;
 
@@ -10,9 +11,11 @@ using PMWDS.Persistence.Context;
 namespace PMWDS.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261007130000_AddAIProviderCredentialApiKey")]
+    partial class AddAIProviderCredentialApiKey
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.7");
@@ -3288,8 +3291,7 @@ namespace PMWDS.Persistence.Migrations
                 {
                     b.HasOne("PMWDS.Domain.Entities.Milestone", "Milestone")
                         .WithMany()
-                        .HasForeignKey("MilestoneId")
-                        .OnDelete(DeleteBehavior.NoAction);
+                        .HasForeignKey("MilestoneId");
 
                     b.HasOne("PMWDS.Domain.Entities.Project", "Project")
                         .WithMany("Documents")
@@ -3299,8 +3301,7 @@ namespace PMWDS.Persistence.Migrations
 
                     b.HasOne("PMWDS.Domain.Entities.ProjectTask", "Task")
                         .WithMany()
-                        .HasForeignKey("TaskId")
-                        .OnDelete(DeleteBehavior.NoAction);
+                        .HasForeignKey("TaskId");
 
                     b.Navigation("Milestone");
 

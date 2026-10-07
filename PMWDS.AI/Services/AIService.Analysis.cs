@@ -164,8 +164,8 @@ public partial class AIService
     public Task<AIProviderTestResultDto> TestProviderAsync(string provider, string? model = null, string? prompt = null, CancellationToken ct = default)
         => _chat.TestProviderAsync(provider, model, prompt, ct);
 
-    public Task<ChatResponseDto> ProcessChatMessageAsync(string userId, string message, string? provider = null, string? model = null, CancellationToken ct = default)
-        => _chat.ProcessAsync(userId, message, provider, model, ct);
+    public Task<ChatResponseDto> ProcessChatMessageAsync(string userId, string message, string contextDossier, string? provider = null, string? model = null, CancellationToken ct = default)
+        => _chat.ProcessAsync(userId, message, contextDossier, provider, model, ct);
 
     public async Task<string> GenerateStructuredReportAsync(
         string systemPrompt,

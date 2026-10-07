@@ -8,6 +8,7 @@ public interface IChatService
     Task<ChatResponseDto> ProcessChatMessageAsync(
         string userId,
         string message,
+        string contextDossier,
         string? provider = null,
         string? model = null,
         CancellationToken ct = default);

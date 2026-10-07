@@ -38,6 +38,16 @@ public class SecurityValidationSettings
 public class AISettings
 {
     public string OpenAIModel { get; set; } = "gpt-4o";
+
+    /// <summary>
+    /// Top-level OpenAI key, bound from AI__OpenAIApiKey.
+    ///
+    /// Read only as a fallback when the per-provider AI__OpenAI__ApiKey is blank,
+    /// so an existing single-key configuration keeps working unchanged. The
+    /// per-provider value wins when both are present.
+    /// </summary>
+    public string OpenAIApiKey { get; set; } = string.Empty;
+
     public string DefaultProvider { get; set; } = "OpenRouter";
     public string DefaultModel { get; set; } = "nvidia/nemotron-3-ultra-550b-a55b:free";
     public string AppName { get; set; } = "PMWDS";
@@ -60,6 +70,18 @@ public class AISettings
     /// JSON will not parse and the report falls back.
     /// </summary>
     public int MaxOutputTokens { get; set; } = 16000;
+
+    /// <summary>
+    /// Model to switch to when the primary model is rate limited (HTTP 429).
+    /// Blank disables the fallback, leaving the original behaviour of failing fast.
+    /// </summary>
+    public string RateLimitFallbackModel { get; set; } = "openrouter/free";
+
+    /// <summary>
+    /// Whether to retry on the fallback model after a 429. Kept separate from the
+    /// model name so the fallback can be disabled without editing configuration.
+    /// </summary>
+    public bool EnableRateLimitFallback { get; set; } = true;
     public AIProviderOptions OpenAI { get; set; } = new()
     {
         Enabled = true,
