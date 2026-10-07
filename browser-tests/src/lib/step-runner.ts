@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { Page } from "@playwright/test";
+import { discoverPage, writeInventory } from "./discovery.js";
 
 export type StepContext = {
   runDir: string;
@@ -36,6 +37,7 @@ export class StepRunner {
     await mkdir(this.runDir, { recursive: true });
     await mkdir(path.join(this.runDir, "screenshots"), { recursive: true });
     await mkdir(path.join(this.runDir, "network"), { recursive: true });
+    await mkdir(path.join(this.runDir, "ui"), { recursive: true });
     await writeFile(
       path.join(this.runDir, "run.txt"),
       [
@@ -74,6 +76,7 @@ export class StepRunner {
     this.log(`        URL before: ${this.page.url()}`);
 
     await this.waitForPageReady();
+    await this.captureUi(`${id}-before`);
     await this.page.screenshot({ path: before, fullPage: true });
 
     try {
@@ -85,6 +88,7 @@ export class StepRunner {
       });
 
       await this.waitForPageReady();
+      await this.captureUi(`${id}-after`);
       await this.page.screenshot({ path: after, fullPage: true });
 
       const elapsed = Date.now() - started;
@@ -102,6 +106,7 @@ export class StepRunner {
         `${id}-${safe}-failure.png`,
       );
       await this.page.screenshot({ path: failure, fullPage: true }).catch(() => {});
+      await this.captureUi(`${id}-failure`).catch(() => {});
       this.log(
         `        FAILED: ${error instanceof Error ? error.message : String(error)}`,
       );
@@ -121,6 +126,17 @@ export class StepRunner {
 
   log(message: string): void {
     console.log(message);
+  }
+
+  private async captureUi(label: string): Promise<void> {
+    const inventory = await discoverPage(this.page);
+    const safe = label.replace(/[^a-z0-9-]/gi, "-");
+    const destination = await writeInventory(
+      path.join(this.runDir, "ui"),
+      `${safe}.txt`,
+      inventory,
+    );
+    this.log(`        UI inventory: ${destination}`);
   }
 
   private async waitForPageReady(): Promise<void> {
