@@ -263,7 +263,7 @@ Verify:
 
 ```bash
 sudo /opt/mssql-tools18/bin/sqlcmd -S 127.0.0.1,1433 \
-  -U pmwds_app -P '<app password>' -C -d PMWDS \
+  -U pmwds_app -P '<app password>' -C -d pmwds-v1 \
   -Q "SELECT CONCAT('connected as ', ORIGINAL_LOGIN()) AS v;"
 ```
 
@@ -353,7 +353,7 @@ Not sysadmin. It is the application's own login, scoped to the two databases it 
 
 | Database | Roles |
 |---|---|
-| `PMWDS` | `db_datareader`, `db_datawriter`, `db_ddladmin` |
+| `pmwds-v1` | `db_datareader`, `db_datawriter`, `db_ddladmin` |
 | `pmwds-v1_Hangfire` | `db_datareader`, `db_datawriter`, `db_ddladmin` |
 
 Verified working over the public IP: `SELECT`, `INSERT`, `UPDATE`, `DELETE`, transactions with

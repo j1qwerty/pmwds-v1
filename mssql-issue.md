@@ -456,7 +456,7 @@ While the requests are in flight:
 SELECT session_id, status, command, wait_type, wait_time, blocking_session_id,
        cpu_time, total_elapsed_time/1000 AS elapsed_s, reads, writes
 FROM sys.dm_exec_requests
-WHERE session_id > 50 AND database_id = DB_ID('PMWDS');
+WHERE session_id > 50 AND database_id = DB_ID('pmwds-v1');
 ```
 
 Expect every row `suspended` on `RESOURCE_SEMAPHORE` with `reads = 0`.
