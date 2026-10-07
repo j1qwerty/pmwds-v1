@@ -176,6 +176,30 @@ export async function adminMilestonesAndTasks(
   });
 }
 
+
+export async function createMilestoneDependency(
+  page: Page,
+  runner: StepRunner,
+  state: FlowState,
+): Promise<void> {
+  const prerequisite = state.milestoneByDepartment.PWD;
+  const dependent = state.milestoneByDepartment.PWDC;
+
+  await runner.step("Create a milestone dependency", async () => {
+    await page.goto(`${ROUTES.projects}/${state.projectId}/dependencies`, {
+      waitUntil: "domcontentloaded",
+    });
+    await page.waitForLoadState("networkidle").catch(() => {});
+    await clickButton(page, /^New$/);
+    await selectLabel(page, /^Prerequisite$/, prerequisite);
+    await selectLabel(page, /^Dependent$/, dependent);
+    await clickButton(page, /^Add$/);
+    await waitForToast(page, /dependency created/i).catch(() => {});
+    await expect(page.getByText(prerequisite, { exact: true }).first()).toBeVisible();
+    await expect(page.getByText(dependent, { exact: true }).last()).toBeVisible();
+  });
+}
+
 export async function roleWork(
   page: Page,
   runner: StepRunner,
