@@ -60,6 +60,8 @@ interface StepConfig {
 interface ProjectWizardDraft {
   version: 1;
   savedAt: string;
+  lastCreatedAt?: string;
+  lastCreatedProjectId?: string;
   currentStep: number;
   name: string;
   description: string;
@@ -313,6 +315,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
       const serialized = window.localStorage.getItem(draftStorageKey);
       if (!serialized) {
         setHasSavedDraft(false);
+        addToast("No saved project wizard data is available yet.", "info");
         return;
       }
 
@@ -323,7 +326,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
       }
 
       markDraftDirty();
-      setCurrentStep(Math.max(0, Math.min(draft.currentStep ?? 0, 3)));
+      setCurrentStep(draft.lastCreatedAt ? 0 : Math.max(0, Math.min(draft.currentStep ?? 0, 3)));
       setName(draft.name ?? "");
       setDescription(draft.description ?? "");
       setPriority(draft.priority ?? "Medium");
@@ -441,11 +444,33 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
 
       await refresh();
       try {
-        window.localStorage.removeItem(draftStorageKey);
+        // Keep the most recently completed project as reusable wizard history.
+        // Start it at step one when restored so the saved project can be reviewed
+        // and used as a starting point for another project.
+        const createdAt = new Date().toISOString();
+        const completedDraft: ProjectWizardDraft = {
+          version: 1,
+          savedAt: createdAt,
+          lastCreatedAt: createdAt,
+          lastCreatedProjectId: projectId,
+          currentStep: 0,
+          name,
+          description,
+          priority,
+          budget,
+          startDate,
+          endDate,
+          primaryDepartmentId,
+          selectedDepartmentIds,
+          milestones,
+          dependencies,
+          tasks,
+        };
+        window.localStorage.setItem(draftStorageKey, JSON.stringify(completedDraft));
+        setHasSavedDraft(true);
       } catch {
-        // Project creation succeeds even when browser storage cannot be cleared.
+        // Project creation succeeds even when browser storage is unavailable.
       }
-      setHasSavedDraft(false);
       addToast("Project created successfully!");
       onClose?.();
       navigate(tasks.length > 0 ? `/projects/${projectId}/tasks` : `/projects/${projectId}/milestones`);
@@ -495,16 +520,16 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   return (
     <div className="max-w-full mx-auto ">
       <div className=" bg-white shadow-md rounded-2xl p-6 md:p-8">
-        <div className="flex justify-end -mb-3">
+        <div className="flex justify-end mb-3">
           <button
             type="button"
             onClick={restoreDraft}
-            disabled={!hasSavedDraft}
             title={hasSavedDraft ? "Restore saved project wizard data" : "No saved project wizard data yet"}
-            aria-label="Restore saved project wizard data"
-            className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-35 disabled:cursor-not-allowed"
+            aria-label="Project wizard history"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
           >
-            <Icon name="history" size={17} />
+            <Icon name="history" size={16} />
+            <span>History</span>
           </button>
         </div>
         {/* Steps indicator */}
