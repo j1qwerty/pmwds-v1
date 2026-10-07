@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { Page } from "@playwright/test";
+import { discoverPage, writeInventory } from "./discovery.js";
 
 export type StepContext = {
   runDir: string;
@@ -13,25 +14,36 @@ export type StepAction<T> = (context: StepContext) => Promise<T>;
 
 export class StepRunner {
   private stepNo = 0;
+  private page: Page;
 
   constructor(
-    private readonly page: Page,
+    page: Page,
     private readonly runDir: string,
     private readonly interactive: boolean,
-    private readonly userLabel = "anonymous"
-  ) {}
+    private userLabel = "anonymous",
+  ) {
+    this.page = page;
+  }
+
+  setPage(page: Page): void {
+    this.page = page;
+  }
+
+  setUserLabel(label: string): void {
+    this.userLabel = label;
+  }
 
   async init(): Promise<void> {
     await mkdir(this.runDir, { recursive: true });
     await mkdir(path.join(this.runDir, "screenshots"), { recursive: true });
     await mkdir(path.join(this.runDir, "network"), { recursive: true });
+    await mkdir(path.join(this.runDir, "ui"), { recursive: true });
     await writeFile(
       path.join(this.runDir, "run.txt"),
       [
         "PMWDS browser run",
         `Started: ${new Date().toISOString()}`,
-        `User: ${this.userLabel}`,
-        `URL: ${this.page.url()}`,
+        `Interactive: ${this.interactive}`,
         "",
       ].join("\n"),
       "utf8",
@@ -40,7 +52,7 @@ export class StepRunner {
 
   async step<T>(label: string, action: StepAction<T>): Promise<T> {
     this.stepNo += 1;
-    const id = String(this.stepNo).padStart(2, "0");
+    const id = String(this.stepNo).padStart(3, "0");
     const safe = label
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
@@ -60,9 +72,11 @@ export class StepRunner {
 
     const started = Date.now();
     this.log(`[STEP ${id}] ${label}`);
+    this.log(`        User: ${this.userLabel}`);
     this.log(`        URL before: ${this.page.url()}`);
 
     await this.waitForPageReady();
+    await this.captureUi(`${id}-before`);
     await this.page.screenshot({ path: before, fullPage: true });
 
     try {
@@ -72,7 +86,9 @@ export class StepRunner {
         userLabel: this.userLabel,
         interactive: this.interactive,
       });
+
       await this.waitForPageReady();
+      await this.captureUi(`${id}-after`);
       await this.page.screenshot({ path: after, fullPage: true });
 
       const elapsed = Date.now() - started;
@@ -81,10 +97,7 @@ export class StepRunner {
       this.log(`        Before: ${before}`);
       this.log(`        After:  ${after}`);
 
-      if (this.interactive) {
-        await this.pause();
-      }
-
+      if (this.interactive) await this.pause();
       return result;
     } catch (error) {
       const failure = path.join(
@@ -93,7 +106,10 @@ export class StepRunner {
         `${id}-${safe}-failure.png`,
       );
       await this.page.screenshot({ path: failure, fullPage: true }).catch(() => {});
-      this.log(`        FAILED: ${error instanceof Error ? error.message : String(error)}`);
+      await this.captureUi(`${id}-failure`).catch(() => {});
+      this.log(
+        `        FAILED: ${error instanceof Error ? error.message : String(error)}`,
+      );
       this.log(`        Failure screenshot: ${failure}`);
       throw error;
     }
@@ -110,6 +126,17 @@ export class StepRunner {
 
   log(message: string): void {
     console.log(message);
+  }
+
+  private async captureUi(label: string): Promise<void> {
+    const inventory = await discoverPage(this.page);
+    const safe = label.replace(/[^a-z0-9-]/gi, "-");
+    const destination = await writeInventory(
+      path.join(this.runDir, "ui"),
+      `${safe}.txt`,
+      inventory,
+    );
+    this.log(`        UI inventory: ${destination}`);
   }
 
   private async waitForPageReady(): Promise<void> {

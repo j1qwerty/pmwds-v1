@@ -77,3 +77,22 @@ jobs:
       - run: dotnet test PMWDS.slnx --configuration Release --no-build
       - name: EF model must match the migration snapshot
         run: dotnet ef migrations has-pending-model-changes --project PMWDS.Persistence --startup-project PMWDS.Persistence
+
+  browser:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: browser-tests
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: browser-tests/package.json
+      - run: pnpm install
+      - run: pnpm exec tsc --noEmit
+      - run: pnpm exec playwright test --list

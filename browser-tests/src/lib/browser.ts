@@ -10,6 +10,37 @@ export type BrowserResources = {
   flushNetwork: () => Promise<string>;
 };
 
+const MAX_PAYLOAD = 12_000;
+const SECRET_KEYS = /password|token|authorization|secret|cookie|refresh/i;
+
+function redactPayload(text: string): string {
+  if (!text) return "";
+  const compact = text.length > MAX_PAYLOAD
+    ? `${text.slice(0, MAX_PAYLOAD)}... [truncated]`
+    : text;
+
+  try {
+    const parsed: unknown = JSON.parse(compact);
+    const redact = (value: unknown): unknown => {
+      if (Array.isArray(value)) return value.map(redact);
+      if (value && typeof value === "object") {
+        return Object.fromEntries(
+          Object.entries(value).map(([key, nested]) => [
+            key,
+            SECRET_KEYS.test(key) ? "[REDACTED]" : redact(nested),
+          ]),
+        );
+      }
+      return value;
+    };
+    return JSON.stringify(redact(parsed));
+  } catch {
+    return compact
+      .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [REDACTED]")
+      .replace(/(password|token|secret|authorization)=([^&\s]+)/gi, "$1=[REDACTED]");
+  }
+}
+
 export async function launchBrowser(mode: BrowserMode): Promise<Browser> {
   return chromium.launch({
     headless: mode !== "headed",
@@ -41,12 +72,34 @@ export async function newContext(
   };
 
   context.on("request", (request) => {
-    push(`REQUEST ${request.method()} ${request.url()}`);
+    const payload = request.postData();
+    push(
+      [
+        `REQUEST ${request.method()} ${request.url()}`,
+        payload ? `  payload: ${redactPayload(payload)}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    );
   });
 
-  context.on("response", (response) => {
+  context.on("response", async (response) => {
+    let body = "";
+    const contentType = response.headers()["content-type"] ?? "";
+    if (
+      contentType.includes("application/json") ||
+      contentType.includes("text/")
+    ) {
+      body = await response.text().catch(() => "");
+    }
+
     push(
-      `RESPONSE ${response.status()} ${response.request().method()} ${response.url()}`,
+      [
+        `RESPONSE ${response.status()} ${response.request().method()} ${response.url()}`,
+        body ? `  body: ${redactPayload(body)}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
     );
   });
 
