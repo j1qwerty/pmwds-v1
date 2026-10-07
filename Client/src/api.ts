@@ -147,7 +147,13 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
       let message = responseText;
       try {
         const json = JSON.parse(responseText);
-        message = json.error?.message || json.message || json.error || responseText;
+        message =
+          json.error?.message ||
+          json.message ||
+          json.detail ||
+          json.title ||
+          (typeof json.error === "string" ? json.error : undefined) ||
+          responseText;
       } catch {
         // Keep the server-provided response text when it is not valid JSON.
       }

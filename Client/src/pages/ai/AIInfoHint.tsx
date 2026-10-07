@@ -10,11 +10,20 @@ export function AIInfoHint({ title, children }: AIInfoHintProps) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="relative">
+    <div
+      className="relative"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onFocus={() => setOpen(true)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setOpen(false);
+        }
+      }}
+    >
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        onBlur={() => window.setTimeout(() => setOpen(false), 120)}
         className="w-6 h-6 rounded-full border border-slate-200 bg-white text-slate-400 text-[11px] font-bold flex items-center justify-center hover:text-indigo-600 hover:border-indigo-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
         aria-label={"How " + title + " is calculated"}
         aria-expanded={open}
@@ -22,7 +31,10 @@ export function AIInfoHint({ title, children }: AIInfoHintProps) {
         ?
       </button>
       {open && (
-        <div className="absolute right-0 top-8 z-50 w-72 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-xl">
+        <div
+          className="absolute right-0 top-8 z-50 w-72 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-xl"
+          role="tooltip"
+        >
           <div className="flex items-start gap-2">
             <Icon name="info" size={16} className="text-indigo-500 mt-0.5 shrink-0" />
             <div>
