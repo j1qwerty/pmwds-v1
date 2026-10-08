@@ -11,15 +11,23 @@ import {
     DeleteConfirmationModal,
     DeptFormModal,
     EmptyState,
-    PERMISSION_GROUPS,
+    FilterBar,
+    FilterDropdown,
+    ViewToggle,
+    PageAction,
+    PageContainer,
+    Sheet,
     StatCard,
+    PERMISSION_GROUPS,
     usePermission,
     useToast,
 } from "../shared";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import { DepartmentDetailCard } from "./DepartmentDetailCard";
 import { DepartmentList } from "./DepartmentList";
+import { DepartmentCard } from "../organisations/DepartmentCard";
 
+type ViewMode = "card" | "list";
 
 export function DepartmentsPage() {
     const { auth } = useAuth();
@@ -42,6 +50,8 @@ export function DepartmentsPage() {
     const [loading, setLoading] = useState(true);
     const [dashboard, setDashboard] = useState<Record<string, unknown> | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [viewMode, setViewMode] = useState<ViewMode>("card");
+    const [detailOpen, setDetailOpen] = useState(false);
     const [deptModal, setDeptModal] = useState<{ open: boolean; editDept?: Department }>({ open: false });
 
     const { setNavHeader } = useNavHeader();
@@ -120,8 +130,15 @@ export function DepartmentsPage() {
         if (selectedOrgId) {
             filtered = filtered.filter(d => d.organizationId === selectedOrgId);
         }
+        const term = searchTerm.trim().toLowerCase();
+        if (term) {
+            filtered = filtered.filter(d =>
+                d.name.toLowerCase().includes(term) ||
+                d.code.toLowerCase().includes(term) ||
+                (d.description ?? "").toLowerCase().includes(term));
+        }
         return filtered;
-    }, [departments, selectedOrgId, shouldFilterByOrg, userOrganizationId]);
+    }, [departments, selectedOrgId, searchTerm, shouldFilterByOrg, userOrganizationId]);
 
     const selectedDepartment = departments.find((d) => d.id === selectedDeptId) ?? null;
     const selectedOrganization = organizations.find((o) => o.id === (selectedOrgId || selectedDepartment?.organizationId));
@@ -143,19 +160,51 @@ export function DepartmentsPage() {
     const childCount = departments.filter((d) => d.parentDepartmentId === selectedDeptId).length;
 
     // Aggregate metrics for stats row
-    const totalOrgs = organizations.length;
-    const totalTeamMembers = useMemo(() => {
-        const ids = new Set<string>();
+    const stats = useMemo(() => {
+        const memberIds = new Set<string>();
         filteredDepartments.forEach((d) => {
             users.forEach((u) => {
                 if (u.departmentId === d.id || u.departments?.some((ud) => ud.departmentId === d.id)) {
-                    ids.add(u.id);
+                    memberIds.add(u.id);
                 }
             });
         });
-        return ids.size;
-    }, [filteredDepartments, users]);
-    const totalCapacity = filteredDepartments.reduce((sum, d) => sum + (d.maxCapacity || 0), 0);
+        const avg = filteredDepartments.length ? memberIds.size / filteredDepartments.length : 0;
+        return {
+            departments: filteredDepartments.length,
+            members: memberIds.size,
+            avgMembersPerDept: avg ? Math.round(avg * 10) / 10 : 0,
+            organizations: organizations.length,
+        };
+    }, [filteredDepartments, users, organizations]);
+
+    const orgNameById = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const org of organizations) map.set(org.id, org.name);
+        return map;
+    }, [organizations]);
+
+    const membersByDept = useMemo(() => {
+        const map = new Map<string, User[]>();
+        for (const user of users) {
+            const deptIds = new Set<string>();
+            if (user.departmentId) deptIds.add(user.departmentId);
+            for (const assignment of user.departments ?? []) {
+                if (assignment.departmentId) deptIds.add(assignment.departmentId);
+            }
+            for (const deptId of deptIds) {
+                const list = map.get(deptId) ?? [];
+                list.push(user);
+                map.set(deptId, list);
+            }
+        }
+        return map;
+    }, [users]);
+
+    const orgOptions = useMemo(
+        () => organizations.map((org) => ({ value: org.id, label: org.name })),
+        [organizations],
+    );
 
     void isOrgAdmin;
 
@@ -166,6 +215,7 @@ export function DepartmentsPage() {
             addToast("Department deleted successfully.");
             setDeleteConfirm({ open: false, id: "", name: "" });
             if (selectedDeptId === deleteConfirm.id) setSelectedDeptId("");
+            setDetailOpen(false);
             loadData();
         } catch (e) {
             addToast(`Error: ${e instanceof Error ? e.message : "Deletion failed"}`, "error");
@@ -193,74 +243,172 @@ export function DepartmentsPage() {
         }
     };
 
+    const openDeptDetail = (deptId: string) => {
+        setSelectedDeptId(deptId);
+        setDetailOpen(true);
+    };
+
     if (loading) return <LoadingPage label="Loading departments..." />;
 
     return (
         <div className="relative">
             <AnimatedBackground />
 
-            {/* Stats Row */}
-            <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-                <StatCard label="Departments" value={filteredDepartments.length} color="indigo" icon="groups" />
-                <StatCard label="Organizations" value={totalOrgs} color="violet" icon="corporate_fare" />
-                <StatCard label="Team Members" value={totalTeamMembers} color="emerald" icon="people" />
-                <StatCard label="Total Capacity" value={totalCapacity} color="amber" icon="trending_up" />
-            </div>
-
-            {/* Main Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4 relative z-10">
-                {/* Left Panel: Department List */}
-                <DepartmentList
-                    departments={filteredDepartments}
-                    selectedDeptId={selectedDeptId}
-                    searchTerm={searchTerm}
-                    onSearchChange={setSearchTerm}
-                    onSelectDept={setSelectedDeptId}
-                    organizationName={selectedOrgId ? selectedOrganization?.name : "All Departments"}
-                    organizations={organizations}
-                    selectedOrgId={selectedOrgId}
-                    onSelectOrg={setSelectedOrgId}
-                    isSuperAdmin={perm.isSuperAdmin}
-                />
-
-                {/* Right Panel: Department Detail */}
-                <div className="flex flex-col gap-4 min-w-0">
-                    {selectedDepartment ? (
-                        <DepartmentDetailCard
-                            department={selectedDepartment}
-                            organization={selectedOrganization}
-                            departmentHead={departmentHead}
-                            parentDepartment={parentDepartment}
-                            childCount={childCount}
-                            teamMembers={selectedTeamMembers}
-                            dashboard={dashboard}
-                            canEdit={canEditSelectedDepartment}
-                            canDelete={canDeleteDepartments}
-                            onEdit={() => setDeptModal({ open: true, editDept: selectedDepartment })}
-                            onDelete={() => setDeleteConfirm({
-                                open: true,
-                                id: selectedDepartment.id,
-                                name: selectedDepartment.name,
-                            })}
-                            allDepartments={departments}
-                            allUsers={users}
-                            allOrganizations={organizations}
-                            canManageUsers={canEditDepartments}
-                            isSuperAdmin={hasRoleKey(perm.roleKeys, RoleKey.SuperAdmin)}
-                            onRefresh={() => loadData(selectedDeptId)}
+            <PageContainer
+                stats={
+                    <>
+                        <StatCard label="Departments" value={stats.departments} color="indigo" icon="groups" />
+                        <StatCard label="Team Members" value={stats.members} color="emerald" icon="people" />
+                        <StatCard label="Avg Members / Dept" value={stats.avgMembersPerDept} color="violet" icon="monitoring" />
+                        <StatCard label="Organizations" value={stats.organizations} color="amber" icon="corporate_fare" />
+                    </>
+                }
+                filters={
+                    <FilterBar
+                        searchValue={searchTerm}
+                        onSearchChange={setSearchTerm}
+                        searchPlaceholder="Search departments..."
+                        leftExtras={
+                            <span className="text-[11px] font-semibold text-slate-400 whitespace-nowrap">
+                                {filteredDepartments.length} of {departments.length}
+                            </span>
+                        }
+                        actions={
+                            <>
+                                {perm.isSuperAdmin && (
+                                    <FilterDropdown
+                                        value={selectedOrgId}
+                                        onChange={setSelectedOrgId}
+                                        label="Org"
+                                        icon="corporate_fare"
+                                        options={orgOptions}
+                                    />
+                                )}
+                                <ViewToggle value={viewMode} onChange={(mode) => setViewMode(mode as ViewMode)} available={["card", "list"]} />
+                                {canCreateDepartments && (
+                                    <PageAction
+                                        label="New department"
+                                        icon="add"
+                                        onClick={() => setDeptModal({ open: true })}
+                                    />
+                                )}
+                            </>
+                        }
+                    />
+                }
+            >
+                {departments.length === 0 ? (
+                    <GlassCard className="min-h-80 flex items-center justify-center">
+                        <EmptyState
+                            icon="groups"
+                            title="No departments yet"
+                            description="Create your first department to start organizing teams, projects, and workloads."
+                            accent="primary"
+                            action={
+                                canCreateDepartments ? (
+                                    <PageAction label="New department" icon="add" onClick={() => setDeptModal({ open: true })} />
+                                ) : undefined
+                            }
                         />
-                    ) : (
-                        <GlassCard className="flex-1 min-h-96 flex items-center justify-center">
-                            <EmptyState
-                                icon="groups"
-                                title="Select a department"
-                                description="Choose a department from the left panel to view its details and metrics."
-                                accent="primary"
+                    </GlassCard>
+                ) : filteredDepartments.length === 0 ? (
+                    <GlassCard className="min-h-80 flex items-center justify-center">
+                        <EmptyState
+                            icon="search_off"
+                            title="No departments match the current filters"
+                            description="Try a different search term, or clear the filters to see all departments."
+                            compact
+                            action={
+                                (searchTerm || selectedOrgId) ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSearchTerm("");
+                                            setSelectedOrgId("");
+                                        }}
+                                        className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-semibold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all"
+                                    >
+                                        Clear filters
+                                    </button>
+                                ) : undefined
+                            }
+                        />
+                    </GlassCard>
+                ) : viewMode === "card" ? (
+                    <div className="view-fade grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {filteredDepartments.map((dept, index) => (
+                            <DepartmentCard
+                                key={dept.id}
+                                department={dept}
+                                index={index}
+                                isAdmin={canEditDepartments}
+                                canEdit={canEditDepartments}
+                                canDelete={canDeleteDepartments}
+                                onEdit={(d) => setDeptModal({ open: true, editDept: d })}
+                                onDelete={(d) => setDeleteConfirm({ open: true, id: d.id, name: d.name })}
+                                teamMembers={membersByDept.get(dept.id) ?? []}
+                                organizationName={dept.organizationId ? orgNameById.get(dept.organizationId) : undefined}
+                                onOpen={() => openDeptDetail(dept.id)}
                             />
-                        </GlassCard>
-                    )}
-                </div>
-            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="view-fade">
+                        <DepartmentList
+                            departments={filteredDepartments}
+                            selectedDeptId={selectedDeptId}
+                            onSelectDept={openDeptDetail}
+                            organizations={organizations}
+                            users={users}
+                            canEdit={canEditDepartments}
+                            canDelete={canDeleteDepartments}
+                            onEdit={(dept) => setDeptModal({ open: true, editDept: dept })}
+                            onDelete={(dept) => setDeleteConfirm({ open: true, id: dept.id, name: dept.name })}
+                        />
+                    </div>
+                )}
+            </PageContainer>
+
+            {/* Department detail — right sheet */}
+            <Sheet
+                open={detailOpen && !!selectedDepartment}
+                onClose={() => setDetailOpen(false)}
+                size="lg"
+                icon="groups"
+                accent="primary"
+                title={selectedDepartment?.name}
+                description={
+                    selectedDepartment
+                        ? `${selectedDepartment.code}${selectedOrganization ? ` · ${selectedOrganization.name}` : ""}`
+                        : undefined
+                }
+            >
+                {selectedDepartment && (
+                    <DepartmentDetailCard
+                        department={selectedDepartment}
+                        organization={selectedOrganization}
+                        departmentHead={departmentHead}
+                        parentDepartment={parentDepartment}
+                        childCount={childCount}
+                        teamMembers={selectedTeamMembers}
+                        dashboard={dashboard}
+                        canEdit={canEditSelectedDepartment}
+                        canDelete={canDeleteDepartments}
+                        onEdit={() => setDeptModal({ open: true, editDept: selectedDepartment })}
+                        onDelete={() => setDeleteConfirm({
+                            open: true,
+                            id: selectedDepartment.id,
+                            name: selectedDepartment.name,
+                        })}
+                        allDepartments={departments}
+                        allUsers={users}
+                        allOrganizations={organizations}
+                        canManageUsers={canEditDepartments}
+                        isSuperAdmin={hasRoleKey(perm.roleKeys, RoleKey.SuperAdmin)}
+                        onRefresh={() => loadData(selectedDeptId)}
+                    />
+                )}
+            </Sheet>
 
             {/* Modals */}
             {deptModal.open && (

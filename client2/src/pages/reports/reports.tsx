@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
@@ -10,7 +10,6 @@ import type {
 } from "../../types";
 import {
   AnimatedBackground,
-  LoadingPage,
   useNavHeader,
   OrganizationDepartmentFilter,
   PERMISSION_GROUPS,
@@ -19,9 +18,11 @@ import {
   usePermission,
   useToast,
   StatCard,
+  PageContainer,
+  PageSkeleton,
 } from "../shared";
 import { ReportFilters } from "./ReportFilters";
-import { ReportGenerator } from "./ReportGenerator";
+import { ReportGenerator, REPORT_TYPE_COUNT } from "./ReportGenerator";
 import { GeneratedReports } from "./GeneratedReports";
 import { useReportGeneration } from "./ReportGenerationContext";
 
@@ -31,12 +32,14 @@ export function ReportsPage() {
   const { data: appData } = useAppData();
   const perm = usePermission();
   const canViewOrganizations = perm.hasAny(PERMISSION_GROUPS.system.manage, PERMISSION_GROUPS.organization.view);
+  const canCreateReport = perm.hasAny(PERMISSION_GROUPS.report.create, PERMISSION_GROUPS.report.manage);
   const [projects, setProjects] = useState<Project[]>([]);
   const [storedReports, setStoredReports] = useState<StoredReportRecord[]>([]);
   const [storedReportsLoading, setStoredReportsLoading] = useState(true);
   const { generate, isGeneratingType, pendingReportType, generationError } = useReportGeneration();
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
+  const generatorRef = useRef<HTMLDivElement>(null);
   const [filters, setFilters] = useState({
     organizationId: "",
     projectId: "",
@@ -49,8 +52,21 @@ export function ReportsPage() {
   const { setNavHeader } = useNavHeader();
 
   useEffect(() => {
-    setNavHeader({ title: "Reports", description: "Generate portfolio, workload, delay, and budget reports" });
-  }, [setNavHeader]);
+    setNavHeader({
+      title: "Reports",
+      description: "Generate AI-powered portfolio, workload, delay, and budget reports",
+      ...(canCreateReport
+        ? {
+            action: {
+              label: "Generate report",
+              icon: "auto_awesome",
+              onClick: () =>
+                generatorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+            },
+          }
+        : {}),
+    });
+  }, [setNavHeader, canCreateReport]);
 
   useEffect(() => {
     if (!auth) return;
@@ -234,92 +250,97 @@ export function ReportsPage() {
     handleGenerate("Delay Analysis", "delay-analysis", reportFilterPayload());
   };
 
-  if (loading) return <LoadingPage label="Loading reports..." />;
+  // KPI stats derived from already-loaded data
+  const stats = useMemo(
+    () => ({
+      generated: storedReports.length,
+      inProgress: pendingReportType ? 1 : 0,
+      reportTypes: REPORT_TYPE_COUNT,
+      projectsInScope: visibleProjects.length,
+    }),
+    [storedReports.length, pendingReportType, visibleProjects.length],
+  );
 
-  const activeFilterCount =
-    (filters.organizationId ? 1 : 0) +
-    (filters.projectId ? 1 : 0) +
-    (filters.departmentId ? 1 : 0) +
-    (filters.startDate || filters.endDate ? 1 : 0) +
-    (filters.status ? 1 : 0);
+  if (loading) return <PageSkeleton />;
 
   return (
-    <div>
+    <div className="relative">
       <AnimatedBackground />
 
-      {/* Stats Row */}
-      <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        <StatCard label="Projects Available" value={visibleProjects.length} color="indigo" icon="folder_open" />
-        <StatCard label="Stored Reports" value={storedReports.length} color="emerald" icon="description" />
-        <StatCard
-          label="Active Filters"
-          value={activeFilterCount}
-          color="amber"
-          icon="filter_alt"
-        />
-        <StatCard
-          label="Generating"
-          value={pendingReportType ? 1 : 0}
-          color="violet"
-          icon="auto_awesome"
-        />
-      </div>
+      <PageContainer
+        stats={
+          <>
+            <StatCard label="Reports generated" value={stats.generated} color="indigo" icon="description" />
+            <StatCard
+              label="In progress"
+              value={stats.inProgress}
+              color="violet"
+              icon="auto_awesome"
+            />
+            <StatCard label="Report types" value={stats.reportTypes} color="emerald" icon="analytics" />
+            <StatCard label="Projects in scope" value={stats.projectsInScope} color="amber" icon="folder_open" />
+          </>
+        }
+      >
+        {/* Generator gets 2 of 3 columns so the report-type cards fit; stacks below xl */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 items-start">
+          {/* Left (2/3): Filters & Report Generation */}
+          <div className="flex flex-col gap-5 min-w-0 xl:col-span-2">
+            <ReportFilters
+              filters={filters}
+              projects={visibleProjects}
+              onFilterChange={setFilters}
+              scopeFields={
+                <OrganizationDepartmentFilter
+                  variant="fields"
+                  searchPlaceholder="Search departments..."
+                  organizations={canViewOrganizations ? organizations : []}
+                  departments={departments}
+                  users={appData.users}
+                  selectedOrganizationId={filters.organizationId}
+                  selectedDepartmentId={filters.departmentId}
+                  onOrganizationChange={(organizationId) => setFilters((current) => ({
+                    ...current,
+                    organizationId,
+                    departmentId: "",
+                    projectId: "",
+                  }))}
+                  onDepartmentChange={(departmentId) => setFilters((current) => ({
+                    ...current,
+                    departmentId,
+                    projectId: "",
+                  }))}
+                />
+              }
+            />
 
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
-        {/* Left: Filters & Report Generation */}
-        <div className="flex flex-col gap-5">
-          <ReportFilters
-            filters={filters}
-            projects={visibleProjects}
-            onFilterChange={setFilters}
-            scopeFields={
-              <OrganizationDepartmentFilter
-                variant="fields"
-                searchPlaceholder="Search departments..."
-                organizations={canViewOrganizations ? organizations : []}
-                departments={departments}
-                users={appData.users}
-                selectedOrganizationId={filters.organizationId}
-                selectedDepartmentId={filters.departmentId}
-                onOrganizationChange={(organizationId) => setFilters((current) => ({
-                  ...current,
-                  organizationId,
-                  departmentId: "",
-                  projectId: "",
-                }))}
-                onDepartmentChange={(departmentId) => setFilters((current) => ({
-                  ...current,
-                  departmentId,
-                  projectId: "",
-                }))}
+            <div ref={generatorRef} className="scroll-mt-28">
+              <ReportGenerator
+                filters={filters}
+                generatingReportType={pendingReportType}
+                isGeneratingType={isGeneratingType}
+                generationError={generationError}
+                onGenerateProjectStatus={handleGenerateProjectStatus}
+                onGenerateBudgetVariance={handleGenerateBudgetVariance}
+                onGenerateTaskCompletion={handleGenerateTaskCompletion}
+                onGenerateDepartmentWorkload={handleGenerateDepartmentWorkload}
+                onGenerateDelayAnalysis={handleGenerateDelayAnalysis}
               />
-            }
-          />
+            </div>
+          </div>
 
-          <ReportGenerator
-            filters={filters}
-            generatingReportType={pendingReportType}
-            isGeneratingType={isGeneratingType}
-            generationError={generationError}
-            onGenerateProjectStatus={handleGenerateProjectStatus}
-            onGenerateBudgetVariance={handleGenerateBudgetVariance}
-            onGenerateTaskCompletion={handleGenerateTaskCompletion}
-            onGenerateDepartmentWorkload={handleGenerateDepartmentWorkload}
-            onGenerateDelayAnalysis={handleGenerateDelayAnalysis}
-          />
+          {/* Right (1/3): Generated Reports — sticky beside the generator at xl+ */}
+          <div className="min-w-0 xl:sticky xl:top-7 h-fit">
+            <GeneratedReports
+              reports={storedReports}
+              loading={storedReportsLoading}
+              onView={handleViewStoredReport}
+              onDownload={handleDownloadStoredReport}
+              onDelete={handleDeleteStoredReport}
+            />
+          </div>
         </div>
-
-        {/* Right: Generated Reports */}
-        <div className="lg:sticky lg:top-7 h-fit">
-          <GeneratedReports
-            reports={storedReports}
-            loading={storedReportsLoading}
-            onView={handleViewStoredReport}
-            onDownload={handleDownloadStoredReport}
-            onDelete={handleDeleteStoredReport}
-          />
-        </div>
-      </div>
+      </PageContainer>
     </div>
   );
 }

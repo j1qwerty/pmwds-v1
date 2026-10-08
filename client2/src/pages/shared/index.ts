@@ -4,6 +4,7 @@ export { GlassCard } from "./GlassCard";
 export { GradientButton } from "./GradientButton";
 
 export { ModalOverlay } from "./ModalOverlay";
+export { ConfirmDeleteModal } from "./ConfirmDeleteModal";
 export { DeleteConfirmationModal } from "./DeleteConfirmationModal";
 export { BgControls, BgRenderer, type BgConfig, type BgPreset, DEFAULT_CONFIG } from "./bg/index";
 export { InputF } from "./InputF";
@@ -40,8 +41,23 @@ export { InfoTip, InfoTipCard, type InfoTipProps } from "./InfoTip";
 
 // New design-system primitives (Phase 2 redesign)
 export { Modal, ModalCancelButton, ModalPrimaryButton, ModalDangerButton } from "./Modal";
+export { Sheet } from "./Sheet";
 export { ViewToggle, type ViewMode } from "./ViewToggle";
 export { FilterBar, FilterDropdown, SortDropdown, type FilterChipOption } from "./FilterBar";
 export { EmptyState } from "./EmptyState";
 export { PageContainer, SectionCard, PageAction } from "./PageContainer";
+export { CommandPaletteProvider, useCommandPalette } from "./CommandPaletteContext";
+export { CommandPalette, type CommandItem } from "./CommandPalette";
+
+// Phase 5 — hover actions infra
+export { HoverActions, type HoverActionDef, type HoverActionsProps } from "./HoverActions";
+export {
+  ActionVisibilityProvider,
+  useActionVisibility,
+  ACTION_VISIBILITY_ENTITIES,
+  ACTION_VISIBILITY_STORAGE_KEY,
+  type ActionVisibilityEntity,
+  type ActionVisibilityMode,
+  type ActionVisibilitySettings,
+} from "./ActionVisibilityContext";
 

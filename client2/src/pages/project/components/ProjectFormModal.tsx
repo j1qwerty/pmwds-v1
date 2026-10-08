@@ -1,8 +1,9 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import type { Department, OrganizationRecord, User } from "../../../types";
 import { priorities } from "../../constants";
-import { Modal, ModalCancelButton, ModalPrimaryButton, ScopedUserSelect } from "../../shared/index";
+import { Sheet, ModalCancelButton, ModalPrimaryButton, ScopedUserSelect } from "../../shared/index";
 import { BUDGET_INPUT_LABEL, formatRupees, lakhsToRupees, rupeesToLakhs } from "../../../lib/formatters";
+import { Icon } from "../../../components/ui/Icon";
 
 export type ProjectFormState = {
   projectCode: string;
@@ -73,8 +74,6 @@ export function ProjectFormModal({
     }
   }, [open, form.plannedBudget]);
 
-  if (!open) return null;
-
   const filteredDepartments = form.organizationId
     ? departments.filter((d) => d.organizationId === form.organizationId)
     : departments;
@@ -101,14 +100,14 @@ export function ProjectFormModal({
   };
 
   return (
-    <Modal
-      open={true}
+    <Sheet
+      open={open}
       onClose={onClose}
       title={title}
       description="Set up the project details and assigned departments"
       icon="folder_open"
       accent="primary"
-      size="lg"
+      size="xl"
       footer={
         <>
           <ModalCancelButton onClick={onClose} />
@@ -129,6 +128,7 @@ export function ProjectFormModal({
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             required
             className={INPUT_CLASS}
+            placeholder="e.g. District water quality monitoring"
           />
         </Field>
 
@@ -137,11 +137,12 @@ export function ProjectFormModal({
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             rows={3}
-            className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all resize-none"
+            className="w-full min-h-[80px] px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all resize-none"
+            placeholder="What does this project cover?"
           />
         </Field>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Priority">
             <select
               value={form.priority}
@@ -184,7 +185,7 @@ export function ProjectFormModal({
           </Field>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Start">
             <input
               type="date"
@@ -229,14 +230,14 @@ export function ProjectFormModal({
         )}
 
         <div>
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
-            Assigned Departments
+          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">
+            Assigned departments
           </span>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 rounded-lg border border-slate-200 p-3 max-h-44 overflow-y-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 rounded-lg border border-slate-200 bg-slate-50/50 p-2.5 max-h-44 overflow-y-auto">
             {filteredDepartments.map((department) => (
               <label
                 key={department.id}
-                className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 rounded-md px-2 py-1 transition-colors"
+                className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer hover:bg-white rounded-md px-2 py-1 transition-colors"
               >
                 <input
                   type="checkbox"
@@ -257,12 +258,11 @@ export function ProjectFormModal({
           <button
             type="button"
             onClick={() => setShowProjectManager(!showProjectManager)}
+            aria-expanded={showProjectManager}
             className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
           >
-            <span className="material-symbols-outlined text-base">
-              {showProjectManager ? "expand_less" : "expand_more"}
-            </span>
-            Project Manager {!showProjectManager && form.projectManagerId && "(assigned)"}
+            <Icon name={showProjectManager ? "chevron-up" : "chevron-down"} size={15} className="text-slate-400" />
+            Project manager {!showProjectManager && form.projectManagerId && "(assigned)"}
           </button>
           {showProjectManager && (
             <div className="mt-2">
@@ -280,17 +280,17 @@ export function ProjectFormModal({
         {/* Hidden submit input so pressing Enter triggers the form onSubmit */}
         <input type="submit" className="hidden" />
       </form>
-    </Modal>
+    </Sheet>
   );
 }
 
 const INPUT_CLASS =
-  "w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all";
+  "w-full h-9 px-3 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-700 outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all";
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
   return (
     <div>
-      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+      <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">
         {label}
         {required && <span className="text-red-500 ml-0.5">*</span>}
       </label>

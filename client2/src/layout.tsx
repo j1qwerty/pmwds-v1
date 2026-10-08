@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "./auth";
 import { useAppData } from "./appData";
 import { onStatusChanged, type RealtimeStatus } from "./realtime";
-import { Avatar, NavHeaderProvider, NavHeader, NavActionButton, usePermission, BgRenderer } from "./pages/shared";
+import { Avatar, NavHeaderProvider, NavHeader, NavActionButton, usePermission, BgRenderer, CommandPaletteProvider, useCommandPalette } from "./pages/shared";
 import { PERMISSION_GROUPS } from "./permissions";
 import { SHOW_CHAT_BUTTON, SHOW_SKILLS_PAGE } from "./featureFlags";
 import { roleDisplayNames } from "./permissions";
@@ -177,6 +177,59 @@ const sectionThemes: Record<string, {
   },
 };
 
+/** Cmd/Ctrl+K search trigger — visible pill on desktop, compact pill on mobile.
+ *  The shortcut hint always shows BOTH platform badges side by side (⌘K + Ctrl K),
+ *  matching the kbd badge style used across the app. */
+function TopbarSearchButton() {
+  const { openPalette } = useCommandPalette();
+
+  return (
+    <button
+      onClick={openPalette}
+      aria-label="Open command palette"
+      title="Search everything (⌘K / Ctrl K)"
+      className="group hidden md:flex items-center gap-2 rounded-xl bg-white/70 border border-slate-200/70 text-slate-400 hover:text-slate-600 hover:border-blue-300 hover:shadow-sm transition-all duration-200 overflow-hidden"
+      style={{
+        height: 'clamp(30px,4vw,36px)',
+        padding: '0 clamp(8px,1vw,12px)',
+        minWidth: 'clamp(150px,16vw,220px)',
+        fontSize: 'clamp(11px,1.1vw,13px)',
+      }}
+    >
+      <HiOutlineSearch className="h-[clamp(13px,1.6vw,16px)] w-[clamp(13px,1.6vw,16px)] shrink-0" />
+      <span className="flex-1 text-left truncate">Search everything…</span>
+      <kbd className="shrink-0 inline-flex items-center rounded-md bg-slate-100 border border-slate-200 px-1.5 text-[10px] font-semibold text-slate-500 group-hover:bg-white transition-colors">
+        ⌘K
+      </kbd>
+      <kbd className="shrink-0 inline-flex items-center rounded-md bg-slate-100 border border-slate-200 px-1.5 text-[10px] font-semibold text-slate-500 group-hover:bg-white transition-colors">
+        Ctrl K
+      </kbd>
+    </button>
+  );
+}
+
+/** Mobile search trigger — icon plus the same ⌘K / Ctrl K badges. */
+function TopbarSearchIconButton() {
+  const { openPalette } = useCommandPalette();
+  return (
+    <button
+      onClick={openPalette}
+      aria-label="Open command palette (⌘ K / Ctrl K)"
+      title="Search everything (⌘K / Ctrl K)"
+      className="md:hidden flex items-center gap-1.5 rounded-full bg-white/70 border border-slate-200/70 text-slate-400 hover:text-slate-600 hover:border-blue-300 transition-all"
+      style={{ height: 'clamp(32px,4.5vw,38px)', padding: '0 clamp(6px,1vw,10px)' }}
+    >
+      <HiOutlineSearch style={{ height: 'clamp(16px,2.5vw,20px)', width: 'clamp(16px,2.5vw,20px)' }} className="shrink-0" />
+      <kbd className="shrink-0 inline-flex items-center rounded-md bg-slate-100 border border-slate-200 px-1 text-[10px] font-semibold text-slate-500">
+        ⌘ K
+      </kbd>
+      <kbd className="shrink-0 inline-flex items-center rounded-md bg-slate-100 border border-slate-200 px-1 text-[10px] font-semibold text-slate-500">
+        Ctrl K
+      </kbd>
+    </button>
+  );
+}
+
 function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const { auth, logout } = useAuth();
@@ -281,6 +334,7 @@ function Layout({ children }: { children: React.ReactNode }) {
   }, [location.pathname]);
 
   return (
+    <CommandPaletteProvider>
     <NavHeaderProvider>
       <div className="flex min-h-screen demo-bg text-on-surface font-sans antialiased">
         {/* Mobile overlay backdrop */}
@@ -646,6 +700,11 @@ function Layout({ children }: { children: React.ReactNode }) {
 
               {/* Right actions */}
               <div className="flex items-center" style={{ gap: 'clamp(8px,1.5vw,16px)' }}>
+                <TopbarSearchButton />
+
+                {/* Mobile search icon */}
+                <TopbarSearchIconButton />
+
                 <button
                   onClick={() => void refresh()}
                   disabled={loading}
@@ -734,6 +793,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     </NavHeaderProvider>
+    </CommandPaletteProvider>
   );
 }
 

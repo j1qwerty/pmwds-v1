@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Department, OrganizationRecord, User } from "../../types";
-import { Avatar, AvatarStack, GradientButton, StatCard } from "../shared";
+import { Avatar, AvatarStack, SectionCard, StatCard } from "../shared";
 import { useAuth } from "../../auth";
 import { api } from "../../api";
 import { DepartmentUsersModal } from "../NewProject/components/DepartmentUsersModal";
@@ -27,6 +27,10 @@ interface DepartmentDetailCardProps {
   onRefresh?: () => void;
 }
 
+/**
+ * Department detail content. Designed to sit inside a right-hand Sheet —
+ * header, dashboard stats, team members, and workload stack vertically.
+ */
 export function DepartmentDetailCard({
   department,
   organization,
@@ -78,9 +82,9 @@ export function DepartmentDetailCard({
         : "from-emerald-400 to-emerald-500";
 
   return (
-    <div className="bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-2xl shadow-sm overflow-hidden">
+    <div className="flex flex-col gap-5 min-w-0">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-slate-100">
+      <div>
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="flex items-start gap-3 min-w-0">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shadow-sm shadow-indigo-500/20 shrink-0">
@@ -93,46 +97,52 @@ export function DepartmentDetailCard({
                   {department.code}
                 </span>
               </div>
-              {organization && (
-                <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-1">
-                  <Icon name="corporate_fare" size={11} className="text-slate-400" />
-                  <span className="truncate">{organization.name}</span>
-                  {parentDepartment && (
-                    <>
-                      <span className="text-slate-300">·</span>
-                      <Icon name="subdirectory_arrow_right" size={11} className="text-slate-400" />
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-1 flex-wrap">
+                {organization && (
+                  <span className="inline-flex items-center gap-1">
+                    <Icon name="account_balance" size={11} className="text-slate-400" />
+                    <span className="truncate">{organization.name}</span>
+                  </span>
+                )}
+                {parentDepartment && (
+                  <>
+                    <span className="text-slate-300">·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Icon name="arrow_right" size={11} className="text-slate-400" />
                       <span className="truncate">{parentDepartment.name}</span>
-                    </>
-                  )}
-                  {childCount > 0 && (
-                    <>
-                      <span className="text-slate-300">·</span>
-                      <span className="text-slate-400">{childCount} sub-dept{childCount !== 1 ? "s" : ""}</span>
-                    </>
-                  )}
-                </div>
-              )}
+                    </span>
+                  </>
+                )}
+                {childCount > 0 && (
+                  <>
+                    <span className="text-slate-300">·</span>
+                    <span className="text-slate-400">{childCount} sub-dept{childCount !== 1 ? "s" : ""}</span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
             {canEdit && onEdit && (
-              <GradientButton variant="ghost" onClick={onEdit}>
-                <Icon name="edit" size={15} />
+              <button
+                type="button"
+                onClick={onEdit}
+                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-semibold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all"
+              >
+                <Icon name="edit" size={14} />
                 Edit
-              </GradientButton>
+              </button>
             )}
             {canDelete && onDelete && (
-              <GradientButton variant="danger" onClick={onDelete}>
-                <Icon name="delete" size={15} />
+              <button
+                type="button"
+                onClick={onDelete}
+                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-semibold bg-red-600 hover:bg-red-700 text-white shadow-sm shadow-red-500/20 transition-all"
+              >
+                <Icon name="delete" size={14} />
                 Delete
-              </GradientButton>
-            )}
-            {department.maxCapacity > 0 && (
-              <div className="text-right bg-slate-50 rounded-xl px-3 py-2 border border-slate-100">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Capacity</p>
-                <p className="text-xl font-bold text-slate-800 leading-tight">{department.maxCapacity}</p>
-              </div>
+              </button>
             )}
           </div>
         </div>
@@ -143,7 +153,7 @@ export function DepartmentDetailCard({
       </div>
 
       {/* Dashboard Stats */}
-      <div className="px-5 py-4 grid grid-cols-2 sm:grid-cols-4 gap-3 border-b border-slate-100">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard label="Team Members" value={teamMembersCount} color="indigo" icon="people" />
         <StatCard label="Avg Workload" value={`${avgWorkload}%`} color="violet" icon="monitoring" />
         <StatCard label="Active Projects" value={activeProjects} color="emerald" icon="rocket_launch" />
@@ -151,35 +161,33 @@ export function DepartmentDetailCard({
       </div>
 
       {/* Team Members */}
-      <div className="px-5 py-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-1.5">
-            <Icon name="group" size={13} className="text-slate-400" />
-            <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Team Members</h4>
-            <span className="text-[10px] font-bold text-slate-400">· {teamMembers.length}</span>
-          </div>
-          {canManageUsers && (
+      <SectionCard
+        title="Team members"
+        icon="group"
+        description={`${teamMembers.length} member${teamMembers.length !== 1 ? "s" : ""} assigned`}
+        actions={
+          canManageUsers ? (
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setShowUserModal(true)}
-                className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md bg-white text-indigo-600 border border-indigo-200 text-[11px] font-semibold hover:bg-indigo-50 transition-colors"
+                className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg bg-white text-indigo-600 border border-indigo-200 text-[11px] font-semibold hover:bg-indigo-50 transition-colors"
               >
-                <Icon name="group_add" size={13} />
+                <Icon name="group" size={13} />
                 Manage
               </button>
               <button
                 type="button"
                 onClick={() => setShowCreateUserModal(true)}
-                className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md bg-emerald-600 text-white text-[11px] font-semibold hover:bg-emerald-700 transition-colors"
+                className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg bg-emerald-600 text-white text-[11px] font-semibold hover:bg-emerald-700 transition-colors"
               >
                 <Icon name="person_add" size={13} />
-                New User
+                New user
               </button>
             </div>
-          )}
-        </div>
-
+          ) : undefined
+        }
+      >
         {teamMembers.length > 0 ? (
           <div className="flex items-center gap-3 flex-wrap">
             <AvatarStack people={displayMembers} limit={5} size="md" />
@@ -205,15 +213,14 @@ export function DepartmentDetailCard({
         ) : (
           <p className="text-xs text-slate-400 italic">No users assigned to this department.</p>
         )}
-      </div>
+      </SectionCard>
 
       {/* Workload Bar */}
       {avgWorkload > 0 && (
-        <div className="px-5 pb-4 pt-2 border-t border-slate-100">
+        <SectionCard title="Team workload" icon="monitoring" description="Average utilization across assigned members">
           <div className="flex items-center justify-between text-xs mb-1.5">
             <span className="flex items-center gap-1 text-slate-500 font-semibold">
-              <Icon name="monitoring" size={12} className="text-slate-400" />
-              Team Workload
+              Current load
             </span>
             <span
               className={`font-bold ${
@@ -229,7 +236,7 @@ export function DepartmentDetailCard({
               style={{ width: `${Math.min(avgWorkload, 100)}%` }}
             />
           </div>
-        </div>
+        </SectionCard>
       )}
 
       {showUserModal && (

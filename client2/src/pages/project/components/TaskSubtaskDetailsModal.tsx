@@ -4,7 +4,7 @@ import { FiAlertTriangle } from "react-icons/fi";
 import type { Milestone, Project, Task, User } from "../../../types";
 import { api } from "../../../api";
 import { useAuth } from "../../../auth";
-import { usePermission, useToast, Modal, ModalCancelButton } from "../../shared/index";
+import { usePermission, useToast, Sheet, ModalCancelButton } from "../../shared/index";
 import { TaskHeaderCard } from "./TaskHeaderCard";
 import { ProgressCommentForm } from "./ProgressCommentForm";
 import { SubtasksSection } from "./SubtasksSection";
@@ -227,24 +227,25 @@ function TaskSubtaskDetailsModalInner({
   const progressColor = progress >= 80
     ? "from-emerald-400 to-emerald-500"
     : progress >= 50
-    ? "from-cyan-400 to-cyan-500"
+    ? "from-sky-400 to-sky-500"
     : progress >= 25
     ? "from-amber-400 to-amber-500"
-    : "from-rose-400 to-rose-500";
+    : "from-red-400 to-red-500";
 
   // open state derived from task presence; onClose may be undefined in embedded contexts
   const open = !!task;
   const handleClose = onClose ?? (() => {});
 
   return (
-    <Modal
+    <Sheet
       open={open}
       onClose={handleClose}
-      title="Task Details"
+      title="Task details"
       description={project?.name ?? "View and manage task"}
       icon="task_alt"
       accent="primary"
       size="xl"
+      showCloseButton={!hideCloseButton}
       footer={
         <ModalCancelButton onClick={handleClose} label="Close" />
       }
@@ -353,6 +354,6 @@ function TaskSubtaskDetailsModalInner({
           isEscalated={task.isEscalated ?? false}
         />
       </div>
-    </Modal>
+    </Sheet>
   );
 }

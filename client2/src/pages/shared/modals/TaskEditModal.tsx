@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { FiAlertTriangle, FiCalendar, FiFlag, FiNavigation, FiTrash2 } from "react-icons/fi";
 import type { Milestone, Project, Task, User } from "../../../types";
-import { Modal, ModalCancelButton, ModalPrimaryButton, useToast, AvatarStack, PriorityBadge } from "..";
+import { Sheet, ModalCancelButton, ModalPrimaryButton, useToast, AvatarStack, PriorityBadge } from "..";
 import { StatusBadgeMinimal } from "../../shared/StatusBadgeMinimal";
 import { ProgressStatusEditor } from "../../project/components/ProgressStatusEditor";
 import { priorities } from "../../constants";
@@ -21,6 +21,15 @@ interface TaskEditModalProps {
   onEscalate?: () => void;
   onRefresh: () => void;
 }
+
+const INPUT_CLASS =
+  "w-full h-9 px-3 rounded-lg bg-slate-50 border border-slate-200 text-sm font-medium text-slate-800 outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all";
+
+const TEXTAREA_CLASS =
+  "w-full min-h-[80px] px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-800 outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all resize-none";
+
+const LABEL_CLASS =
+  "text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5";
 
 export function TaskEditModal({
   task,
@@ -144,7 +153,7 @@ export function TaskEditModal({
   );
 
   return (
-    <Modal
+    <Sheet
       open={true}
       onClose={onClose}
       title={task.title}
@@ -191,7 +200,7 @@ export function TaskEditModal({
               onClick={handleUpdate}
               loading={isUpdating}
               disabled={!hasChanges}
-              label={isUpdating ? "Updating..." : "Update"}
+              label="Update"
               icon="check-circle"
             />
           </>
@@ -255,13 +264,11 @@ export function TaskEditModal({
 
         {mayEdit && (
           <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
-              Priority
-            </label>
+            <label className={LABEL_CLASS}>Priority</label>
             <select
               value={editPriority}
               onChange={(e) => setEditPriority(e.target.value)}
-              className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-700 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+              className={INPUT_CLASS}
             >
               {priorities.map((p) => (
                 <option key={p} value={p}>
@@ -274,7 +281,7 @@ export function TaskEditModal({
 
         {mayEdit && (
           <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+            <label className={LABEL_CLASS + " flex items-center gap-1.5"}>
               <Icon name="info" size={12} />
               Comment
             </label>
@@ -283,7 +290,7 @@ export function TaskEditModal({
               onChange={(e) => setCommentText(e.target.value)}
               placeholder="Add a comment with this update..."
               rows={2}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all resize-none"
+              className={TEXTAREA_CLASS}
             />
           </div>
         )}
@@ -294,6 +301,6 @@ export function TaskEditModal({
           </div>
         )}
       </div>
-    </Modal>
+    </Sheet>
   );
 }

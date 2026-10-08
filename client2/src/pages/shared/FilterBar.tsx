@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "../../components/ui/Icon";
 
 export interface FilterChipOption<T = string> {
@@ -39,8 +40,11 @@ interface FilterBarProps {
  *
  * Layout: [search] ... [chip filters] ... [actions]
  *
- * Visually similar to the AI page header: clean white pill, subtle border,
- * tight spacing.
+ * The bar wraps (flex-wrap) so the search field, chips, ViewToggle and sort
+ * dropdown always stay visible; the search input is flex-1 with a 220px
+ * floor so its placeholder is NEVER truncated. The root is a solid glass
+ * card, and dropdown menus render through a portal (see FilterDropdown) so
+ * they can never open behind card grids.
  */
 export function FilterBar({
   searchValue,
@@ -53,10 +57,10 @@ export function FilterBar({
 }: FilterBarProps) {
   return (
     <div
-      className={`flex flex-wrap items-center gap-2.5 p-2.5 bg-white rounded-xl border border-slate-200/70 shadow-sm ${className}`}
+      className={`flex flex-wrap items-center gap-2.5 p-2.5 bg-white/90 backdrop-blur-xl rounded-xl border border-slate-200/70 shadow-sm ${className}`}
     >
       {onSearchChange && (
-        <div className="relative flex-1 min-w-[200px] max-w-md">
+        <div className="relative flex-1 min-w-[220px]">
           <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
             <Icon name="search" size={15} />
           </span>
@@ -76,7 +80,7 @@ export function FilterBar({
         <ChipGroup key={group.key} group={group} />
       ))}
 
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex items-center gap-2 flex-wrap">
         {actions}
       </div>
     </div>
@@ -180,7 +184,15 @@ function ChipGroup({
   );
 }
 
-/** Single-select dropdown filter (used when there are too many options for chips) */
+/**
+ * Single-select dropdown filter (used when there are too many options for chips).
+ *
+ * The open menu is rendered through a portal on document.body with fixed
+ * positioning computed from the trigger rect, so it ALWAYS paints above card
+ * grids / glass cards regardless of ancestor stacking contexts. Flips above
+ * the trigger when there is no room below. Closes on outside click, Esc,
+ * and follows the trigger on scroll/resize.
+ */
 export function FilterDropdown({
   value,
   onChange,
@@ -197,12 +209,82 @@ export function FilterDropdown({
   width?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [pos, setPos] = useState<{
+    top: number;
+    left: number;
+    minWidth: number;
+    alignRight: boolean;
+    above: boolean;
+  } | null>(null);
+
+  const updatePosition = () => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const menu = menuRef.current;
+    const menuW = menu?.offsetWidth ?? 0;
+    const menuH = menu?.offsetHeight ?? 0;
+    const gap = 4;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const above = spaceBelow < menuH + gap + 8 && rect.top > menuH + gap + 8;
+    // Right-align to the trigger when there is room; otherwise left-align so
+    // the menu never slides off the left edge of the viewport.
+    const alignRight = rect.right - Math.max(menuW, rect.width) >= 8;
+    setPos({
+      top: above ? rect.top - gap : rect.bottom + gap,
+      left: alignRight ? rect.right : rect.left,
+      minWidth: rect.width,
+      alignRight,
+      above,
+    });
+  };
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setPos(null);
+      return;
+    }
+    updatePosition();
+
+    const handleReposition = () => updatePosition();
+    const handlePointerDown = (event: Event) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (triggerRef.current?.contains(target)) return;
+      if (menuRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        // Capture phase: keep ancestor modals/sheets from also handling Esc
+        event.stopPropagation();
+        setOpen(false);
+      }
+    };
+
+    window.addEventListener("resize", handleReposition);
+    window.addEventListener("scroll", handleReposition, true);
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown, true);
+    return () => {
+      window.removeEventListener("resize", handleReposition);
+      window.removeEventListener("scroll", handleReposition, true);
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown, true);
+    };
+  }, [open]);
+
   const selected = options.find((o) => o.value === value);
 
   return (
     <div className="relative">
       <button
+        ref={triggerRef}
         type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
         onClick={() => setOpen(!open)}
         className={`inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all ${width}`}
       >
@@ -217,46 +299,59 @@ export function FilterDropdown({
         />
       </button>
 
-      {open && (
-        <>
+      {open &&
+        createPortal(
           <div
-            className="fixed inset-0 z-40"
-            onClick={() => setOpen(false)}
-          />
-          <div className="absolute right-0 top-[calc(100%+4px)] min-w-full w-max max-w-[280px] bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden py-1 max-h-72 overflow-y-auto">
-            <button
-              type="button"
-              onClick={() => {
-                onChange("");
-                setOpen(false);
-              }}
-              className={`w-full text-left px-3 py-2 text-xs font-medium transition-colors ${
-                !value ? "bg-indigo-50 text-indigo-700" : "text-slate-600 hover:bg-slate-100"
-              }`}
+            ref={menuRef}
+            style={{
+              position: "fixed",
+              top: pos?.top ?? -9999,
+              left: pos?.left ?? -9999,
+              transform: pos
+                ? `translate(${pos.alignRight ? "-100%" : "0"}, ${pos.above ? "-100%" : "0"})`
+                : undefined,
+              visibility: pos ? "visible" : "hidden",
+            }}
+            className="z-[1050]"
+          >
+            <div
+              style={{ minWidth: pos?.minWidth ?? undefined }}
+              className="w-max max-w-[280px] bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden py-1 max-h-72 overflow-y-auto dropdown-menu-enter"
             >
-              All {label?.toLowerCase() ?? "options"}
-            </button>
-            {options.map((opt) => (
               <button
-                key={opt.value}
                 type="button"
                 onClick={() => {
-                  onChange(opt.value);
+                  onChange("");
                   setOpen(false);
                 }}
-                className={`w-full text-left px-3 py-2 text-xs font-medium transition-colors flex items-center gap-2 ${
-                  opt.value === value
-                    ? "bg-indigo-50 text-indigo-700"
-                    : "text-slate-600 hover:bg-slate-100"
+                className={`w-full text-left px-3 py-2 text-xs font-medium transition-colors ${
+                  !value ? "bg-indigo-50 text-indigo-700" : "text-slate-600 hover:bg-slate-100"
                 }`}
               >
-                {opt.dot && <span className={`w-1.5 h-1.5 rounded-full ${opt.dot}`} />}
-                {opt.label}
+                All {label?.toLowerCase() ?? "options"}
               </button>
-            ))}
-          </div>
-        </>
-      )}
+              {options.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(opt.value);
+                    setOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 text-xs font-medium transition-colors flex items-center gap-2 ${
+                    opt.value === value
+                      ? "bg-indigo-50 text-indigo-700"
+                      : "text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  {opt.dot && <span className={`w-1.5 h-1.5 rounded-full ${opt.dot}`} />}
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
@@ -276,7 +371,7 @@ export function SortDropdown({
       value={value}
       onChange={onChange}
       label="Sort"
-      icon="sort"
+      icon="unfold_more"
       options={options}
       width="min-w-[180px]"
     />

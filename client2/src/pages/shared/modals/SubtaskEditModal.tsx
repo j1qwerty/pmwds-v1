@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FiCalendar, FiFlag, FiTrash2 } from "react-icons/fi";
 import type { Task } from "../../../types";
-import { Modal, ModalCancelButton, ModalPrimaryButton, useToast } from "..";
+import { Sheet, ModalCancelButton, ModalPrimaryButton, useToast } from "..";
 import { ProgressStatusEditor } from "../../project/components/ProgressStatusEditor";
 import { priorities } from "../../constants";
 import { Icon } from "../../../components/ui/Icon";
@@ -80,7 +80,7 @@ export function SubtaskEditModal({
     editStatus === "Completed" ? "success" : editStatus === "InProgress" ? "info" : "neutral";
 
   return (
-    <Modal
+    <Sheet
       open={true}
       onClose={onClose}
       title={subtask.title}
@@ -112,7 +112,7 @@ export function SubtaskEditModal({
               onClick={handleUpdate}
               loading={isUpdating}
               disabled={!hasChanges}
-              label={isUpdating ? "Updating..." : "Update"}
+              label="Update"
               icon="check-circle"
             />
           </>
@@ -140,7 +140,7 @@ export function SubtaskEditModal({
                 <select
                   value={selectedPriority}
                   onChange={(e) => setSelectedPriority(e.target.value)}
-                  className="h-8 px-2 rounded-md border border-slate-200 bg-white text-xs font-medium text-slate-700 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+                  className="h-8 px-2 rounded-md border border-slate-200 bg-slate-50 text-xs font-medium text-slate-700 outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
                 >
                   {priorities.map((p) => (
                     <option key={p} value={p}>
@@ -167,7 +167,7 @@ export function SubtaskEditModal({
 
         {mayEdit && (
           <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 mb-1.5">
               <Icon name="info" size={12} />
               Comment
             </label>
@@ -176,7 +176,7 @@ export function SubtaskEditModal({
               onChange={(e) => setCommentText(e.target.value)}
               placeholder="Add a comment with this update..."
               rows={2}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all resize-none"
+              className="w-full min-h-[80px] px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-800 outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all resize-none"
             />
           </div>
         )}
@@ -187,6 +187,6 @@ export function SubtaskEditModal({
           </div>
         )}
       </div>
-    </Modal>
+    </Sheet>
   );
 }

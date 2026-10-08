@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   BarChart,
@@ -54,10 +54,10 @@ const METRIC_COLORS: Record<string, { bg: string; ring: string; text: string }> 
   red:     { bg: "bg-red-100",     ring: "ring-red-500/20",     text: "text-red-600" },
   violet:  { bg: "bg-violet-100",  ring: "ring-violet-500/20",  text: "text-violet-600" },
   blue:    { bg: "bg-blue-100",    ring: "ring-blue-500/20",    text: "text-blue-600" },
-  cyan:    { bg: "bg-cyan-100",    ring: "ring-cyan-500/20",    text: "text-cyan-600" },
-  green:   { bg: "bg-green-100",   ring: "ring-green-500/20",   text: "text-green-600" },
-  orange:  { bg: "bg-orange-100",  ring: "ring-orange-500/20",  text: "text-orange-600" },
-  pink:    { bg: "bg-pink-100",    ring: "ring-pink-500/20",    text: "text-pink-600" },
+  cyan:    { bg: "bg-sky-100",    ring: "ring-sky-500/20",    text: "text-sky-600" },
+  green:   { bg: "bg-emerald-100", ring: "ring-emerald-500/20", text: "text-emerald-600" },
+  orange:  { bg: "bg-amber-100",  ring: "ring-amber-500/20",  text: "text-amber-600" },
+  pink:    { bg: "bg-red-100",    ring: "ring-red-500/20",    text: "text-red-600" },
 };
 
 function MetricStat({ metric }: { metric: AiReportResponse["metrics"][number] }) {
@@ -67,8 +67,7 @@ function MetricStat({ metric }: { metric: AiReportResponse["metrics"][number] })
   const icon = resolveMetricIcon(metric.icon, metric.label);
   return (
     <div className="relative group min-w-0">
-      <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent rounded-2xl pointer-events-none" />
-      <div className="relative bg-white rounded-2xl border border-slate-200/80 p-5 transition-all duration-300 hover:shadow-xl hover:border-slate-300/60 hover:-translate-y-0.5">
+      <div className="relative bg-white/90 backdrop-blur-xl rounded-2xl border border-slate-200/60 p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-slate-300/60">
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className={`w-10 h-10 shrink-0 rounded-xl ${c.bg} flex items-center justify-center ring-1 ${c.ring}`}>
             <span className={`material-symbols-outlined text-xl leading-none ${c.text}`}>{icon}</span>
@@ -100,9 +99,9 @@ function SectionTimelineCard({ section }: { section: AiReportResponse["sections"
       <div className={`absolute left-0 top-1.5 w-[23px] h-[23px] rounded-full ${s.light} border-2 ${s.border} flex items-center justify-center`}>
         <div className={`w-2.5 h-2.5 rounded-full ${s.dot}`} />
       </div>
-      <div className="bg-white rounded-xl border border-slate-200/80 p-5 transition-all duration-200 hover:shadow-lg hover:border-slate-300/60">
+      <div className="bg-white/90 backdrop-blur-xl rounded-xl border border-slate-200/60 p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-slate-300/60">
         <div className="flex items-center gap-3 mb-2">
-          <span className={`material-symbols-outlined text-lg ${s.color}`}>{s.icon}</span>
+          <Icon name={s.icon} size={18} className={s.color} />
           <h3 className="font-semibold text-slate-900">{section.title}</h3>
           <span className={`ml-auto px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${s.light} ${s.text}`}>
             {section.type}
@@ -114,15 +113,26 @@ function SectionTimelineCard({ section }: { section: AiReportResponse["sections"
   );
 }
 
-function SectionLabel({ icon, label, color, children }: { icon: string; label: string; color?: string; children?: React.ReactNode }) {
+/** Consistent section header: soft icon tile + bold title + optional extras. */
+function SectionHeading({
+  icon,
+  title,
+  tile = "bg-indigo-50",
+  iconClass = "text-indigo-600",
+  children,
+}: {
+  icon: string;
+  title: string;
+  tile?: string;
+  iconClass?: string;
+  children?: ReactNode;
+}) {
   return (
-    <div className="flex items-center gap-3 mb-5">
-      <div className={`w-8 h-8 rounded-lg ${color || "bg-indigo-100"} flex items-center justify-center`}>
-        <span className={`material-symbols-outlined text-lg ${color ? color.replace("bg-", "text-") : "text-indigo-600"}`}>
-          {icon}
-        </span>
+    <div className="flex items-center gap-2.5 mb-4">
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${tile}`}>
+        <Icon name={icon} size={16} className={iconClass} />
       </div>
-      <h2 className="text-base font-bold text-slate-900">{label}</h2>
+      <h2 className="text-base font-bold text-slate-900">{title}</h2>
       {children}
     </div>
   );
@@ -234,46 +244,52 @@ export function ReportViewPage() {
   if (!report) return <LoadingPage label="Loading report..." />;
 
   return (
-    <div className="min-h-screen bg-slate-50/50">
+    <div className="relative">
       <AnimatedBackground />
 
       {/* Sticky header */}
       <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4 min-w-0">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
               onClick={() => navigate("/reports")}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all text-sm font-medium shrink-0"
+              aria-label="Back to reports"
+              className="flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all shrink-0"
             >
-              <Icon name="arrow_back" size={16} />
+              <Icon name="arrow_back" size={15} />
               <span className="hidden sm:inline">Back</span>
             </button>
-            <div className="h-5 w-px bg-slate-300 hidden sm:block shrink-0" />
+            <div className="h-5 w-px bg-slate-200 hidden sm:block shrink-0" />
             <div className="hidden sm:block min-w-0">
-              <h1 className="text-sm font-semibold text-slate-900 truncate">{report.title}</h1>
-              <p className="text-[11px] text-slate-500">Generated {new Date(report.generatedAt).toLocaleString()}</p>
+              <h1 className="text-sm font-bold text-slate-900 truncate">{report.title}</h1>
+              <p className="text-[11px] text-slate-500">
+                Generated {new Date(report.generatedAt).toLocaleString()}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <span className="px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-semibold uppercase tracking-wider">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 text-[11px] font-semibold uppercase tracking-wider">
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
               {report.reportType.replace(/-/g, " ")}
             </span>
             <button
               type="button"
               onClick={handleDownloadPdf}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white text-sm font-semibold transition-all hover:shadow-lg shadow-indigo-500/20 active:scale-[0.97]"
+              aria-label="Export report as PDF"
+              title="Export as PDF"
+              className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white text-xs font-semibold transition-all shadow-sm shadow-indigo-500/20 active:scale-[0.97]"
             >
-              <Icon name="download" size={16} />
-              <span className="hidden sm:inline">PDF</span>
+              <Icon name="download" size={14} />
+              <span className="hidden sm:inline">Export PDF</span>
             </button>
           </div>
         </div>
       </div>
 
       {/* Main content with sidebar */}
-      <div className="mx-auto px-4 sm:px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8">
+      <div className="relative z-10 mx-auto px-4 sm:px-6 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8 items-start">
           {/* Left: Report content */}
           <div className="space-y-10 min-w-0">
             {/* Executive Summary */}
@@ -284,9 +300,9 @@ export function ReportViewPage() {
                 <div className="relative">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
-                      <span className="material-symbols-outlined text-white">auto_awesome</span>
+                      <Icon name="auto_awesome" size={20} className="text-white" />
                     </div>
-                    <p className="text-[11px] font-semibold text-indigo-200 uppercase tracking-wider">Executive Summary</p>
+                    <p className="text-[11px] font-semibold text-indigo-200 uppercase tracking-wider">Executive summary</p>
                   </div>
                   <p className="text-base sm:text-lg leading-relaxed text-indigo-50 font-light">{report.summary}</p>
                 </div>
@@ -296,7 +312,11 @@ export function ReportViewPage() {
             {/* Metrics */}
             {report.metrics.length > 0 && (
               <div>
-                <SectionLabel icon="analytics" label="Key Metrics" />
+                <SectionHeading icon="analytics" title="Key metrics">
+                  <span className="text-xs text-slate-400 font-medium ml-auto">
+                    {report.metrics.length} metric{report.metrics.length > 1 ? "s" : ""}
+                  </span>
+                </SectionHeading>
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                   {report.metrics.map((metric, i) => (
                     <MetricStat key={i} metric={metric} />
@@ -308,12 +328,12 @@ export function ReportViewPage() {
             {/* Charts */}
             {chartData.length > 1 && (
               <div>
-                <SectionLabel icon="monitoring" label="Visual Analysis" />
+                <SectionHeading icon="monitoring" title="Visual analysis" />
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                   <GlassCard className="p-5 sm:p-6">
-                    <h4 className="text-sm font-semibold text-slate-800 mb-6 flex items-center gap-2">
-                      <span className="material-symbols-outlined text-indigo-500 text-lg">bar_chart</span>
-                      Metrics Distribution
+                    <h4 className="text-sm font-bold text-slate-800 mb-6 flex items-center gap-2">
+                      <Icon name="analytics" size={16} className="text-indigo-600" />
+                      Metrics distribution
                     </h4>
                     <ResponsiveContainer width="100%" height={280}>
                       <BarChart data={chartData}>
@@ -328,9 +348,9 @@ export function ReportViewPage() {
                     </ResponsiveContainer>
                   </GlassCard>
                   <GlassCard className="p-5 sm:p-6">
-                    <h4 className="text-sm font-semibold text-slate-800 mb-6 flex items-center gap-2">
-                      <span className="material-symbols-outlined text-indigo-500 text-lg">pie_chart</span>
-                      Distribution Overview
+                    <h4 className="text-sm font-bold text-slate-800 mb-6 flex items-center gap-2">
+                      <Icon name="insights" size={16} className="text-indigo-600" />
+                      Distribution overview
                     </h4>
                     <ResponsiveContainer width="100%" height={280}>
                       <PieChart>
@@ -349,11 +369,16 @@ export function ReportViewPage() {
             {/* Sections */}
             {report.sections.length > 0 && (
               <div>
-                <SectionLabel icon="article" label="Detailed Analysis">
-                  <span className="text-sm text-slate-500 font-medium ml-auto">
+                <SectionHeading
+                  icon="description"
+                  title="Detailed analysis"
+                  tile="bg-slate-100"
+                  iconClass="text-slate-600"
+                >
+                  <span className="text-xs text-slate-400 font-medium ml-auto">
                     {report.sections.length} section{report.sections.length > 1 ? "s" : ""}
                   </span>
-                </SectionLabel>
+                </SectionHeading>
                 <div className="space-y-5">
                   {report.sections.map((section, i) => (
                     <SectionTimelineCard key={i} section={section} />
@@ -365,7 +390,16 @@ export function ReportViewPage() {
             {/* Tables */}
             {report.tables.length > 0 && (
               <div>
-                <SectionLabel icon="table_chart" label="Data Tables" />
+                <SectionHeading
+                  icon="hi-table"
+                  title="Data tables"
+                  tile="bg-slate-100"
+                  iconClass="text-slate-600"
+                >
+                  <span className="text-xs text-slate-400 font-medium ml-auto">
+                    {report.tables.length} table{report.tables.length > 1 ? "s" : ""}
+                  </span>
+                </SectionHeading>
                 <div className="space-y-5">
                   {report.tables.map((table, i) => (
                     <SectionCard
@@ -381,7 +415,7 @@ export function ReportViewPage() {
                             {table.columns.map((col, j) => (
                               <th
                                 key={j}
-                                className="px-6 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider"
+                                className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider"
                               >
                                 {col}
                               </th>
@@ -409,17 +443,26 @@ export function ReportViewPage() {
             {/* Insights */}
             {report.insights.length > 0 && (
               <div>
-                <SectionLabel icon="insights" label="Key Insights" color="bg-amber-100" />
+                <SectionHeading
+                  icon="lightbulb"
+                  title="Key insights"
+                  tile="bg-amber-100"
+                  iconClass="text-amber-600"
+                >
+                  <span className="text-xs text-slate-400 font-medium ml-auto">
+                    {report.insights.length} insight{report.insights.length > 1 ? "s" : ""}
+                  </span>
+                </SectionHeading>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {report.insights.map((insight, i) => (
                     <div
                       key={i}
-                      className="group relative bg-white rounded-xl border border-amber-200/60 p-5 transition-all duration-200 hover:shadow-lg hover:border-amber-300/80"
+                      className="group relative bg-white/90 backdrop-blur-xl rounded-xl border border-amber-200/60 p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-amber-300/80"
                     >
                       <div className="absolute top-0 left-0 w-1 h-full bg-amber-400 rounded-l-xl opacity-0 group-hover:opacity-100 transition-opacity" />
                       <div className="flex items-start gap-3">
                         <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <span className="material-symbols-outlined text-amber-600 text-base">lightbulb</span>
+                          <Icon name="lightbulb" size={15} className="text-amber-600" />
                         </div>
                         <p className="text-sm text-slate-700 leading-relaxed">{insight}</p>
                       </div>
@@ -431,13 +474,22 @@ export function ReportViewPage() {
 
             {/* Recommendations */}
             {report.recommendations.length > 0 && (
-              <div className="pb-12">
-                <SectionLabel icon="assignment" label="Recommendations" color="bg-emerald-100" />
+              <div className="pb-4">
+                <SectionHeading
+                  icon="checklist"
+                  title="Recommendations"
+                  tile="bg-emerald-100"
+                  iconClass="text-emerald-600"
+                >
+                  <span className="text-xs text-slate-400 font-medium ml-auto">
+                    {report.recommendations.length} recommendation{report.recommendations.length > 1 ? "s" : ""}
+                  </span>
+                </SectionHeading>
                 <div className="space-y-3">
                   {report.recommendations.map((rec, i) => (
                     <div
                       key={i}
-                      className="group relative bg-white rounded-xl border border-slate-200/80 p-5 transition-all duration-200 hover:shadow-lg hover:border-emerald-200/80 hover:bg-emerald-50/20"
+                      className="group relative bg-white/90 backdrop-blur-xl rounded-xl border border-slate-200/60 p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-emerald-200/80 hover:bg-emerald-50/20"
                     >
                       <div className="flex items-start gap-4">
                         <div className="w-9 h-9 rounded-full bg-emerald-100 border-2 border-emerald-200 flex items-center justify-center flex-shrink-0 mt-0.5">

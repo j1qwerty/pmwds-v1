@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import type { Task, User } from "../../../types";
 import { priorities } from "../../constants";
-import { Modal, ModalCancelButton, ModalPrimaryButton, ScopedUserSelect } from "../../shared/index";
+import { Sheet, ModalCancelButton, ModalPrimaryButton, ScopedUserSelect } from "../../shared/index";
 import { Icon } from "../../../components/ui/Icon";
 
 interface SubtaskFormModalProps {
@@ -30,11 +30,13 @@ export function SubtaskFormModal({
   });
 
   const [submitting, setSubmitting] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
 
   useEffect(() => {
     if (open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSubmitting(false);
+      setShowErrors(false);
       setForm({
         title: "",
         description: "",
@@ -45,10 +47,10 @@ export function SubtaskFormModal({
     }
   }, [open, parentTask.dueDate]);
 
-  if (!open) return null;
-
+  // Sheet handles open/closed internally (stays mounted so the exit animation plays)
   const handleSubmit = (e?: FormEvent) => {
     e?.preventDefault();
+    setShowErrors(true);
     if (submitting || !form.title.trim()) return;
     setSubmitting(true);
     const submission: Record<string, unknown> = {
@@ -71,16 +73,16 @@ export function SubtaskFormModal({
     form.dueDate && parentTask.dueDate && form.dueDate > parentTask.dueDate.slice(0, 10);
 
   return (
-    <Modal
-      open={true}
+    <Sheet
+      open={open}
       onClose={onClose}
-      title="New Subtask"
+      title="New subtask"
       description={
         <>
           for <span className="font-semibold text-indigo-600">{parentTask.title}</span>
         </>
       }
-      icon="hi-clipboard"
+      icon="account_tree"
       accent="primary"
       size="md"
       footer={
@@ -90,7 +92,7 @@ export function SubtaskFormModal({
             onClick={() => handleSubmit()}
             loading={submitting}
             disabled={!form.title.trim()}
-            label={submitting ? "Saving..." : "Create Subtask"}
+            label="Create subtask"
             icon="check-circle"
           />
         </>
@@ -103,8 +105,13 @@ export function SubtaskFormModal({
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
             required
+            placeholder="What needs to be done?"
             className={INPUT_CLASS}
+            autoFocus
           />
+          {showErrors && !form.title.trim() && (
+            <span className="text-xs text-red-600 mt-1 block">Title is required</span>
+          )}
         </Field>
 
         <Field label="Description">
@@ -112,12 +119,13 @@ export function SubtaskFormModal({
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             rows={2}
-            className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all resize-none"
+            placeholder="Add more details (optional)"
+            className={TEXTAREA_CLASS}
           />
         </Field>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Due">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field label="Due date">
             <input
               type="date"
               value={form.dueDate}
@@ -160,17 +168,20 @@ export function SubtaskFormModal({
         {/* Hidden submit input so pressing Enter triggers the form onSubmit */}
         <input type="submit" className="hidden" />
       </form>
-    </Modal>
+    </Sheet>
   );
 }
 
 const INPUT_CLASS =
-  "w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all";
+  "w-full h-9 px-3 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-800 outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all";
+
+const TEXTAREA_CLASS =
+  "w-full min-h-[80px] px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-800 outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all resize-none";
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
   return (
     <div>
-      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+      <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
         {label}
         {required && <span className="text-red-500 ml-0.5">*</span>}
       </label>

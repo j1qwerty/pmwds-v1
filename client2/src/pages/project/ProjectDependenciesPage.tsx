@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import { RoleKey, hasRoleKey } from "../../permissions";
@@ -20,17 +20,27 @@ export function ProjectDependenciesPage() {
   const { addToast } = useToast();
 
   const canManage = perm.isSuperAdmin || hasRoleKey(perm.roleKeys, RoleKey.Director);
+  const [newRequestKey, setNewRequestKey] = useState(0);
 
   useEffect(() => {
     if (ws.project) {
       setNavHeader({
         title: `Dependencies · ${ws.project.name}`,
         description: "Manage milestone dependency rules",
+        actions: canManage
+          ? [
+              {
+                label: "New dependency",
+                onClick: () => setNewRequestKey((k) => k + 1),
+                icon: "add",
+              },
+            ]
+          : undefined,
       });
     } else {
       setNavHeader({ title: "Dependencies", description: "" });
     }
-  }, [setNavHeader, ws.project]);
+  }, [setNavHeader, ws.project, canManage]);
 
   const handleAdd = async (payload: Record<string, unknown>) => {
     if (!auth || !ws.project) return;
@@ -72,7 +82,7 @@ export function ProjectDependenciesPage() {
   if (!ws.project) return <ProjectNotFound />;
 
   return (
-    <div className="relative z-10 max-w-2xl mx-auto">
+    <div className="relative z-10 max-w-5xl mx-auto">
       <MilestoneDependencyPanel
         dependencies={ws.dependencies}
         milestones={ws.milestones}
@@ -82,6 +92,7 @@ export function ProjectDependenciesPage() {
         onUpdate={handleUpdate}
         onDelete={handleDelete}
         onRefresh={ws.refresh}
+        newRequestKey={newRequestKey}
       />
     </div>
   );

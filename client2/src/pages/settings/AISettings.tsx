@@ -1,7 +1,7 @@
 import { useEffect, useState, useDeferredValue, useCallback, useRef } from "react";
 import { api } from "../../api";
 import type { AIModel, AIProvider, AIProviderTestResult, AISettingsResponse } from "../../types";
-import { SectionCard, EmptyState, GradientButton } from "../shared";
+import { SectionCard, EmptyState } from "../shared";
 import { Icon } from "../../components/ui/Icon";
 
 // ─── localStorage helpers ──────────────────────────────────────────
@@ -324,43 +324,48 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
     <div className="flex flex-col gap-4">
 
       {/* ───── Active Configuration ───── */}
-      <SectionCard title="Active Configuration" icon="check_circle">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active</span>
-            </div>
-            <div className="h-6 w-px bg-slate-200" />
-            <div className="text-sm">
-              <span className="font-semibold text-slate-800">{defaultProviderDisplay}</span>
-              {defaultModelStr && (
-                <>
-                  <span className="text-slate-300 mx-1.5">·</span>
-                  <span className="font-mono text-xs text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
-                    {defaultModelStr}
-                  </span>
-                </>
-              )}
-            </div>
-            <div className="h-6 w-px bg-slate-200" />
-            <div className="text-xs text-slate-500">
-              Risk threshold: <span className="font-semibold text-slate-700">{aiSettings?.riskThreshold ?? 0.7}</span>
-            </div>
+      <SectionCard
+        title="Active configuration"
+        description="Provider and model currently used across AI features"
+        icon="check_circle"
+      >
+        <div className="flex items-center flex-wrap gap-x-3 gap-y-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-600">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            Active
+          </span>
+          <div className="text-sm">
+            <span className="font-semibold text-slate-800">{defaultProviderDisplay}</span>
+            {defaultModelStr && (
+              <>
+                <span className="text-slate-300 mx-1.5">·</span>
+                <span className="font-mono text-xs text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
+                  {defaultModelStr}
+                </span>
+              </>
+            )}
+          </div>
+          <div className="h-6 w-px bg-slate-200" />
+          <div className="text-xs text-slate-500">
+            Risk threshold: <span className="font-semibold text-slate-700">{aiSettings?.riskThreshold ?? 0.7}</span>
           </div>
         </div>
       </SectionCard>
 
       {/* ───── Error ───── */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl py-3 px-4 text-red-700 text-sm flex items-center gap-2">
-          <Icon name="error" size={18} className="text-red-500" />
-          {error}
+        <div className="bg-red-50 border border-red-200 rounded-xl py-3 px-4 text-red-700 text-sm flex items-start gap-2.5">
+          <Icon name="error" size={18} className="text-red-500 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="font-semibold">Something went wrong</p>
+            <p className="text-xs mt-0.5">{error}</p>
+          </div>
         </div>
       )}
 
       {/* ───── Provider Configuration ───── */}
       <SectionCard
-        title="Provider Configuration"
+        title="Provider configuration"
         description="Enable and configure each AI provider"
         icon="hub"
         bodyClassName="p-4 flex flex-col gap-3"
@@ -407,7 +412,7 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
                   value={provider.baseUrl}
                   onChange={(e) => updateProvider(provider.provider, "baseUrl", e.target.value)}
                   disabled={!provider.enabled}
-                  className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs outline-none bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all disabled:bg-slate-50 disabled:text-slate-400"
+                  className="w-full h-9 px-3 rounded-lg bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-xs text-slate-700 transition-all disabled:bg-slate-100 disabled:text-slate-400"
                 />
               </div>
               <div>
@@ -430,7 +435,7 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
                   onChange={(e) => updateProvider(provider.provider, "apiKey", e.target.value)}
                   placeholder={provider.hasStoredKey ? "Replace stored key" : "Enter API key"}
                   disabled={!provider.enabled || provider.useEnvironmentDefault}
-                  className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs outline-none bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all disabled:bg-slate-50"
+                  className="w-full h-9 px-3 rounded-lg bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-xs text-slate-700 transition-all disabled:bg-slate-100 disabled:text-slate-400"
                 />
               </div>
               <div>
@@ -440,7 +445,7 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
                   onChange={(e) => updateProvider(provider.provider, "defaultModel", e.target.value)}
                   placeholder="e.g. gpt-4o"
                   disabled={!provider.enabled}
-                  className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs outline-none bg-white font-mono focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all disabled:bg-slate-50"
+                  className="w-full h-9 px-3 rounded-lg bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-xs text-slate-700 font-mono transition-all disabled:bg-slate-100 disabled:text-slate-400"
                 />
               </div>
               <div className="flex items-end gap-2">
@@ -491,7 +496,7 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
 
       {/* ───── Model Explorer ───── */}
       <SectionCard
-        title="Model Explorer"
+        title="Model explorer"
         description="Browse, favorite, and test available models"
         icon="database_search"
         bodyClassName="p-0"
@@ -547,7 +552,7 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
                   setSearchQuery("");
                   loadModels(e.target.value);
                 }}
-                className="flex-1 h-9 px-3 rounded-lg border border-slate-200 text-xs text-slate-700 bg-white outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+                className="flex-1 h-9 px-3 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
               >
                 {providers.map((p) => (
                   <option key={p.provider} value={p.provider}>{p.displayName}</option>
@@ -560,7 +565,7 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search models..."
-                    className="w-full h-9 pl-8 pr-3 rounded-lg border border-slate-200 text-xs outline-none bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+                    className="w-full h-9 pl-8 pr-3 rounded-lg bg-slate-50 border border-slate-200 text-xs outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
                   />
                 </div>
               )}
@@ -653,7 +658,7 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
                     }}
                   >
                     <Icon
-                      name={entry.worked ? "check_circle" : "cancel"}
+                      name={entry.worked ? "check_circle" : "close"}
                       size={16}
                       className={entry.worked ? "text-emerald-500" : "text-red-400"}
                     />
@@ -731,14 +736,14 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
                   value={customPrompt}
                   onChange={(e) => setCustomPrompt(e.target.value)}
                   placeholder="Custom test prompt..."
-                  className="flex-1 h-9 px-3 rounded-lg border border-slate-200 text-xs outline-none bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+                  className="flex-1 h-9 px-3 rounded-lg bg-slate-50 border border-slate-200 text-xs outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
                 />
                 <button
                   onClick={handleTestCustom}
                   disabled={testingCustom || !customPrompt.trim()}
-                  className="h-9 px-4 rounded-lg bg-cyan-600 text-white text-xs font-semibold hover:bg-cyan-700 transition-colors disabled:opacity-50 inline-flex items-center gap-1"
+                  className="h-9 px-4 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 inline-flex items-center gap-1"
                 >
-                  <Icon name={testingCustom ? "hourglass_top" : "play_arrow"} size={14} />
+                  <Icon name={testingCustom ? "hourglass_top" : "play"} size={14} />
                   {testingCustom ? "Running..." : "Run"}
                 </button>
               </div>
@@ -754,10 +759,24 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
 
       {/* ───── Save ───── */}
       <div className="flex justify-end">
-        <GradientButton onClick={handleSave} disabled={saving}>
-          <Icon name="save" size={14} />
-          {saving ? "Saving..." : "Save AI Settings"}
-        </GradientButton>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-sm shadow-indigo-500/20 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {saving ? (
+            <>
+              <span className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Icon name="save" size={14} />
+              Save AI settings
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

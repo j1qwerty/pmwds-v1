@@ -1,181 +1,154 @@
 import { useMemo } from "react";
-import type { Department, OrganizationRecord } from "../../types";
+import type { Department, OrganizationRecord, User } from "../../types";
+import { AvatarStack, GlassCard, getDepartmentColor, HoverActions } from "../shared";
 import { Icon } from "../../components/ui/Icon";
-import { FilterDropdown, EmptyState } from "../shared";
 
 interface DepartmentListProps {
   departments: Department[];
   selectedDeptId: string;
-  searchTerm: string;
-  onSearchChange: (term: string) => void;
+  /** Called when a row is clicked (opens the detail panel) */
   onSelectDept: (id: string) => void;
-  organizationName?: string;
+  /** All organizations — used to resolve parent organization labels */
   organizations?: OrganizationRecord[];
-  selectedOrgId?: string;
-  onSelectOrg?: (id: string) => void;
-  isSuperAdmin?: boolean;
+  /** All users — used to resolve per-department member counts/avatars */
+  users?: User[];
+  canEdit?: boolean;
+  canDelete?: boolean;
+  onEdit?: (dept: Department) => void;
+  onDelete?: (dept: Department) => void;
 }
 
+/**
+ * Compact list view for departments: one glass card with divided rows.
+ * Shows the same data & actions as the card grid.
+ */
 export function DepartmentList({
   departments,
   selectedDeptId,
-  searchTerm,
-  onSearchChange,
   onSelectDept,
-  organizations,
-  selectedOrgId,
-  onSelectOrg,
-  isSuperAdmin,
+  organizations = [],
+  users = [],
+  canEdit = false,
+  canDelete = false,
+  onEdit,
+  onDelete,
 }: DepartmentListProps) {
-  const filteredList = useMemo(() => {
-    if (!searchTerm) return departments;
-    const search = searchTerm.toLowerCase();
-    return departments.filter(
-      (dept) =>
-        dept.name.toLowerCase().includes(search) ||
-        dept.code.toLowerCase().includes(search) ||
-        (dept.description && dept.description.toLowerCase().includes(search))
-    );
-  }, [departments, searchTerm]);
+  const orgNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const org of organizations) map.set(org.id, org.name);
+    return map;
+  }, [organizations]);
 
-  const orgOptions = useMemo(
-    () => (organizations ?? []).map((org) => ({ value: org.id, label: org.name })),
-    [organizations],
-  );
+  const membersByDept = useMemo(() => {
+    const map = new Map<string, User[]>();
+    for (const user of users) {
+      const deptIds = new Set<string>();
+      if (user.departmentId) deptIds.add(user.departmentId);
+      for (const assignment of user.departments ?? []) {
+        if (assignment.departmentId) deptIds.add(assignment.departmentId);
+      }
+      for (const deptId of deptIds) {
+        const list = map.get(deptId) ?? [];
+        list.push(user);
+        map.set(deptId, list);
+      }
+    }
+    return map;
+  }, [users]);
 
   return (
-    <div className="bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-2xl shadow-sm flex flex-col max-h-[calc(100vh-220px)] overflow-hidden">
-      {/* Header */}
-      <div className="px-4 pt-4 pb-3 border-b border-slate-100">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
-            <Icon name="groups" size={15} className="text-indigo-600" />
-          </div>
-          <h3 className="text-sm font-bold text-slate-800">Departments</h3>
-          <span className="ml-auto text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-            {filteredList.length}/{departments.length}
-          </span>
-        </div>
+    <GlassCard className="overflow-hidden">
+      <div className="divide-y divide-slate-100">
+        {departments.map((dept, index) => {
+          const isSelected = selectedDeptId === dept.id;
+          const color = getDepartmentColor(index);
+          const members = membersByDept.get(dept.id) ?? [];
+          const orgName = dept.organizationId ? orgNameById.get(dept.organizationId) : undefined;
 
-        {/* Search */}
-        <div className="relative mb-2">
-          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-            <Icon name="search" size={14} />
-          </span>
-          <input
-            type="text"
-            placeholder="Search departments..."
-            value={searchTerm}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full h-9 pl-8 pr-3 text-sm rounded-lg bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
-          />
-        </div>
-
-        {/* Organization Dropdown — Super Admin only */}
-        {isSuperAdmin && organizations && onSelectOrg && (
-          <FilterDropdown
-            value={selectedOrgId ?? ""}
-            onChange={onSelectOrg}
-            label="Org"
-            icon="corporate_fare"
-            options={orgOptions}
-            width="w-full"
-          />
-        )}
-      </div>
-
-      {/* Department List */}
-      <div className="flex-1 overflow-y-auto p-2">
-        {filteredList.length > 0 ? (
-          <div className="flex flex-col gap-1.5">
-            {filteredList.map((dept) => (
-              <DepartmentListItem
-                key={dept.id}
-                department={dept}
-                isSelected={selectedDeptId === dept.id}
+          return (
+            <div key={dept.id} className="card-stagger" style={{ animationDelay: `${Math.min(index * 30, 300)}ms` }}>
+              <div
+                role="button"
+                tabIndex={0}
                 onClick={() => onSelectDept(dept.id)}
-              />
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            icon="search_off"
-            title={searchTerm ? "No matches" : "No departments"}
-            description={searchTerm ? "Try a different search term." : "Create one to get started."}
-            compact
-            accent="neutral"
-          />
-        )}
-      </div>
-    </div>
-  );
-}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onSelectDept(dept.id);
+                  }
+                }}
+                className={`group flex items-center gap-3 py-3 px-4 transition-colors cursor-pointer ${
+                  isSelected ? "bg-indigo-50/60" : "hover:bg-slate-50/70"
+                }`}
+              >
+                <div className={`w-9 h-9 rounded-xl ${color.bg} flex items-center justify-center shrink-0`}>
+                  <Icon name="groups" size={17} className={color.text} />
+                </div>
 
-// Department List Item Component
-function DepartmentListItem({
-  department,
-  isSelected,
-  onClick,
-}: {
-  department: Department;
-  isSelected: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`group relative text-left p-3 rounded-xl transition-all duration-200 border ${
-        isSelected
-          ? "bg-indigo-50/80 border-indigo-200 shadow-sm"
-          : "bg-white border-slate-100 hover:border-indigo-200 hover:bg-slate-50/60"
-      }`}
-    >
-      <div className="relative flex items-center justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-2 mb-0.5">
-            <span
-              className={`font-semibold text-sm truncate transition-colors duration-200 ${
-                isSelected ? "text-indigo-700" : "text-slate-700 group-hover:text-slate-900"
-              }`}
-            >
-              {department.name}
-            </span>
-            <span
-              className={`text-[10px] font-bold uppercase tracking-wider shrink-0 px-1.5 py-0.5 rounded-md border ${
-                isSelected
-                  ? "bg-indigo-100 text-indigo-700 border-indigo-200"
-                  : "bg-slate-100 text-slate-500 border-slate-200"
-              }`}
-            >
-              {department.code}
-            </span>
-          </div>
-          {department.description && (
-            <p
-              className={`text-[11px] truncate leading-relaxed ${
-                isSelected ? "text-indigo-500" : "text-slate-400"
-              }`}
-            >
-              {department.description}
-            </p>
-          )}
-        </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className={`font-semibold text-sm truncate ${
+                        isSelected ? "text-indigo-700" : "text-slate-800 group-hover:text-slate-900"
+                      }`}
+                    >
+                      {dept.name}
+                    </span>
+                    <span
+                      className={`shrink-0 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border ${color.bg} ${color.text} ${color.border}`}
+                    >
+                      {dept.code}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
+                    {orgName && (
+                      <span className="inline-flex items-center gap-1 min-w-0">
+                        <Icon name="account_balance" size={11} />
+                        <span className="truncate">{orgName}</span>
+                      </span>
+                    )}
+                    <span className="inline-flex items-center gap-1">
+                      <Icon name="people" size={11} />
+                      {members.length} member{members.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                </div>
 
-        <div
-          className={`shrink-0 transition-all duration-300 ${
-            isSelected
-              ? "opacity-100 translate-x-0"
-              : "opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0"
-          }`}
-        >
-          <Icon
-            name="chevron_right"
-            size={16}
-            className={isSelected ? "text-indigo-500" : "text-slate-400"}
-          />
-        </div>
+                {members.length > 0 && (
+                  <div className="hidden sm:block shrink-0">
+                    <AvatarStack people={members} limit={3} size="sm" />
+                  </div>
+                )}
+
+                {/* Actions — delete always visible (permission-gated), view/edit on hover */}
+                <HoverActions
+                  entity="departments"
+                  className="shrink-0"
+                  always={
+                    canDelete && onDelete
+                      ? [{ icon: "delete", label: "Delete department", tone: "danger", onClick: () => onDelete(dept) }]
+                      : []
+                  }
+                  onHover={[
+                    { icon: "view", label: "View department", onClick: () => onSelectDept(dept.id) },
+                    ...(canEdit && onEdit
+                      ? [{ icon: "edit", label: "Edit department", onClick: () => onEdit(dept) }]
+                      : []),
+                  ]}
+                />
+
+                <Icon
+                  name="chevron_right"
+                  size={16}
+                  className={`shrink-0 transition-all ${
+                    isSelected ? "text-indigo-500" : "text-slate-300 group-hover:text-slate-400"
+                  }`}
+                />
+              </div>
+            </div>
+          );
+        })}
       </div>
-    </button>
+    </GlassCard>
   );
 }

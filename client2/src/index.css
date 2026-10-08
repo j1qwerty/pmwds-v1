@@ -225,18 +225,82 @@ html, body {
   100% { transform: translateX(0); opacity: 1; }
 }
 
-/* Modal animation utilities */
+/* ============================================================
+   SHEET (right side panel) — fast, 0.18s in / 0.12s out
+   ============================================================ */
+@keyframes sheetScrimIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes sheetScrimOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes sheetPanelIn {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes sheetPanelOut {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(24px); opacity: 0; }
+}
+.sheet-scrim-enter { animation: sheetScrimIn 0.15s ease-out forwards; }
+.sheet-scrim-exit { animation: sheetScrimOut 0.12s ease-in forwards; }
+.sheet-panel-enter { animation: sheetPanelIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.sheet-panel-exit { animation: sheetPanelOut 0.12s ease-in forwards; }
+
+/* ============================================================
+   COMMAND PALETTE (Cmd+K)
+   ============================================================ */
+@keyframes cmdkBackdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes cmdkPanelIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes cmdkBackdropOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes cmdkPanelOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-6px) scale(0.98); }
+}
+.cmdk-backdrop-enter { animation: cmdkBackdropIn 0.15s ease-out forwards; }
+.cmdk-panel-enter { animation: cmdkPanelIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.cmdk-backdrop-exit { animation: cmdkBackdropOut 0.12s ease-in forwards; }
+.cmdk-panel-exit { animation: cmdkPanelOut 0.12s ease-in forwards; }
+
+/* Slightly taller default text input height token used by cmdk input */
+.h-13 { height: 3.25rem; }
+.h-5\.5 { height: 1.375rem; }
+.h-4\.5 { height: 1.125rem; }
+
+/* Modal animation utilities — 0.15s enter / 0.12s exit */
 .modal-backdrop-enter {
   animation: fadeIn 0.15s ease-out forwards;
 }
 .modal-backdrop-exit {
-  animation: backdropFadeOut 0.1s ease-in forwards;
+  animation: backdropFadeOut 0.12s ease-in forwards;
 }
 .modal-content-enter {
-  animation: slideUpSnappy 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: slideUpSnappy 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 .modal-content-exit {
-  animation: modalSlideOut 0.1s ease-in forwards;
+  animation: modalSlideOut 0.12s ease-in forwards;
+}
+
+/* ============================================================
+   DROPDOWN MENU (FilterDropdown / SortDropdown portal menus)
+   ============================================================ */
+@keyframes dropdownMenuIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.dropdown-menu-enter {
+  animation: dropdownMenuIn 0.12s ease-out forwards;
 }
 
 /* Card stagger entrance */
@@ -269,6 +333,14 @@ html, body {
 /* ============================================================
    SCROLLBARS
    ============================================================ */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;

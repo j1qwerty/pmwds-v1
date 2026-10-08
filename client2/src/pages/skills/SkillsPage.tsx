@@ -6,16 +6,34 @@ import { Icon } from "../../components/ui/Icon";
 import {
   AnimatedBackground,
   GlassCard,
-  LoadingPage,
+  PageSkeleton,
   useNavHeader,
-  ModalOverlay,
   DeleteConfirmationModal,
   PERMISSION_GROUPS,
   usePermission,
   Avatar,
   useToast,
+  PageContainer,
+  SectionCard,
+  StatCard,
+  FilterBar,
+  FilterDropdown,
+  ViewToggle,
+  EmptyState,
+  TabButton,
+  Sheet,
+  type ViewMode,
 } from "../shared";
 import { SkillFormModal } from "./SkillFormModal";
+
+const PROF_INPUT =
+  "w-11 h-8 px-1 rounded-md bg-slate-50 border border-slate-200 text-center text-[11px] font-semibold text-slate-700 outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all";
+
+const EXP_INPUT =
+  "w-14 h-8 px-1 rounded-md bg-slate-50 border border-slate-200 text-center text-[11px] font-semibold text-slate-700 outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all";
+
+const STEP_BUTTON =
+  "size-6 rounded-md bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 hover:border-slate-300 transition-colors";
 
 export function SkillsPage() {
   const { auth } = useAuth();
@@ -37,6 +55,7 @@ export function SkillsPage() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
   const [rightTab, setRightTab] = useState<"skill" | "user">("user");
+  const [view, setView] = useState<ViewMode>("card");
 
   const [skillModal, setSkillModal] = useState<{ open: boolean; editSkill?: SkillRecord }>({ open: false });
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; skill: SkillRecord | null }>({ open: false, skill: null });
@@ -59,9 +78,9 @@ export function SkillsPage() {
   useEffect(() => {
     setNavHeader({
       title: "Skills",
-      description: "Manage skill taxonomy and user assignments",
+      description: "Manage the skill catalogue and user assignments",
       action: canWrite ? {
-        label: "Create Skill",
+        label: "New skill",
         onClick: () => setSkillModal({ open: true }),
         icon: "add",
       } : undefined,
@@ -260,678 +279,820 @@ export function SkillsPage() {
     }
   };
 
-  if (loading) return <LoadingPage label="Loading skills..." />;
+  // ── Derived stats (presentation) ──
+  const totalAssignments = useMemo(
+    () => Object.values(skillUserCounts).reduce((sum, n) => sum + n, 0),
+    [skillUserCounts]
+  );
+  const usersWithSkills = useMemo(
+    () => users.filter((u) => (u.skillDetails?.length ?? 0) > 0).length,
+    [users]
+  );
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const skill of skills) {
+      if (skill.category) counts[skill.category] = (counts[skill.category] || 0) + 1;
+    }
+    return counts;
+  }, [skills]);
+  const chipCategories = categories.slice(0, 7);
+  const hasMoreCategories = categories.length > chipCategories.length;
+
+  const openSkill = (skill: SkillRecord) => {
+    setSelectedSkillId(skill.id);
+    setRightTab("skill");
+  };
+
+  const clearSkillFilters = () => {
+    setSearchTerm("");
+    setSelectedCategory("");
+  };
+
+  if (loading) return <PageSkeleton />;
+
+  const statsRow = (
+    <>
+      <StatCard label="Total skills" value={skills.length} color="indigo" icon="school" />
+      <StatCard label="Categories" value={categories.length} color="violet" icon="layers" />
+      <StatCard label="Assignments" value={totalAssignments} color="emerald" icon="group" />
+      <StatCard label="People with skills" value={usersWithSkills} color="amber" icon="person" />
+    </>
+  );
 
   return (
     <div>
       <AnimatedBackground />
 
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-5 gap-5">
-        {/* Left Panel: Skills Table */}
-        <div className="lg:col-span-2">
-          <GlassCard className="overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center gap-3">
-              <div className="relative flex-1 min-w-[160px]">
-                <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Search skills..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full h-9 pl-9 pr-8 rounded-lg border border-slate-200 text-[13px] outline-none bg-white placeholder:text-slate-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-                />
-                {searchTerm && (
-                  <button
-                    onClick={() => setSearchTerm("")}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  >
-                        <Icon name="close" size={16} />
-                  </button>
-                )}
-              </div>
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 bg-white outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-              >
-                <option value="">All</option>
-                {categories.map((cat) => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="overflow-y-auto max-h-[650px]">
-              {filteredSkills.length === 0 ? (
-                <div className="py-12 text-center">
-                  <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
-                    <Icon name={searchTerm ? "search_off" : "school"} size={22} className="text-slate-400" />
-                  </div>
-                  <p className="text-xs text-slate-500">
-                    {searchTerm ? "No matching skills" : "No skills yet"}
-                  </p>
-                  {!searchTerm && canWrite && (
+      <PageContainer
+        stats={statsRow}
+        filters={
+          rightTab === "skill" ? (
+            <FilterBar
+              searchValue={searchTerm}
+              onSearchChange={setSearchTerm}
+              searchPlaceholder="Search skills..."
+              chipGroups={[
+                {
+                  key: "category",
+                  options: [
+                    { value: "", label: "All", count: skills.length },
+                    ...chipCategories.map((cat) => ({ value: cat, label: cat, count: categoryCounts[cat] ?? 0 })),
+                  ],
+                  value: selectedCategory,
+                  onChange: setSelectedCategory,
+                },
+              ]}
+              leftExtras={<span className="text-[11px] font-semibold text-slate-400 whitespace-nowrap">{filteredSkills.length} skill{filteredSkills.length !== 1 ? "s" : ""}</span>}
+              actions={
+                <>
+                  {hasMoreCategories && (
+                    <FilterDropdown
+                      value={selectedCategory}
+                      onChange={setSelectedCategory}
+                      options={categories.map((cat) => ({ value: cat, label: cat }))}
+                      label="Category"
+                      icon="layers"
+                    />
+                  )}
+                  <ViewToggle value={view} onChange={setView} available={["card", "list"]} />
+                  {canWrite && (
                     <button
+                      type="button"
                       onClick={() => setSkillModal({ open: true })}
-                      className="mt-3 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700 transition-colors inline-flex items-center gap-1.5"
+                      className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-sm shadow-indigo-500/20 transition-all"
                     >
-                      <Icon name="add" size={15} />
-                      Create Skill
+                      <Icon name="add" size={14} />
+                      New skill
                     </button>
                   )}
-                </div>
-              ) : (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-100">
-                      <th className="text-left px-4 py-2.5 font-semibold text-slate-500 text-[10px] uppercase tracking-wider">Skill</th>
-                      <th className="text-left px-4 py-2.5 font-semibold text-slate-500 text-[10px] uppercase tracking-wider">Category</th>
-                      <th className="text-center px-4 py-2.5 font-semibold text-slate-500 text-[10px] uppercase tracking-wider">Users</th>
-                      {canManage && <th className="text-right px-4 py-2.5 font-semibold text-slate-500 text-[10px] uppercase tracking-wider">Actions</th>}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {filteredSkills.map((skill) => {
-                      const realUserCount = skillUserCounts[skill.id] || 0;
-                      return (
-                        <tr
-                          key={skill.id}
-                          onClick={() => { setSelectedSkillId(skill.id); setRightTab("skill"); }}
-                          className={`cursor-pointer transition-colors ${
-                            selectedSkillId === skill.id && rightTab === "skill"
-                              ? "bg-indigo-50/60 border-l-2 border-l-indigo-500"
-                              : "hover:bg-slate-50 border-l-2 border-l-transparent"
-                          }`}
-                        >
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-                                <Icon name="school" size={15} className="text-indigo-600" />
-                              </div>
-                              <div>
-                                <p className="text-xs font-semibold text-slate-700">{skill.name}</p>
-                                {skill.description && (
-                                  <p className="text-[10px] text-slate-400 truncate max-w-[180px]">{skill.description}</p>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            {skill.category ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-violet-50 text-violet-600">
+                </>
+              }
+            />
+          ) : (
+            <FilterBar
+              searchValue={userSearch}
+              onSearchChange={setUserSearch}
+              searchPlaceholder="Search users..."
+              leftExtras={<span className="text-[11px] font-semibold text-slate-400 whitespace-nowrap">{filteredUsers.length} user{filteredUsers.length !== 1 ? "s" : ""}</span>}
+              actions={
+                <>
+                  <FilterDropdown
+                    value={userOrgFilter}
+                    onChange={(value) => { setUserOrgFilter(value); setUserDeptFilter(""); }}
+                    options={organizations.map((org) => ({ value: org.id, label: org.name }))}
+                    label="Organization"
+                    icon="account_balance"
+                  />
+                  <FilterDropdown
+                    value={userDeptFilter}
+                    onChange={setUserDeptFilter}
+                    options={filteredDepts.map((dept) => ({ value: dept.id, label: dept.name }))}
+                    label="Department"
+                    icon="groups"
+                  />
+                </>
+              }
+            />
+          )
+        }
+      >
+        {/* Mode tabs */}
+        <div className="flex items-end gap-1 mb-0 -mb-px relative z-10">
+          <TabButton
+            active={rightTab === "skill"}
+            onClick={() => setRightTab("skill")}
+            icon="school"
+            label="By skill"
+            count={skills.length}
+          />
+          <TabButton
+            active={rightTab === "user"}
+            onClick={() => setRightTab("user")}
+            icon="people"
+            label="By user"
+            count={users.length}
+          />
+        </div>
+
+        {/* ============ BY SKILL ============ */}
+        {rightTab === "skill" && (
+          <div key={view} className="view-fade">
+            {skills.length === 0 ? (
+              <GlassCard>
+                <EmptyState
+                  icon="school"
+                  title="No skills yet"
+                  description="Create the first skill to start building your team's expertise catalogue."
+                  action={canWrite ? (
+                    <button
+                      type="button"
+                      onClick={() => setSkillModal({ open: true })}
+                      className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-sm shadow-indigo-500/20 transition-all"
+                    >
+                      <Icon name="add" size={14} />
+                      New skill
+                    </button>
+                  ) : undefined}
+                />
+              </GlassCard>
+            ) : filteredSkills.length === 0 ? (
+              <GlassCard>
+                <EmptyState
+                  icon="search_off"
+                  title="No skills match the current filters"
+                  description="Try a different search term or category."
+                  action={
+                    <button
+                      type="button"
+                      onClick={clearSkillFilters}
+                      className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all"
+                    >
+                      <Icon name="filter_alt_off" size={14} />
+                      Clear filters
+                    </button>
+                  }
+                />
+              </GlassCard>
+            ) : view === "card" ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {filteredSkills.map((skill, i) => {
+                  const realUserCount = skillUserCounts[skill.id] || 0;
+                  const isSelected = selectedSkillId === skill.id && rightTab === "skill";
+                  return (
+                    <GlassCard
+                      key={skill.id}
+                      className={`p-4 cursor-pointer card-stagger transition-all ${isSelected ? "ring-2 ring-indigo-200 border-indigo-200" : "hover:border-indigo-200"}`}
+                      style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
+                      onClick={() => openSkill(skill)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openSkill(skill); } }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+                          <Icon name="school" size={18} className="text-indigo-600" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-bold text-slate-800 truncate">{skill.name}</p>
+                            {skill.category && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-50 text-violet-600 border border-violet-100">
                                 {skill.category}
                               </span>
-                            ) : (
-                              <span className="text-[10px] text-slate-300">—</span>
                             )}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <span className="text-xs font-medium text-slate-500">{realUserCount}</span>
-                          </td>
-                          {canManage && (
-                            <td className="px-4 py-3 text-right">
-                              <div className="flex justify-end gap-1">
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setSkillModal({ open: true, editSkill: skill }); }}
-                                  className="size-7 rounded-md border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-50 transition-colors"
-                                  title="Edit skill"
-                                >
-                                  <Icon name="edit" size={14} className="text-slate-500" />
-                                </button>
-                                {canDeleteSkill(skill) && (
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ open: true, skill }); }}
-                                    className="size-7 rounded-md border border-red-200 bg-red-50 flex items-center justify-center hover:bg-red-100 transition-colors"
-                                    title="Delete skill"
-                                  >
-                                    <Icon name="delete" size={14} className="text-red-500" />
-                                  </button>
-                                )}
-                              </div>
-                            </td>
+                          </div>
+                          {skill.description ? (
+                            <p className="text-xs text-slate-500 mt-1 line-clamp-2">{skill.description}</p>
+                          ) : (
+                            <p className="text-xs text-slate-300 italic mt-1">No description</p>
                           )}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </GlassCard>
-        </div>
-
-        {/* Right Panel */}
-        <div className="lg:col-span-3">
-          {/* Tab Bar */}
-          <div className="flex gap-1 mb-3">
-            <button
-              onClick={() => setRightTab("skill")}
-              className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
-                rightTab === "skill"
-                  ? "bg-white text-indigo-600 shadow-sm border border-slate-200"
-                  : "text-slate-400 hover:text-slate-600"
-              }`}
-            >
-              <Icon name="school" size={15} className="align-text-bottom mr-1" />
-              By Skill
-            </button>
-            <button
-              onClick={() => setRightTab("user")}
-              className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
-                rightTab === "user"
-                  ? "bg-white text-indigo-600 shadow-sm border border-slate-200"
-                  : "text-slate-400 hover:text-slate-600"
-              }`}
-            >
-              <Icon name="people" size={15} className="align-text-bottom mr-1" />
-              By User
-            </button>
-          </div>
-
-          {rightTab === "skill" ? (
-            /* ================ BY SKILL TAB ================ */
-            <GlassCard className="h-full">
-              {!selectedSkill ? (
-                <div className="flex flex-col items-center justify-center py-16 text-slate-300">
-                  <Icon name="touch_app" size={32} className="mb-3" />
-                  <p className="text-sm font-medium text-slate-400">Select a skill from the list</p>
-                  <p className="text-xs text-slate-300 mt-1">Manage user assignments and proficiency levels</p>
-                </div>
-              ) : (
-                <div className="p-5 md:p-6 space-y-6">
-                  <div className="flex items-start gap-4 pb-5 border-b border-slate-100">
-                    <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
-                      <Icon name="school" size={22} className="text-indigo-600" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-base font-bold text-slate-800">{selectedSkill.name}</h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        {selectedSkill.category && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-violet-50 text-violet-600">
-                            {selectedSkill.category}
-                          </span>
-                        )}
-                        <span className="text-[10px] text-slate-400">
-                          {assignedUsers.length} user{assignedUsers.length !== 1 ? "s" : ""} assigned
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-500">
+                          <Icon name="group" size={13} className="text-slate-400" />
+                          {realUserCount} user{realUserCount !== 1 ? "s" : ""}
                         </span>
-                      </div>
-                      {selectedSkill.description && (
-                        <p className="text-xs text-slate-500 mt-2">{selectedSkill.description}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Assigned Users */}
-                  <div>
-                    <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-3">
-                      Assigned Users
-                    </h4>
-
-                    {assignedUsers.length === 0 ? (
-                      <div className="py-8 text-center border border-dashed border-slate-200 rounded-xl">
-                        <Icon name="person_off" size={24} className="text-slate-300 mb-2" />
-                        <p className="text-xs text-slate-400">No users assigned to this skill yet</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {assignedUsers.map((user) => {
-                          const assignment = getUserAssignment(user, selectedSkillId!);
-                          if (!assignment) return null;
-                          return (
-                            <div
-                              key={user.id}
-                              className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-white hover:border-slate-200 transition-colors"
+                        {canManage && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setSkillModal({ open: true, editSkill: skill }); }}
+                              className="size-7 rounded-md border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-50 transition-colors"
+                              title="Edit skill"
+                              aria-label={`Edit skill: ${skill.name}`}
                             >
-                              <Avatar person={user} size="sm" className="shrink-0" />
-                              <div className="min-w-0 flex-1">
-                                <p className="text-xs font-semibold text-slate-700 truncate">{user.fullName}</p>
-                                <p className="text-[10px] text-slate-400 truncate">{user.email} {user.isActive === false && <span className="text-slate-400">(Inactive)</span>}</p>
-                              </div>
-
-                              {canManage ? (
-                                <>
-                                  <div className="flex items-center gap-2 min-w-[140px]">
-                                    <label className="text-[9px] font-bold text-slate-400 uppercase shrink-0">Prof</label>
-                                    <input
-                                      type="number"
-                                      min={1}
-                                      max={5}
-                                      value={assignment.proficiencyLevel}
-                                      onChange={(e) => {
-                                        const val = Math.min(5, Math.max(1, Number(e.target.value)));
-                                        handleUpdateAssignment(user.id, selectedSkillId!, val, assignment.experienceMonths);
-                                      }}
-                                      className="w-10 px-1.5 py-1 rounded-md border border-slate-200 text-center text-[11px] font-medium text-slate-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-                                      title="Value 1-5"
-                                    />
-                                    <span className="text-[9px] text-slate-400">/5</span>
-                                  </div>
-
-                                  <div className="flex items-center gap-1">
-                                    <label className="text-[9px] font-bold text-slate-400 uppercase shrink-0 mr-1">Exp</label>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        handleUpdateAssignment(user.id, selectedSkillId!, assignment.proficiencyLevel, Math.max(0, assignment.experienceMonths - 1));
-                                      }}
-                                      className="size-6 rounded-md border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors"
-                                    >
-                                      <Icon name="remove" size={11} />
-                                    </button>
-                                    <input
-                                      type="number"
-                                      min={0}
-                                      max={600}
-                                      value={assignment.experienceMonths}
-                                      onChange={(e) => {
-                                        handleUpdateAssignment(user.id, selectedSkillId!, assignment.proficiencyLevel, e.target.value === "" ? 0 : Number(e.target.value));
-                                      }}
-                                      className="w-14 px-1.5 py-1 rounded-md border border-slate-200 text-center text-[11px] font-medium text-slate-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        handleUpdateAssignment(user.id, selectedSkillId!, assignment.proficiencyLevel, Math.min(600, assignment.experienceMonths + 1));
-                                      }}
-                                      className="size-6 rounded-md border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors"
-                                    >
-                                      <Icon name="add" size={11} />
-                                    </button>
-                                  </div>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemoveAssignment(user.id, selectedSkillId!)}
-                                    className="size-7 rounded-md border border-red-200 bg-red-50 flex items-center justify-center hover:bg-red-100 transition-colors shrink-0"
-                                    title="Remove skill from user"
-                                  >
-                                    <Icon name="close" size={14} className="text-red-500" />
-                                  </button>
-                                </>
-                              ) : (
-                                <div className="flex items-center gap-4 text-xs text-slate-500">
-                                  <span>Prof: {assignment.proficiencyLevel}/5</span>
-                                  <span>Exp: {assignment.experienceMonths}mo</span>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Add User */}
-                  {canManage && unassignedUsers.length > 0 && (
-                    <div className="pt-4 border-t border-slate-100">
-                      <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-3">
-                        Assign to User
-                      </h4>
-                      <div className="flex flex-wrap items-end gap-3">
-                        <div className="relative flex-1 min-w-[180px]">
-                          <select
-                            value={newUserId}
-                            onChange={(e) => setNewUserId(e.target.value)}
-                            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all appearance-none"
-                          >
-                            <option value="">Select a user...</option>
-                            {unassignedUsers.map((u) => (
-                              <option key={u.id} value={u.id}>{u.fullName}</option>
-                            ))}
-                          </select>
-                          <Icon name="expand_more" size={15} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <label className="text-[9px] font-bold text-slate-400 uppercase">Prof</label>
-                          <input
-                            type="number"
-                            min={1}
-                            max={5}
-                            value={newProficiency}
-                            onChange={(e) => setNewProficiency(Math.min(5, Math.max(1, Number(e.target.value))))}
-                            className="w-10 px-1.5 py-1 rounded-md border border-slate-200 text-center text-[11px] font-medium text-slate-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-                            title="Value 1-5"
-                          />
-                          <span className="text-[9px] text-slate-400">/5</span>
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                          <label className="text-[9px] font-bold text-slate-400 uppercase">Exp</label>
-                          <button
-                            type="button"
-                            onClick={() => setNewExperience(Math.max(0, newExperience - 1))}
-                            className="size-6 rounded-md border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors"
-                          >
-                            <Icon name="remove" size={11} />
-                          </button>
-                          <input
-                            type="number"
-                            min={0}
-                            max={600}
-                            value={newExperience}
-                            onChange={(e) => setNewExperience(e.target.value === "" ? 0 : Number(e.target.value))}
-                            className="w-14 px-1.5 py-1 rounded-md border border-slate-200 text-center text-[11px] font-medium text-slate-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setNewExperience(Math.min(600, newExperience + 1))}
-                            className="size-6 rounded-md border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors"
-                          >
-                            <Icon name="add" size={11} />
-                          </button>
-                        </div>
-
-                        <button
-                          type="button"
-                          disabled={!newUserId}
-                          onClick={handleAssignSkill}
-                          className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
-                        >
-                          <Icon name="add" size={15} />
-                          Assign
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </GlassCard>
-          ) : (
-            /* ================ BY USER TAB ================ */
-            <GlassCard className="h-full">
-              <div className="p-5 md:p-6 space-y-5">
-                {/* User Filters */}
-                <div className="flex flex-wrap items-center gap-3 pb-4 border-b border-slate-100">
-                  <div className="relative flex-1 min-w-[180px]">
-                    <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                    <input
-                      type="text"
-                      placeholder="Search users..."
-                      value={userSearch}
-                      onChange={(e) => setUserSearch(e.target.value)}
-                      className="w-full h-9 pl-9 pr-8 rounded-lg border border-slate-200 text-[13px] outline-none bg-white placeholder:text-slate-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-                    />
-                    {userSearch && (
-                      <button onClick={() => setUserSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                    <Icon name="close" size={16} />
-                      </button>
-                    )}
-                  </div>
-
-                  <select
-                    value={userOrgFilter}
-                    onChange={(e) => { setUserOrgFilter(e.target.value); setUserDeptFilter(""); }}
-                    className="px-3 py-2 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 bg-white outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-                  >
-                    <option value="">All Organizations</option>
-                    {organizations.map((org) => (
-                      <option key={org.id} value={org.id}>{org.name}</option>
-                    ))}
-                  </select>
-
-                  <select
-                    value={userDeptFilter}
-                    onChange={(e) => setUserDeptFilter(e.target.value)}
-                    className="px-3 py-2 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 bg-white outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-                  >
-                    <option value="">All Departments</option>
-                    {filteredDepts.map((dept) => (
-                      <option key={dept.id} value={dept.id}>{dept.name}</option>
-                    ))}
-                  </select>
-
-                  <span className="text-[10px] text-slate-400 ml-auto">
-                    {filteredUsers.length} user{filteredUsers.length !== 1 ? "s" : ""}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                  {/* User List */}
-                  <div className="lg:col-span-1 max-h-[500px] overflow-y-auto space-y-1">
-                    {filteredUsers.length === 0 ? (
-                      <div className="py-8 text-center text-slate-400">
-                        <Icon name="search_off" size={24} className="mb-2" />
-                        <p className="text-xs">No users found</p>
-                      </div>
-                    ) : (
-                      filteredUsers.map((user) => (
-                        <button
-                          key={user.id}
-                          type="button"
-                          onClick={() => setSelectedUserId(user.id)}
-                          className={`w-full text-left p-3 rounded-xl border transition-all ${
-                            selectedUserId === user.id
-                              ? "border-indigo-200 bg-indigo-50/60"
-                              : "border-slate-100 bg-white hover:border-slate-200"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <Avatar person={user} size="sm" />
-                            <div className="min-w-0 flex-1">
-                              <p className="text-xs font-semibold text-slate-700 truncate">{user.fullName}</p>
-                              <p className="text-[10px] text-slate-400 truncate">{user.email}</p>
-                            </div>
-                          </div>
-                        </button>
-                      ))
-                    )}
-                  </div>
-
-                  {/* Selected User Skills */}
-                  <div className="lg:col-span-2">
-                    {!selectedUser ? (
-                      <div className="flex flex-col items-center justify-center py-16 text-slate-300">
-                        <Icon name="touch_app" size={28} className="mb-2" />
-                        <p className="text-xs text-slate-400">Select a user to manage their skills</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
-                          <Avatar person={selectedUser} size="md" />
-                          <div>
-                            <p className="text-sm font-semibold text-slate-700">{selectedUser.fullName}</p>
-                            <p className="text-[10px] text-slate-400">
-                              {selectedUser.skillDetails?.length || 0} skill{(selectedUser.skillDetails?.length || 0) !== 1 ? "s" : ""}
-                            </p>
-                          </div>
-                        </div>
-
-                        {(!selectedUser.skillDetails || selectedUser.skillDetails.length === 0) ? (
-                          <div className="py-6 text-center border border-dashed border-slate-200 rounded-xl">
-                            <Icon name="school" size={22} className="text-slate-300 mb-1" />
-                            <p className="text-xs text-slate-400">No skills assigned</p>
-                          </div>
-                        ) : (
-                          <div className="space-y-2 max-h-[320px] overflow-y-auto">
-                            {selectedUser.skillDetails.map((skill) => (
-                              <div
-                                key={skill.skillId}
-                                className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-white"
-                              >
-                                <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-                                  <Icon name="school" size={14} className="text-indigo-600" />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-xs font-semibold text-slate-700">{skill.skillName}</p>
-                                </div>
-
-                                {canManage ? (
-                                  <>
-                                    <div className="flex items-center gap-2 min-w-[130px]">
-                                      <label className="text-[9px] font-bold text-slate-400 uppercase shrink-0">Prof</label>
-                                      <input
-                                        type="number"
-                                        min={1}
-                                        max={5}
-                                        value={skill.proficiencyLevel}
-                                        onChange={(e) => {
-                                          const val = Math.min(5, Math.max(1, Number(e.target.value)));
-                                          handleUpdateAssignment(selectedUser.id, skill.skillId, val, skill.experienceMonths);
-                                        }}
-                                        className="w-10 px-1.5 py-1 rounded-md border border-slate-200 text-center text-[11px] font-medium text-slate-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-                                        title="Value 1-5"
-                                      />
-                                      <span className="text-[9px] text-slate-400">/5</span>
-                                    </div>
-
-                                    <div className="flex items-center gap-1">
-                                      <label className="text-[9px] font-bold text-slate-400 uppercase shrink-0 mr-1">Exp</label>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          handleUpdateAssignment(selectedUser.id, skill.skillId, skill.proficiencyLevel, Math.max(0, skill.experienceMonths - 1));
-                                        }}
-                                        className="size-6 rounded-md border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors"
-                                      >
-                                        <Icon name="remove" size={11} />
-                                      </button>
-                                      <input
-                                        type="number"
-                                        min={0}
-                                        max={600}
-                                        value={skill.experienceMonths}
-                                        onChange={(e) => {
-                                          handleUpdateAssignment(selectedUser.id, skill.skillId, skill.proficiencyLevel, e.target.value === "" ? 0 : Number(e.target.value));
-                                        }}
-                                        className="w-12 px-1.5 py-1 rounded-md border border-slate-200 text-center text-[11px] font-medium text-slate-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-                                      />
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          handleUpdateAssignment(selectedUser.id, skill.skillId, skill.proficiencyLevel, Math.min(600, skill.experienceMonths + 1));
-                                        }}
-                                        className="size-6 rounded-md border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors"
-                                      >
-                                        <Icon name="add" size={11} />
-                                      </button>
-                                    </div>
-
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRemoveAssignment(selectedUser.id, skill.skillId)}
-                                      className="size-7 rounded-md border border-red-200 bg-red-50 flex items-center justify-center hover:bg-red-100 transition-colors shrink-0"
-                                      title="Remove skill from user"
-                                    >
-                                      <Icon name="close" size={14} className="text-red-500" />
-                                    </button>
-                                  </>
-                                ) : (
-                                  <div className="flex items-center gap-3 text-xs text-slate-500">
-                                    <span>Prof: {skill.proficiencyLevel}/5</span>
-                                    <span>Exp: {skill.experienceMonths}mo</span>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Add Skill to User */}
-                        {canManage && skillsNotAssignedToUser.length > 0 && (
-                          <div className="pt-3 border-t border-slate-100">
-                            <h5 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-3">
-                              Assign New Skill
-                            </h5>
-                            <div className="flex flex-wrap items-end gap-3">
-                              <div className="relative flex-1 min-w-[150px]">
-                                <select
-                                  value={newUserSkillId}
-                                  onChange={(e) => setNewUserSkillId(e.target.value)}
-                                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all appearance-none"
-                                >
-                                  <option value="">Select skill...</option>
-                                  {skillsNotAssignedToUser.map((s) => (
-                                    <option key={s.id} value={s.id}>{s.name}</option>
-                                  ))}
-                                </select>
-                                <Icon name="expand_more" size={15} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                              </div>
-
-                              <div className="flex items-center gap-2">
-                                <label className="text-[9px] font-bold text-slate-400 uppercase">Prof</label>
-                                <input
-                                  type="number"
-                                  min={1}
-                                  max={5}
-                                  value={newUserSkillProf}
-                                  onChange={(e) => setNewUserSkillProf(Math.min(5, Math.max(1, Number(e.target.value))))}
-                                  className="w-10 px-1.5 py-1 rounded-md border border-slate-200 text-center text-[11px] font-medium text-slate-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-                                  title="Value 1-5"
-                                />
-                                <span className="text-[9px] text-slate-400">/5</span>
-                              </div>
-
-                              <div className="flex items-center gap-1">
-                                <label className="text-[9px] font-bold text-slate-400 uppercase">Exp</label>
-                                <button
-                                  type="button"
-                                  onClick={() => setNewUserSkillExp(Math.max(0, newUserSkillExp - 1))}
-                                  className="size-6 rounded-md border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors"
-                                >
-                                  <Icon name="remove" size={11} />
-                                </button>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  max={600}
-                                  value={newUserSkillExp}
-                                  onChange={(e) => setNewUserSkillExp(e.target.value === "" ? 0 : Number(e.target.value))}
-                                  className="w-12 px-1.5 py-1 rounded-md border border-slate-200 text-center text-[11px] font-medium text-slate-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => setNewUserSkillExp(Math.min(600, newUserSkillExp + 1))}
-                                  className="size-6 rounded-md border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors"
-                                >
-                                  <Icon name="add" size={11} />
-                                </button>
-                              </div>
-
+                              <Icon name="edit" size={14} className="text-slate-500" />
+                            </button>
+                            {canDeleteSkill(skill) && (
                               <button
                                 type="button"
-                                disabled={!newUserSkillId}
-                                onClick={handleAssignSkillToUser}
-                                className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
+                                onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ open: true, skill }); }}
+                                className="size-7 rounded-md border border-red-200 bg-red-50 flex items-center justify-center hover:bg-red-100 transition-colors"
+                                title="Delete skill"
+                                aria-label={`Delete skill: ${skill.name}`}
                               >
-                                <Icon name="add" size={15} />
-                                Assign
+                                <Icon name="delete" size={14} className="text-red-500" />
                               </button>
-                            </div>
+                            )}
                           </div>
                         )}
                       </div>
+                    </GlassCard>
+                  );
+                })}
+              </div>
+            ) : (
+              <GlassCard className="overflow-hidden">
+                <div className="divide-y divide-slate-100">
+                  {filteredSkills.map((skill, i) => {
+                    const realUserCount = skillUserCounts[skill.id] || 0;
+                    const isSelected = selectedSkillId === skill.id && rightTab === "skill";
+                    return (
+                      <div
+                        key={skill.id}
+                        onClick={() => openSkill(skill)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openSkill(skill); } }}
+                        className={`flex items-center gap-3 py-3 px-4 cursor-pointer hover:bg-slate-50/70 transition-colors card-stagger ${isSelected ? "bg-indigo-50/50" : ""}`}
+                        style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+                          <Icon name="school" size={16} className="text-indigo-600" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold text-slate-800 truncate">{skill.name}</p>
+                            {skill.category && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-50 text-violet-600 border border-violet-100">
+                                {skill.category}
+                              </span>
+                            )}
+                          </div>
+                          {skill.description && (
+                            <p className="text-xs text-slate-400 truncate mt-0.5">{skill.description}</p>
+                          )}
+                        </div>
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 shrink-0">
+                          <Icon name="group" size={13} className="text-slate-400" />
+                          {realUserCount}
+                        </span>
+                        {canManage && (
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setSkillModal({ open: true, editSkill: skill }); }}
+                              className="size-7 rounded-md border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-50 transition-colors"
+                              title="Edit skill"
+                              aria-label={`Edit skill: ${skill.name}`}
+                            >
+                              <Icon name="edit" size={14} className="text-slate-500" />
+                            </button>
+                            {canDeleteSkill(skill) && (
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ open: true, skill }); }}
+                                className="size-7 rounded-md border border-red-200 bg-red-50 flex items-center justify-center hover:bg-red-100 transition-colors"
+                                title="Delete skill"
+                                aria-label={`Delete skill: ${skill.name}`}
+                              >
+                                <Icon name="delete" size={14} className="text-red-500" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        <Icon name="chevron_right" size={16} className="text-slate-300 shrink-0" />
+                      </div>
+                    );
+                  })}
+                </div>
+              </GlassCard>
+            )}
+          </div>
+        )}
+
+        {/* ============ BY USER ============ */}
+        {rightTab === "user" && (
+          <GlassCard className="p-5 md:p-6 view-fade">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+              {/* User list */}
+              <div className="lg:col-span-1 max-h-[520px] overflow-y-auto space-y-1 pr-1">
+                {filteredUsers.length === 0 ? (
+                  <EmptyState
+                    icon="search_off"
+                    title="No users found"
+                    description="Try adjusting the search or organization filters."
+                    compact
+                  />
+                ) : (
+                  filteredUsers.map((user, i) => (
+                    <button
+                      key={user.id}
+                      type="button"
+                      onClick={() => setSelectedUserId(user.id)}
+                      className={`w-full text-left p-3 rounded-xl border transition-all card-stagger ${
+                        selectedUserId === user.id
+                          ? "border-indigo-200 bg-indigo-50/60 ring-1 ring-indigo-100"
+                          : "border-slate-100 bg-white hover:border-slate-200"
+                      }`}
+                      style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Avatar person={user} size="sm" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-slate-700 truncate">{user.fullName}</p>
+                          <p className="text-[10px] text-slate-400 truncate">{user.email}</p>
+                        </div>
+                        {selectedUserId === user.id && (
+                          <Icon name="chevron_right" size={15} className="text-indigo-500 shrink-0" />
+                        )}
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+
+              {/* Selected user skills */}
+              <div className="lg:col-span-2">
+                {!selectedUser ? (
+                  <EmptyState
+                    icon="touch_app"
+                    title="Select a user"
+                    description="Pick a person from the list to view and manage their skills."
+                  />
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                      <Avatar person={selectedUser} size="md" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-slate-800">{selectedUser.fullName}</p>
+                        <p className="text-[11px] text-slate-400">
+                          {selectedUser.skillDetails?.length || 0} skill{(selectedUser.skillDetails?.length || 0) !== 1 ? "s" : ""} assigned
+                        </p>
+                      </div>
+                    </div>
+
+                    {(!selectedUser.skillDetails || selectedUser.skillDetails.length === 0) ? (
+                      <div className="py-8 text-center border border-dashed border-slate-200 rounded-xl">
+                        <Icon name="school" size={22} className="text-slate-300 mb-1 mx-auto" />
+                        <p className="text-xs text-slate-400">No skills assigned to this user yet</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1">
+                        {selectedUser.skillDetails.map((skill, i) => (
+                          <div
+                            key={skill.skillId}
+                            className="flex flex-wrap items-center gap-3 p-3 rounded-xl border border-slate-100 bg-white hover:border-slate-200 transition-colors card-stagger"
+                            style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
+                              <Icon name="school" size={14} className="text-indigo-600" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-semibold text-slate-700">{skill.skillName}</p>
+                            </div>
+
+                            {canManage ? (
+                              <>
+                                <div className="flex items-center gap-1.5">
+                                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider shrink-0">Prof</label>
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    max={5}
+                                    value={skill.proficiencyLevel}
+                                    onChange={(e) => {
+                                      const val = Math.min(5, Math.max(1, Number(e.target.value)));
+                                      handleUpdateAssignment(selectedUser.id, skill.skillId, val, skill.experienceMonths);
+                                    }}
+                                    className={PROF_INPUT}
+                                    title="Value 1-5"
+                                    aria-label={`${skill.skillName} proficiency for ${selectedUser.fullName}`}
+                                  />
+                                  <span className="text-[10px] text-slate-400">/5</span>
+                                </div>
+
+                                <div className="flex items-center gap-1">
+                                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider shrink-0 mr-1">Exp</label>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      handleUpdateAssignment(selectedUser.id, skill.skillId, skill.proficiencyLevel, Math.max(0, skill.experienceMonths - 1));
+                                    }}
+                                    className={STEP_BUTTON}
+                                    title="Decrease experience"
+                                    aria-label="Decrease experience"
+                                  >
+                                    <Icon name="remove" size={11} />
+                                  </button>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    max={600}
+                                    value={skill.experienceMonths}
+                                    onChange={(e) => {
+                                      handleUpdateAssignment(selectedUser.id, skill.skillId, skill.proficiencyLevel, e.target.value === "" ? 0 : Number(e.target.value));
+                                    }}
+                                    className={EXP_INPUT}
+                                    aria-label={`${skill.skillName} experience months for ${selectedUser.fullName}`}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      handleUpdateAssignment(selectedUser.id, skill.skillId, skill.proficiencyLevel, Math.min(600, skill.experienceMonths + 1));
+                                    }}
+                                    className={STEP_BUTTON}
+                                    title="Increase experience"
+                                    aria-label="Increase experience"
+                                  >
+                                    <Icon name="add" size={11} />
+                                  </button>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveAssignment(selectedUser.id, skill.skillId)}
+                                  className="size-7 rounded-md border border-red-200 bg-red-50 flex items-center justify-center hover:bg-red-100 transition-colors shrink-0"
+                                  title="Remove skill from user"
+                                  aria-label={`Remove ${skill.skillName} from ${selectedUser.fullName}`}
+                                >
+                                  <Icon name="close" size={14} className="text-red-500" />
+                                </button>
+                              </>
+                            ) : (
+                              <div className="flex items-center gap-3 text-xs text-slate-500">
+                                <span>Prof: {skill.proficiencyLevel}/5</span>
+                                <span>Exp: {skill.experienceMonths}mo</span>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Assign new skill */}
+                    {canManage && skillsNotAssignedToUser.length > 0 && (
+                      <div className="pt-4 border-t border-slate-100">
+                        <h5 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                          Assign new skill
+                        </h5>
+                        <div className="flex flex-wrap items-end gap-3">
+                          <div className="relative flex-1 min-w-[150px]">
+                            <select
+                              value={newUserSkillId}
+                              onChange={(e) => setNewUserSkillId(e.target.value)}
+                              className="w-full h-9 pl-3 pr-8 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all appearance-none"
+                              aria-label="Skill to assign"
+                            >
+                              <option value="">Select skill...</option>
+                              {skillsNotAssignedToUser.map((s) => (
+                                <option key={s.id} value={s.id}>{s.name}</option>
+                              ))}
+                            </select>
+                            <Icon name="expand_more" size={15} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Prof</label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={5}
+                              value={newUserSkillProf}
+                              onChange={(e) => setNewUserSkillProf(Math.min(5, Math.max(1, Number(e.target.value))))}
+                              className={PROF_INPUT}
+                              title="Value 1-5"
+                              aria-label="Proficiency level"
+                            />
+                            <span className="text-[10px] text-slate-400">/5</span>
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Exp</label>
+                            <button
+                              type="button"
+                              onClick={() => setNewUserSkillExp(Math.max(0, newUserSkillExp - 1))}
+                              className={STEP_BUTTON}
+                              title="Decrease experience"
+                              aria-label="Decrease experience"
+                            >
+                              <Icon name="remove" size={11} />
+                            </button>
+                            <input
+                              type="number"
+                              min={0}
+                              max={600}
+                              value={newUserSkillExp}
+                              onChange={(e) => setNewUserSkillExp(e.target.value === "" ? 0 : Number(e.target.value))}
+                              className={EXP_INPUT}
+                              aria-label="Experience months"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setNewUserSkillExp(Math.min(600, newUserSkillExp + 1))}
+                              className={STEP_BUTTON}
+                              title="Increase experience"
+                              aria-label="Increase experience"
+                            >
+                              <Icon name="add" size={11} />
+                            </button>
+                          </div>
+
+                          <button
+                            type="button"
+                            disabled={!newUserSkillId}
+                            onClick={handleAssignSkillToUser}
+                            className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-sm shadow-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Icon name="add" size={14} />
+                            Assign
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
-                </div>
+                )}
               </div>
-            </GlassCard>
-          )}
-        </div>
-      </div>
+            </div>
+          </GlassCard>
+        )}
+      </PageContainer>
+
+      {/* ── Skill detail sheet ── */}
+      <Sheet
+        open={rightTab === "skill" && !!selectedSkill}
+        onClose={() => setSelectedSkillId(null)}
+        title={selectedSkill?.name ?? ""}
+        description={selectedSkill?.category ?? undefined}
+        icon="school"
+        accent="primary"
+        size="lg"
+      >
+        {selectedSkill && (
+          <div className="space-y-6">
+            {/* Skill meta */}
+            <div className="flex items-start gap-3">
+              <div className="w-11 h-11 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+                <Icon name="school" size={20} className="text-indigo-600" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {selectedSkill.category && (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-violet-50 text-violet-600 border border-violet-100">
+                      {selectedSkill.category}
+                    </span>
+                  )}
+                  <span className="text-[11px] text-slate-400">
+                    {assignedUsers.length} user{assignedUsers.length !== 1 ? "s" : ""} assigned
+                  </span>
+                </div>
+                {selectedSkill.description && (
+                  <p className="text-xs text-slate-500 mt-2 leading-relaxed">{selectedSkill.description}</p>
+                )}
+              </div>
+              {canManage && (
+                <button
+                  type="button"
+                  onClick={() => setSkillModal({ open: true, editSkill: selectedSkill })}
+                  className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all shrink-0"
+                >
+                  <Icon name="edit" size={14} />
+                  Edit skill
+                </button>
+              )}
+            </div>
+
+            {/* Assigned users */}
+            <SectionCard
+              title="Assigned users"
+              description="People who have this skill"
+              icon="group"
+            >
+              {assignedUsers.length === 0 ? (
+                <div className="py-6 text-center border border-dashed border-slate-200 rounded-xl">
+                  <Icon name="person_off" size={22} className="text-slate-300 mb-1.5 mx-auto" />
+                  <p className="text-xs text-slate-400">No users assigned to this skill yet</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {assignedUsers.map((user) => {
+                    const assignment = getUserAssignment(user, selectedSkillId!);
+                    if (!assignment) return null;
+                    return (
+                      <div
+                        key={user.id}
+                        className="flex flex-wrap items-center gap-3 p-3 rounded-xl border border-slate-100 bg-white hover:border-slate-200 transition-colors"
+                      >
+                        <Avatar person={user} size="sm" className="shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-slate-700 truncate">{user.fullName}</p>
+                          <p className="text-[10px] text-slate-400 truncate">
+                            {user.email} {user.isActive === false && <span className="text-slate-400">(Inactive)</span>}
+                          </p>
+                        </div>
+
+                        {canManage ? (
+                          <>
+                            <div className="flex items-center gap-1.5">
+                              <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider shrink-0">Prof</label>
+                              <input
+                                type="number"
+                                min={1}
+                                max={5}
+                                value={assignment.proficiencyLevel}
+                                onChange={(e) => {
+                                  const val = Math.min(5, Math.max(1, Number(e.target.value)));
+                                  handleUpdateAssignment(user.id, selectedSkillId!, val, assignment.experienceMonths);
+                                }}
+                                className={PROF_INPUT}
+                                title="Value 1-5"
+                                aria-label={`${selectedSkill?.name} proficiency for ${user.fullName}`}
+                              />
+                              <span className="text-[10px] text-slate-400">/5</span>
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                              <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider shrink-0 mr-1">Exp</label>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleUpdateAssignment(user.id, selectedSkillId!, assignment.proficiencyLevel, Math.max(0, assignment.experienceMonths - 1));
+                                }}
+                                className={STEP_BUTTON}
+                                title="Decrease experience"
+                                aria-label="Decrease experience"
+                              >
+                                <Icon name="remove" size={11} />
+                              </button>
+                              <input
+                                type="number"
+                                min={0}
+                                max={600}
+                                value={assignment.experienceMonths}
+                                onChange={(e) => {
+                                  handleUpdateAssignment(user.id, selectedSkillId!, assignment.proficiencyLevel, e.target.value === "" ? 0 : Number(e.target.value));
+                                }}
+                                className={EXP_INPUT}
+                                aria-label={`${selectedSkill?.name} experience months for ${user.fullName}`}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleUpdateAssignment(user.id, selectedSkillId!, assignment.proficiencyLevel, Math.min(600, assignment.experienceMonths + 1));
+                                }}
+                                className={STEP_BUTTON}
+                                title="Increase experience"
+                                aria-label="Increase experience"
+                              >
+                                <Icon name="add" size={11} />
+                              </button>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveAssignment(user.id, selectedSkillId!)}
+                              className="size-7 rounded-md border border-red-200 bg-red-50 flex items-center justify-center hover:bg-red-100 transition-colors shrink-0"
+                              title="Remove skill from user"
+                              aria-label={`Remove ${selectedSkill?.name} from ${user.fullName}`}
+                            >
+                              <Icon name="close" size={14} className="text-red-500" />
+                            </button>
+                          </>
+                        ) : (
+                          <div className="flex items-center gap-4 text-xs text-slate-500">
+                            <span>Prof: {assignment.proficiencyLevel}/5</span>
+                            <span>Exp: {assignment.experienceMonths}mo</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </SectionCard>
+
+            {/* Assign to user */}
+            {canManage && unassignedUsers.length > 0 && (
+              <SectionCard
+                title="Assign to user"
+                description="Add this skill to a user's profile"
+                icon="person_add"
+              >
+                <div className="flex flex-wrap items-end gap-3">
+                  <div className="relative flex-1 min-w-[180px]">
+                    <select
+                      value={newUserId}
+                      onChange={(e) => setNewUserId(e.target.value)}
+                      className="w-full h-9 pl-3 pr-8 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all appearance-none"
+                      aria-label="User to assign"
+                    >
+                      <option value="">Select a user...</option>
+                      {unassignedUsers.map((u) => (
+                        <option key={u.id} value={u.id}>{u.fullName}</option>
+                      ))}
+                    </select>
+                    <Icon name="expand_more" size={15} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Prof</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={5}
+                      value={newProficiency}
+                      onChange={(e) => setNewProficiency(Math.min(5, Math.max(1, Number(e.target.value))))}
+                      className={PROF_INPUT}
+                      title="Value 1-5"
+                      aria-label="Proficiency level"
+                    />
+                    <span className="text-[10px] text-slate-400">/5</span>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Exp</label>
+                    <button
+                      type="button"
+                      onClick={() => setNewExperience(Math.max(0, newExperience - 1))}
+                      className={STEP_BUTTON}
+                      title="Decrease experience"
+                      aria-label="Decrease experience"
+                    >
+                      <Icon name="remove" size={11} />
+                    </button>
+                    <input
+                      type="number"
+                      min={0}
+                      max={600}
+                      value={newExperience}
+                      onChange={(e) => setNewExperience(e.target.value === "" ? 0 : Number(e.target.value))}
+                      className={EXP_INPUT}
+                      aria-label="Experience months"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setNewExperience(Math.min(600, newExperience + 1))}
+                      className={STEP_BUTTON}
+                      title="Increase experience"
+                      aria-label="Increase experience"
+                    >
+                      <Icon name="add" size={11} />
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={!newUserId}
+                    onClick={handleAssignSkill}
+                    className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-sm shadow-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Icon name="add" size={14} />
+                    Assign
+                  </button>
+                </div>
+              </SectionCard>
+            )}
+          </div>
+        )}
+      </Sheet>
 
       {skillModal.open && (
-        <ModalOverlay onClose={() => setSkillModal({ open: false })}>
-          <SkillFormModal
-            initialData={skillModal.editSkill}
-            onSubmit={handleSkillSubmit}
-            onCancel={() => setSkillModal({ open: false })}
-          />
-        </ModalOverlay>
+        <SkillFormModal
+          initialData={skillModal.editSkill}
+          onSubmit={handleSkillSubmit}
+          onCancel={() => setSkillModal({ open: false })}
+        />
       )}
 
       {deleteConfirm.open && deleteConfirm.skill && (
-        <ModalOverlay onClose={() => setDeleteConfirm({ open: false, skill: null })}>
-          <DeleteConfirmationModal
-            name={deleteConfirm.skill.name}
-            warning="Deleting this skill will remove it from user profiles that reference it."
-            onConfirm={handleDelete}
-            onCancel={() => setDeleteConfirm({ open: false, skill: null })}
-          />
-        </ModalOverlay>
+        <DeleteConfirmationModal
+          name={deleteConfirm.skill.name}
+          warning="Deleting this skill will remove it from user profiles that reference it."
+          onConfirm={handleDelete}
+          onCancel={() => setDeleteConfirm({ open: false, skill: null })}
+        />
       )}
     </div>
   );
 }
-
-

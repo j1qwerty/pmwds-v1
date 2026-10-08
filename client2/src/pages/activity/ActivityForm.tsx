@@ -1,9 +1,18 @@
-import { useState, type FormEvent } from "react";
-import { SectionCard } from "../shared";
+import { useState } from "react";
+import { Sheet, ModalCancelButton, ModalPrimaryButton } from "../shared";
 import { Icon } from "../../components/ui/Icon";
 
+export interface ActivityFormValues {
+  activityType: string;
+  description: string;
+  metadata: string;
+}
+
 interface ActivityFormProps {
-  onSubmit: (form: { activityType: string; description: string; metadata: string }) => void;
+  open: boolean;
+  onClose: () => void;
+  /** Submits the log. Resolve with `true` to reset the fields and close the modal. */
+  onSubmit: (form: ActivityFormValues) => Promise<boolean> | boolean;
 }
 
 const COMMON_ACTIVITY_TYPES = [
@@ -19,24 +28,14 @@ const COMMON_ACTIVITY_TYPES = [
   "Deployment",
 ];
 
-export function ActivityForm({ onSubmit }: ActivityFormProps) {
-  const [form, setForm] = useState({
+export function ActivityForm({ open, onClose, onSubmit }: ActivityFormProps) {
+  const [form, setForm] = useState<ActivityFormValues>({
     activityType: "",
     description: "",
     metadata: "{}",
   });
   const [useCustomType, setUseCustomType] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    if (saving) return;
-    setSaving(true);
-    onSubmit(form);
-    setForm({ activityType: "", description: "", metadata: "{}" });
-    // Reset saving flag shortly after — parent toast/fetch handles actual completion
-    setTimeout(() => setSaving(false), 400);
-  };
 
   const isValidJson = (str: string) => {
     try {
@@ -52,16 +51,58 @@ export function ActivityForm({ onSubmit }: ActivityFormProps) {
     !!form.description &&
     (form.metadata === "{}" || isValidJson(form.metadata));
 
+  const attemptSubmit = async () => {
+    if (saving || !canSubmit) return;
+    setSaving(true);
+    try {
+      const ok = await onSubmit(form);
+      if (ok) {
+        setForm({ activityType: "", description: "", metadata: "{}" });
+        setUseCustomType(false);
+        onClose();
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <SectionCard
-      title="Log Activity"
-      description="Record what you just worked on"
-      icon="note_add"
+    <Sheet
+      open={open}
+      onClose={() => {
+        // Sheet has no closeOnBackdrop option — guard here so a save in flight
+        // can't be dismissed by a stray click or Escape (same intent as the old
+        // closeOnBackdrop={!saving} on the centered modal).
+        if (!saving) onClose();
+      }}
+      title="Log activity"
+      description="Record what you just worked on so it shows up in the audit trail."
+      icon="add"
+      accent="primary"
+      size="md"
+      footer={
+        <>
+          <ModalCancelButton onClick={onClose} label="Cancel" />
+          <ModalPrimaryButton
+            label="Save activity"
+            icon="check"
+            loading={saving}
+            disabled={!canSubmit}
+            onClick={attemptSubmit}
+          />
+        </>
+      }
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void attemptSubmit();
+        }}
+        className="space-y-4"
+      >
         {/* Activity Type */}
         <div>
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+          <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">
             Activity Type <span className="text-red-500">*</span>
           </label>
 
@@ -123,7 +164,7 @@ export function ActivityForm({ onSubmit }: ActivityFormProps) {
 
         {/* Description */}
         <div>
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+          <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">
             Description <span className="text-red-500">*</span>
           </label>
           <textarea
@@ -138,7 +179,7 @@ export function ActivityForm({ onSubmit }: ActivityFormProps) {
 
         {/* Metadata */}
         <div>
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+          <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">
             Metadata (JSON)
           </label>
           <textarea
@@ -157,26 +198,7 @@ export function ActivityForm({ onSubmit }: ActivityFormProps) {
             </p>
           )}
         </div>
-
-        {/* Submit */}
-        <button
-          type="submit"
-          disabled={!canSubmit || saving}
-          className="w-full inline-flex items-center justify-center gap-1.5 h-10 px-4 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-sm shadow-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {saving ? (
-            <>
-              <span className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              <Icon name="check" size={14} />
-              Save Activity
-            </>
-          )}
-        </button>
       </form>
-    </SectionCard>
+    </Sheet>
   );
 }

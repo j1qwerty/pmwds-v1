@@ -19,7 +19,7 @@ import {
 } from "../shared/index";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import TaskSubtaskBoard, { allBoards } from "../shared/dash/TaskSubtaskBoard";
-import { MilestoneDetailModal, MilestoneFormModal, TaskSubtaskDetailsModal, TaskFormModal, ConfirmDeleteModal, DependencyFormModal } from "./components/index";
+import { MilestoneDetailModal, MilestoneFormModal, TaskSubtaskDetailsModal, TaskFormModal, ConfirmDeleteModal } from "./components/index";
 import { useProjectWorkspace } from "./useProjectWorkspace";
 import { ProjectNotFound } from "./ProjectNotFound";
 import { ProjectInfoCard } from "./ProjectInfoCard";
@@ -49,7 +49,6 @@ export function ProjectTasksPage() {
     open: false,
   });
   const [milestoneError, setMilestoneError] = useState("");
-  const [depModalOpen, setDepModalOpen] = useState(false);
 
   const [showBoardSettings, setShowBoardSettings] = useState(false);
   const [visibleBoards, setVisibleBoards] = useState<Record<string, boolean>>({
@@ -95,11 +94,6 @@ export function ProjectTasksPage() {
         icon: "add_task",
       });
     }
-    actions.push({
-      label: "Dependencies",
-      onClick: () => setDepModalOpen(true),
-      icon: "account_tree",
-    });
     setNavHeader({
       title: `Tasks · ${ws.project.name}`,
       description: "Tasks grouped by milestone",
@@ -202,35 +196,11 @@ export function ProjectTasksPage() {
     }
   };
 
-  const handleAddDependency = async (payload: Record<string, unknown>) => {
-    if (!auth || !ws.project) return;
-    try {
-      await api.createMilestoneDependency(auth.token, { ...payload, projectId: ws.project.id });
-      addToast("Dependency created");
-      await ws.refresh();
-    } catch (e) {
-      addToast(e instanceof Error ? e.message : "Failed to create dependency", "error");
-      throw e;
-    }
-  };
-
-  const handleUpdateDependency = async (id: string, payload: Record<string, unknown>) => {
-    if (!auth) return;
-    try {
-      await api.updateMilestoneDependency(auth.token, id, payload);
-      addToast("Dependency updated");
-      await ws.refresh();
-    } catch (e) {
-      addToast(e instanceof Error ? e.message : "Failed to update dependency", "error");
-      throw e;
-    }
-  };
-
   const getProgressColor = (progress: number): string => {
     if (progress === 100) return "bg-emerald-500";
     if (progress >= 75) return "bg-amber-400";
-    if (progress >= 50) return "bg-cyan-400";
-    if (progress >= 25) return "bg-rose-400";
+    if (progress >= 50) return "bg-sky-400";
+    if (progress >= 25) return "bg-red-400";
     return "bg-slate-300";
   };
 
@@ -317,7 +287,7 @@ export function ProjectTasksPage() {
           <button
             onClick={() => setShowBoardSettings(!showBoardSettings)}
             className={`p-2 rounded-xl transition-all duration-200 ${showBoardSettings
-              ? "bg-cyan-50 text-cyan-600"
+              ? "bg-indigo-50 text-indigo-600"
               : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
               }`}
             title="Board Settings"
@@ -350,7 +320,7 @@ export function ProjectTasksPage() {
                       </span>
                     </div>
                     <div
-                      className={`w-8 h-4 rounded-full transition-colors duration-200 ${visibleBoards[board.title] ? "bg-cyan-500" : "bg-slate-200"
+                      className={`w-8 h-4 rounded-full transition-colors duration-200 ${visibleBoards[board.title] ? "bg-indigo-600" : "bg-slate-200"
                         }`}
                     >
                       <div
@@ -466,7 +436,7 @@ export function ProjectTasksPage() {
                   {/* View Button  */}
                   <button
                     title="View milestone"
-                    className="p-1.5 rounded-lg text-slate-400 bg-blue-50 cursor-pointer hover:text-cyan-500 hover:bg-cyan-50 transition-colors"
+                    className="p-1.5 rounded-lg text-slate-400 bg-sky-50 cursor-pointer hover:text-sky-600 hover:bg-sky-100 transition-colors"
                     onClick={(e) => { e.stopPropagation(); setViewMilestone(milestone); }}
                   >
                     <Icon name="view" size={16} />
@@ -604,15 +574,6 @@ export function ProjectTasksPage() {
         onSubmit={handleMilestoneSubmit}
         onClose={() => { setMilestoneModal({ open: false }); setMilestoneError(""); }}
         serverError={milestoneError}
-      />
-
-      <DependencyFormModal
-        open={depModalOpen}
-        editDep={null}
-        milestones={ws.milestones}
-        onAdd={handleAddDependency}
-        onUpdate={handleUpdateDependency}
-        onClose={() => setDepModalOpen(false)}
       />
 
     </div>

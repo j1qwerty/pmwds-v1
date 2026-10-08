@@ -452,7 +452,7 @@ export function DashboardPage() {
       )}
 
       {newProjectWizardOpen && (
-        <ModalOverlay onClose={() => setNewProjectWizardOpen(false)} widthClassName="max-w-4xl">
+        <ModalOverlay onClose={() => setNewProjectWizardOpen(false)} widthClassName="max-w-4xl" bare>
           <NewProjectPage onClose={() => setNewProjectWizardOpen(false)} />
         </ModalOverlay>
       )}

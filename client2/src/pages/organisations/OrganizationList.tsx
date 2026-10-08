@@ -1,115 +1,148 @@
-import type { OrganizationRecord } from "../../types";
+import { useMemo } from "react";
+import type { Department, OrganizationRecord, User } from "../../types";
+import { AvatarStack, GlassCard, HoverActions } from "../shared";
 import { Icon } from "../../components/ui/Icon";
-import { EmptyState } from "../shared";
 
 interface OrganizationListProps {
   organizations: OrganizationRecord[];
   selectedOrgId: string;
+  /** Called when a row is clicked (opens the detail panel) */
   onSelect: (id: string) => void;
-  searchTerm: string;
-  onSearchChange: (term: string) => void;
+  /** All departments — used to resolve per-organization counts */
+  departments?: Department[];
+  /** All users — used to resolve per-organization member counts/avatars */
+  users?: User[];
+  canEdit?: boolean;
+  canDelete?: boolean;
+  onEdit?: (org: OrganizationRecord) => void;
+  onDelete?: (org: OrganizationRecord) => void;
 }
 
-export function OrganizationList({ organizations, selectedOrgId, onSelect, searchTerm, onSearchChange }: OrganizationListProps) {
-  const filtered = organizations.filter((org) =>
-    org.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+/**
+ * Compact list view for organizations: one glass card with divided rows.
+ * Shows the same data & actions as the card grid.
+ */
+export function OrganizationList({
+  organizations,
+  selectedOrgId,
+  onSelect,
+  departments = [],
+  users = [],
+  canEdit = false,
+  canDelete = false,
+  onEdit,
+  onDelete,
+}: OrganizationListProps) {
+  const deptCountByOrg = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const dept of departments) {
+      if (!dept.organizationId) continue;
+      map.set(dept.organizationId, (map.get(dept.organizationId) ?? 0) + 1);
+    }
+    return map;
+  }, [departments]);
+
+  const membersByOrg = useMemo(() => {
+    const map = new Map<string, User[]>();
+    for (const user of users) {
+      if (!user.organizationId) continue;
+      const list = map.get(user.organizationId) ?? [];
+      list.push(user);
+      map.set(user.organizationId, list);
+    }
+    return map;
+  }, [users]);
 
   return (
-    <div className="bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-2xl shadow-sm flex flex-col max-h-[calc(100vh-220px)] overflow-hidden">
-      {/* Header */}
-      <div className="px-4 pt-4 pb-3 border-b border-slate-100">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
-            <Icon name="corporate_fare" size={15} className="text-indigo-600" />
-          </div>
-          <h3 className="text-sm font-bold text-slate-800">Organizations</h3>
-          <span className="ml-auto text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-            {filtered.length}/{organizations.length}
-          </span>
-        </div>
+    <GlassCard className="overflow-hidden">
+      <div className="divide-y divide-slate-100">
+        {organizations.map((org, index) => {
+          const isSelected = selectedOrgId === org.id;
+          const deptCount = org.departmentCount || deptCountByOrg.get(org.id) || 0;
+          const members = membersByOrg.get(org.id) ?? [];
 
-        {/* Search Bar */}
-        <div className="relative">
-          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-            <Icon name="search" size={14} />
-          </span>
-          <input
-            type="text"
-            placeholder="Search organizations..."
-            value={searchTerm}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full h-9 pl-8 pr-3 text-sm rounded-lg bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
-          />
-        </div>
-      </div>
-
-      {/* Organization List */}
-      <div className="flex-1 overflow-y-auto p-2">
-        {filtered.length > 0 ? (
-          <div className="flex flex-col gap-1.5">
-            {filtered.map((org) => {
-              const isSelected = selectedOrgId === org.id;
-              return (
-                <button
-                  key={org.id}
-                  type="button"
-                  onClick={() => onSelect(org.id)}
-                  className={`group relative text-left p-3 rounded-xl transition-all duration-200 border ${
-                    isSelected
-                      ? "bg-indigo-50/80 border-indigo-200 shadow-sm"
-                      : "bg-white border-slate-100 hover:border-indigo-200 hover:bg-slate-50/60"
+          return (
+            <div key={org.id} className="card-stagger" style={{ animationDelay: `${Math.min(index * 30, 300)}ms` }}>
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => onSelect(org.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onSelect(org.id);
+                  }
+                }}
+                className={`group flex items-center gap-3 py-3 px-4 transition-colors cursor-pointer ${
+                  isSelected ? "bg-indigo-50/60" : "hover:bg-slate-50/70"
+                }`}
+              >
+                <div
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                    isSelected ? "bg-indigo-100 text-indigo-600" : "bg-indigo-50 text-indigo-600"
                   }`}
                 >
-                  <div className="relative flex items-center justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <span
-                        className={`font-semibold text-sm truncate block transition-colors duration-200 ${
-                          isSelected ? "text-indigo-700" : "text-slate-700 group-hover:text-slate-900"
-                        }`}
-                      >
-                        {org.name}
-                      </span>
-                      <span
-                        className={`mt-1 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border ${
-                          isSelected
-                            ? "bg-indigo-100 text-indigo-700 border-indigo-200"
-                            : "bg-slate-100 text-slate-500 border-slate-200"
-                        }`}
-                      >
-                        <Icon name="layers" size={10} />
-                        {org.departmentCount || 0} dept{(org.departmentCount || 0) !== 1 ? "s" : ""}
-                      </span>
-                    </div>
+                  <Icon name="account_balance" size={17} />
+                </div>
 
-                    <div
-                      className={`shrink-0 transition-all duration-300 ${
-                        isSelected
-                          ? "opacity-100 translate-x-0"
-                          : "opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0"
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className={`font-semibold text-sm truncate ${
+                        isSelected ? "text-indigo-700" : "text-slate-800 group-hover:text-slate-900"
                       }`}
                     >
-                      <Icon
-                        name="chevron_right"
-                        size={16}
-                        className={isSelected ? "text-indigo-500" : "text-slate-400"}
-                      />
-                    </div>
+                      {org.name}
+                    </span>
+                    <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border bg-slate-100 text-slate-500 border-slate-200">
+                      <Icon name="layers" size={10} />
+                      {deptCount} dept{deptCount !== 1 ? "s" : ""}
+                    </span>
                   </div>
-                </button>
-              );
-            })}
-          </div>
-        ) : (
-          <EmptyState
-            icon="search_off"
-            title="No organizations found"
-            description="Try adjusting your search."
-            compact
-            accent="neutral"
-          />
-        )}
+                  <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
+                    <span className="inline-flex items-center gap-1">
+                      <Icon name="people" size={11} />
+                      {members.length} member{members.length !== 1 ? "s" : ""}
+                    </span>
+                    {org.contactEmail && <span className="truncate">· {org.contactEmail}</span>}
+                  </div>
+                </div>
+
+                {members.length > 0 && (
+                  <div className="hidden sm:block shrink-0">
+                    <AvatarStack people={members} limit={3} size="sm" />
+                  </div>
+                )}
+
+                {/* Actions — delete always visible (permission-gated), view/edit on hover */}
+                <HoverActions
+                  entity="organizations"
+                  className="shrink-0"
+                  always={
+                    canDelete && onDelete
+                      ? [{ icon: "delete", label: "Delete organization", tone: "danger", onClick: () => onDelete(org) }]
+                      : []
+                  }
+                  onHover={[
+                    { icon: "view", label: "View organization", onClick: () => onSelect(org.id) },
+                    ...(canEdit && onEdit
+                      ? [{ icon: "edit", label: "Edit organization", onClick: () => onEdit(org) }]
+                      : []),
+                  ]}
+                />
+
+                <Icon
+                  name="chevron_right"
+                  size={16}
+                  className={`shrink-0 transition-all ${
+                    isSelected ? "text-indigo-500" : "text-slate-300 group-hover:text-slate-400"
+                  }`}
+                />
+              </div>
+            </div>
+          );
+        })}
       </div>
-    </div>
+    </GlassCard>
   );
 }

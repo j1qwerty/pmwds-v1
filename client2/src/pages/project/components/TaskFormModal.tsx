@@ -2,7 +2,8 @@ import { useEffect, useState, useMemo, type FormEvent } from "react";
 import type { Department, Milestone, Project, Task, User } from "../../../types";
 import { RoleKey, hasAnyRoleKey } from "../../../permissions";
 import { priorities } from "../../constants";
-import { Modal, ModalCancelButton, ModalPrimaryButton, AvatarStack, ScopedUserSelect, getProjectDepartmentIds } from "../../shared/index";
+import { Sheet, ModalCancelButton, ModalPrimaryButton, AvatarStack, ScopedUserSelect, getProjectDepartmentIds } from "../../shared/index";
+import { Icon } from "../../../components/ui/Icon";
 
 const getToday = () => new Date().toISOString().slice(0, 10);
 
@@ -29,10 +30,26 @@ interface FieldErrors {
 }
 
 const INPUT_CLASS =
-  "w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all";
+  "w-full h-9 px-3 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-800 outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all";
+
+const TEXTAREA_CLASS =
+  "w-full min-h-[80px] px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-800 outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all resize-y";
 
 const LABEL_CLASS =
-  "text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1";
+  "text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5";
+
+/** Divider + label row used to separate modal form sections */
+function SectionLabel({ icon, children }: { icon: string; children: string }) {
+  return (
+    <div className="flex items-center gap-1.5 pt-1">
+      <Icon name={icon} size={13} className="text-slate-400 shrink-0" />
+      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 shrink-0">
+        {children}
+      </span>
+      <span className="flex-1 h-px bg-slate-100" />
+    </div>
+  );
+}
 
 export function TaskFormModal({
   open,
@@ -96,8 +113,7 @@ export function TaskFormModal({
     });
   }, [form.assignedToUserIds, users]);
 
-  if (!open) return null;
-
+  // Sheet handles open/closed internally (stays mounted so the exit animation plays)
   const canAssignMilestone = hasAnyRoleKey(roles, [RoleKey.SuperAdmin, RoleKey.Director]);
   const projectMilestones = milestones.filter((m) => m.projectId === form.projectId);
   const selectedProject = projects.find((p) => p.id === form.projectId);
@@ -142,12 +158,12 @@ export function TaskFormModal({
   };
 
   return (
-    <Modal
+    <Sheet
       open={open}
       onClose={onClose}
-      title={initialData ? "Edit Task" : "New Task"}
+      title={initialData ? "Edit task" : "New task"}
       description="Track work to be done for this project"
-      icon={initialData ? "edit" : "task_alt"}
+      icon={initialData ? "edit" : "check-circle"}
       accent="primary"
       size="lg"
       footer={
@@ -156,51 +172,54 @@ export function TaskFormModal({
           <ModalPrimaryButton
             onClick={() => handleSubmit()}
             loading={submitting}
-            label={initialData ? "Save Changes" : "Create Task"}
+            label={initialData ? "Save changes" : "Create task"}
             icon="check"
           />
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        {/* Title */}
-        <div>
-          <label className={LABEL_CLASS}>
-            Title <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={form.title}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
-            placeholder="What needs to be done?"
-            className={INPUT_CLASS}
-            autoFocus
-          />
-          {errors.title && <span className="text-xs text-red-500 mt-1 block">{errors.title}</span>}
-        </div>
-
-        {/* Description */}
-        <div>
-          <label className={LABEL_CLASS}>Description</label>
-          <textarea
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            placeholder="Add more details (optional)"
-            className="w-full min-h-[80px] px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all resize-y"
-          />
-        </div>
-
-        {/* Dates */}
-        <div className="grid grid-cols-2 gap-3">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* ── Details ───────────────────────────────────────── */}
+        <div className="space-y-4">
           <div>
-            <label className={LABEL_CLASS}>Start Date</label>
+            <label className={LABEL_CLASS}>
+              Title <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              placeholder="What needs to be done?"
+              className={INPUT_CLASS}
+              autoFocus
+            />
+            {errors.title && <span className="text-xs text-red-600 mt-1 block">{errors.title}</span>}
+          </div>
+
+          <div>
+            <label className={LABEL_CLASS}>Description</label>
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              placeholder="Add more details (optional)"
+              className={TEXTAREA_CLASS}
+            />
+          </div>
+        </div>
+
+        {/* ── Schedule ──────────────────────────────────────── */}
+        <SectionLabel icon="calendar">Schedule</SectionLabel>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className={LABEL_CLASS}>Start date</label>
             <input
               type="date"
               value={form.startDate}
               onChange={(e) => setForm({ ...form, startDate: e.target.value })}
               className={INPUT_CLASS}
             />
-            {errors.startDate && <span className="text-xs text-red-500 mt-1 block">{errors.startDate}</span>}
+            {errors.startDate && <span className="text-xs text-red-600 mt-1 block">{errors.startDate}</span>}
             {form.startDate && selectedMilestoneDueDate && form.startDate !== selectedMilestoneDueDate && (
               <DateRangeWarning
                 direction={form.startDate < selectedMilestoneDueDate ? "before" : "after"}
@@ -210,14 +229,14 @@ export function TaskFormModal({
             )}
           </div>
           <div>
-            <label className={LABEL_CLASS}>Due Date</label>
+            <label className={LABEL_CLASS}>Due date</label>
             <input
               type="date"
               value={form.dueDate}
               onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
               className={INPUT_CLASS}
             />
-            {errors.dueDate && <span className="text-xs text-red-500 mt-1 block">{errors.dueDate}</span>}
+            {errors.dueDate && <span className="text-xs text-red-600 mt-1 block">{errors.dueDate}</span>}
             {form.dueDate && selectedMilestoneDueDate && form.dueDate !== selectedMilestoneDueDate && (
               <DateRangeWarning
                 direction={form.dueDate < selectedMilestoneDueDate ? "before" : "after"}
@@ -228,8 +247,7 @@ export function TaskFormModal({
           </div>
         </div>
 
-        {/* Priority + Project row */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={LABEL_CLASS}>Priority</label>
             <select
@@ -257,7 +275,7 @@ export function TaskFormModal({
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
               </select>
-              {errors.projectId && <span className="text-xs text-red-500 mt-1 block">{errors.projectId}</span>}
+              {errors.projectId && <span className="text-xs text-red-600 mt-1 block">{errors.projectId}</span>}
             </div>
           )}
         </div>
@@ -293,7 +311,7 @@ export function TaskFormModal({
           if (selectedMilestone?.isBlocked) {
             return (
               <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-2">
-                <span className="material-symbols-outlined text-amber-600 text-base mt-0.5 shrink-0">warning</span>
+                <Icon name="warning" size={14} className="text-amber-600 mt-0.5 shrink-0" />
                 <div className="text-xs text-amber-800">
                   <span className="font-semibold">Milestone is blocked:</span>
                   <p>{selectedMilestone.blockedByMessage}</p>
@@ -306,6 +324,9 @@ export function TaskFormModal({
           }
           return null;
         })()}
+
+        {/* ── Assignment ────────────────────────────────────── */}
+        <SectionLabel icon="group">Assignment</SectionLabel>
 
         {/* Assignees summary chip */}
         {assignedUsers.length > 0 && (
@@ -334,7 +355,7 @@ export function TaskFormModal({
         {/* Hidden submit so Enter inside form submits */}
         <button type="submit" className="hidden" aria-hidden="true" />
       </form>
-    </Modal>
+    </Sheet>
   );
 }
 
@@ -349,7 +370,7 @@ function DateRangeWarning({
 }) {
   return (
     <div className="flex items-start gap-2 mt-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
-      <span className="material-symbols-outlined text-base shrink-0 mt-0.5">warning</span>
+      <Icon name="warning" size={13} className="shrink-0 mt-0.5" />
       <span>
         {label} {direction === "before" ? "precedes" : "exceeds"} milestone date ({new Date(milestoneDate).toLocaleDateString()}).
       </span>

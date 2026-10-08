@@ -1,4 +1,5 @@
-import { useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
+import { Modal, type ModalSize, type ModalSizeProp } from "./Modal";
 
 interface ModalOverlayProps {
   children: ReactNode;
@@ -6,9 +7,36 @@ interface ModalOverlayProps {
   showCloseButton?: boolean;
   closeOnBackdrop?: boolean;
   contentClassName?: string;
+  /** Tailwind max-width class, e.g. "max-w-2xl" (default) or "max-w-4xl" */
   widthClassName?: string;
+  /** Skip the white card chrome (see Modal `bare`). Content owns its own background + close. */
+  bare?: boolean;
 }
 
+/**
+ * Named sizes that map 1:1 onto Modal's size prop. Any other `max-w-*`
+ * string is forwarded to Modal as a raw width class.
+ */
+const WIDTH_TO_SIZE: Record<string, ModalSize> = {
+  "max-w-md": "sm",
+  "max-w-lg": "md",
+  "max-w-2xl": "lg",
+  "max-w-4xl": "xl",
+  "max-w-6xl": "2xl",
+};
+
+/**
+ * Backward-compatible overlay wrapper, now implemented ON TOP of the shared
+ * `<Modal>` so every existing caller gets the modern style for free:
+ *
+ * - NO separate "bg parent" element and NO floating X outside the card —
+ *   a single white card with the close button INSIDE, top-right
+ * - backdrop click + Esc close, smooth 0.15s enter / 0.12s exit
+ * - rendered through a portal on document.body (no clipping / squeezed
+ *   width from transformed or blurred ancestors)
+ *
+ * Props are unchanged from the legacy implementation.
+ */
 export function ModalOverlay({
   children,
   onClose,
@@ -16,46 +44,22 @@ export function ModalOverlay({
   closeOnBackdrop = true,
   contentClassName = "",
   widthClassName = "max-w-2xl",
+  bare = false,
 }: ModalOverlayProps) {
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-
-    document.addEventListener("keydown", onKeyDown);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [onClose]);
+  const key = widthClassName.trim();
+  const size: ModalSizeProp = WIDTH_TO_SIZE[key] ?? key;
 
   return (
-    <div
-      className="fixed inset-0 bg-black/35 backdrop-blur-md z-1000 animate-[fadeIn_0.2s_ease] overflow-y-auto overscroll-contain"
-      onClick={closeOnBackdrop ? onClose : undefined}
+    <Modal
+      open={true}
+      onClose={onClose}
+      showCloseButton={showCloseButton}
+      closeOnBackdrop={closeOnBackdrop}
+      size={size}
+      contentClassName={contentClassName}
+      bare={bare}
     >
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className={`relative w-full ${widthClassName} animate-[slideUp_0.3s_ease] flex justify-center`}
-        >
-          {showCloseButton && (
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close modal"
-              className="absolute -top-2 -right-2 z-10 w-9 h-9 rounded-full bg-white shadow-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors"
-            >
-              <span className="material-symbols-outlined text-lg">close</span>
-            </button>
-          )}
-          <div className={`w-full ${contentClassName}`}>{children}</div>
-        </div>
-      </div>
-    </div>
+      {children}
+    </Modal>
   );
 }

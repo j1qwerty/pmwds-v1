@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
 import type { Department, User } from "../../../types";
-import { Avatar } from "../../shared";
+import { Avatar, Modal, ModalPrimaryButton, Sheet } from "../../shared";
 import { RoleKey, hasRoleKey } from "../../../permissions";
+import { Icon } from "../../../components/ui/Icon";
 
 interface DepartmentUsersModalProps {
   department: Department;
@@ -159,14 +160,15 @@ export function DepartmentUsersModal({ department, allDepartments, allUsers, onS
       <div
         key={u.id}
         onClick={() => handleToggle(u.id)}
-        className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${isSelected ? "bg-indigo-50/50" : "hover:bg-slate-50"}`}
+        className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${isSelected ? "bg-indigo-50/50" : "hover:bg-slate-50/70"}`}
       >
         <input
           type="checkbox"
           checked={isSelected}
           onChange={() => handleToggle(u.id)}
-          className="rounded border-slate-300 shrink-0"
+          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 shrink-0"
           onClick={(e) => e.stopPropagation()}
+          aria-label={`Select ${u.fullName}`}
         />
         <Avatar person={u} size="sm" />
         <div className="flex-1 min-w-0">
@@ -186,57 +188,92 @@ export function DepartmentUsersModal({ department, allDepartments, allUsers, onS
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-black/20" onClick={onCancel}>
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-8 w-[560px] max-w-[95vw] shadow-xl border border-slate-200 max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center">
-              <span className="material-symbols-outlined text-indigo-600 text-2xl">group</span>
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">Manage Users</h2>
-              <p className="text-sm text-slate-400">{department.name}</p>
-            </div>
-          </div>
-
-          <div className="relative mb-4">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none">search</span>
+    <>
+      <Sheet
+        open={true}
+        onClose={() => {
+          if (!saving && !confirmTarget) onCancel();
+        }}
+        title="Manage users"
+        description={department.name}
+        icon="groups"
+        accent="primary"
+        size="lg"
+        footer={
+          <>
+            <span className="mr-auto text-xs text-slate-400">
+              {selectedIds.size} user{selectedIds.size !== 1 ? "s" : ""} selected
+            </span>
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={saving}
+              className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Cancel
+            </button>
+            <ModalPrimaryButton
+              onClick={() => void handleSave()}
+              loading={saving}
+              label="Save changes"
+              icon="check-circle"
+            />
+          </>
+        }
+      >
+        <div className="space-y-4">
+          {/* Search */}
+          <div className="relative">
+            <Icon name="search" size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search users..."
-              className="w-full h-10 pl-10 pr-4 rounded-xl border border-slate-200 text-sm outline-none bg-white/80 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+              aria-label="Search users"
+              className="w-full h-9 pl-8 pr-3 rounded-lg bg-slate-50 border border-slate-200 text-sm outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all placeholder:text-slate-400"
             />
           </div>
 
-          <div className="flex gap-1 mb-4 p-1 rounded-xl bg-slate-100">
+          {/* Tabs */}
+          <div className="flex gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200/60">
             <button
+              type="button"
               onClick={() => setActiveTab("current")}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === "current" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+              aria-pressed={activeTab === "current"}
+              className={`flex-1 h-8 rounded-lg text-xs font-semibold transition-all ${
+                activeTab === "current" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              }`}
             >
-              This Department
+              This department
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab("other")}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === "other" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+              aria-pressed={activeTab === "other"}
+              className={`flex-1 h-8 rounded-lg text-xs font-semibold transition-all ${
+                activeTab === "other" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              }`}
             >
-              Other Departments
+              Other departments
             </button>
           </div>
 
+          {/* User list */}
           <div className="rounded-xl border border-slate-200 overflow-hidden max-h-[360px] overflow-y-auto">
             {activeTab === "current" ? (
               filteredCurrent.current.length === 0 && filteredCurrent.none.length === 0 ? (
                 <div className="p-8 text-center text-slate-400">
-                  <span className="material-symbols-outlined text-4xl mb-2 block">search_off</span>
+                  <Icon name="search_off" size={26} className="mx-auto mb-2 block text-slate-300" />
                   <p className="text-sm font-medium">No users found</p>
                 </div>
               ) : (
                 <div className="divide-y divide-slate-100">
                   {filteredCurrent.current.length > 0 && (
                     <>
-                      <div className="px-4 py-2 bg-slate-50/80">
-                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Team Members ({filteredCurrent.current.length})</span>
+                      <div className="px-4 py-2 bg-slate-50/80 sticky top-0">
+                        <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                          Team members ({filteredCurrent.current.length})
+                        </span>
                       </div>
                       {filteredCurrent.current.map(renderUserRow)}
                       {filteredCurrent.none.length > 0 && <div className="border-t border-slate-100" />}
@@ -244,8 +281,10 @@ export function DepartmentUsersModal({ department, allDepartments, allUsers, onS
                   )}
                   {filteredCurrent.none.length > 0 && (
                     <>
-                      <div className="px-4 py-2 bg-slate-50/80">
-                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Unassigned ({filteredCurrent.none.length})</span>
+                      <div className="px-4 py-2 bg-slate-50/80 sticky top-0">
+                        <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                          Unassigned ({filteredCurrent.none.length})
+                        </span>
                       </div>
                       {filteredCurrent.none.map(renderUserRow)}
                     </>
@@ -255,15 +294,17 @@ export function DepartmentUsersModal({ department, allDepartments, allUsers, onS
             ) : (
               filteredOther.length === 0 ? (
                 <div className="p-8 text-center text-slate-400">
-                  <span className="material-symbols-outlined text-4xl mb-2 block">search_off</span>
+                  <Icon name="search_off" size={26} className="mx-auto mb-2 block text-slate-300" />
                   <p className="text-sm font-medium">No users found</p>
                 </div>
               ) : (
                 <div className="divide-y divide-slate-100">
                   {filteredOther.map(([deptName, users]) => (
                     <div key={deptName}>
-                      <div className="px-4 py-2 bg-slate-50/80">
-                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{deptName} ({users.length})</span>
+                      <div className="px-4 py-2 bg-slate-50/80 sticky top-0">
+                        <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                          {deptName} ({users.length})
+                        </span>
                       </div>
                       {users.map(renderUserRow)}
                     </div>
@@ -272,60 +313,41 @@ export function DepartmentUsersModal({ department, allDepartments, allUsers, onS
               )
             )}
           </div>
-
-          {confirmTarget && (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30" onClick={() => setConfirmTarget(null)}>
-              <div className="bg-white rounded-2xl p-6 w-[400px] max-w-[90vw] shadow-xl border border-slate-200" onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="material-symbols-outlined text-2xl text-amber-600">info</span>
-                  <h3 className="text-sm font-bold text-slate-900">Cross-Department Assignment</h3>
-                </div>
-                <p className="text-sm text-slate-600 mb-1">
-                  This user is already assigned to: <strong>{confirmTarget.deptNames.join(", ")}</strong>
-                </p>
-                <p className="text-sm text-slate-500 mb-5">Continue to assign to multiple departments?</p>
-                <div className="flex justify-end gap-3">
-                  <button
-                    onClick={() => setConfirmTarget(null)}
-                    className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 font-medium hover:bg-slate-50 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => { doToggle(confirmTarget.userId); setConfirmTarget(null); }}
-                    className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors"
-                  >
-                    Continue
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="flex items-center justify-between mt-3 px-1">
-            <span className="text-xs text-slate-400">{selectedIds.size} user{selectedIds.size !== 1 ? "s" : ""}</span>
-          </div>
-
-          <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={saving}
-              className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 font-medium text-sm hover:bg-slate-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="px-5 py-2.5 rounded-xl border-none bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 shadow-sm transition-colors disabled:opacity-50"
-            >
-              {saving ? "Saving..." : "Save Changes"}
-            </button>
-          </div>
         </div>
-      </div>
-    </div>
+      </Sheet>
+
+      {/* Cross-department confirmation */}
+      {confirmTarget && (
+        <Modal
+          open={true}
+          onClose={() => setConfirmTarget(null)}
+          title="Cross-department assignment"
+          icon="info"
+          accent="warning"
+          size="sm"
+          footer={
+            <>
+              <button
+                type="button"
+                onClick={() => setConfirmTarget(null)}
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+              >
+                Cancel
+              </button>
+              <ModalPrimaryButton
+                onClick={() => { doToggle(confirmTarget.userId); setConfirmTarget(null); }}
+                label="Continue"
+                icon="check-circle"
+              />
+            </>
+          }
+        >
+          <p className="text-sm text-slate-600">
+            This user is already assigned to: <strong className="text-slate-800">{confirmTarget.deptNames.join(", ")}</strong>
+          </p>
+          <p className="text-sm text-slate-500 mt-1.5">Continue to assign to multiple departments?</p>
+        </Modal>
+      )}
+    </>
   );
 }

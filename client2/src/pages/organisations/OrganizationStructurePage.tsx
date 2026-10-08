@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { Department, OrganizationRecord, User } from "../../types";
+import { Icon } from "../../components/ui/Icon";
 import {
   AnimatedBackground,
   DeleteConfirmationModal,
@@ -9,8 +10,17 @@ import {
   DeptFormModal,
   EmptyState,
   GlassCard,
+  HoverActions,
   StatCard,
   LoadingPage,
+  AvatarStack,
+  FilterBar,
+  SortDropdown,
+  ViewToggle,
+  PageAction,
+  PageContainer,
+  Sheet,
+  getDepartmentColor,
   PERMISSION_GROUPS,
   usePermission,
   useNavHeader,
@@ -18,6 +28,15 @@ import {
 } from "../shared";
 import { OrganizationList } from "./OrganizationList";
 import { OrganizationDetail } from "./OrganizationDetail";
+
+type ViewMode = "card" | "list";
+type SortMode = "name" | "departments-desc" | "departments-asc";
+
+const SORT_OPTIONS: { value: SortMode; label: string }[] = [
+  { value: "name", label: "Name (A–Z)" },
+  { value: "departments-desc", label: "Most departments" },
+  { value: "departments-asc", label: "Fewest departments" },
+];
 
 export function OrganizationStructurePage() {
   const { auth } = useAuth();
@@ -30,6 +49,7 @@ export function OrganizationStructurePage() {
   );
   const canManageDepartments = perm.has(PERMISSION_GROUPS.department.manage);
   const canCreateDepartments = perm.has(PERMISSION_GROUPS.department.create);
+  const canDeleteOrganization = perm.has(PERMISSION_GROUPS.organization.delete);
 
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -39,6 +59,9 @@ export function OrganizationStructurePage() {
   const { addToast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>("card");
+  const [sortMode, setSortMode] = useState<SortMode>("name");
+  const [detailOpen, setDetailOpen] = useState(false);
 
   const [orgModal, setOrgModal] = useState<{ open: boolean; editOrg?: OrganizationRecord }>({ open: false });
   const [deptModal, setDeptModal] = useState<{ open: boolean; editDept?: Department }>({ open: false });
@@ -101,9 +124,61 @@ export function OrganizationStructurePage() {
   const orgDepartments = departments.filter((d) => d.organizationId === selectedOrgId);
 
   // Aggregate metrics for stats row
-  const totalDepartments = departments.length;
-  const totalTeamMembers = useMemo(() => users.length, [users]);
-  const totalCapacity = departments.reduce((sum, d) => sum + (d.maxCapacity || 0), 0);
+  const stats = useMemo(
+    () => ({
+      organizations: organizations.length,
+      departments: departments.length,
+      members: users.length,
+      capacity: departments.reduce((sum, d) => sum + (d.maxCapacity || 0), 0),
+    }),
+    [organizations, departments, users],
+  );
+
+  const deptCountByOrg = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const dept of departments) {
+      if (!dept.organizationId) continue;
+      map.set(dept.organizationId, (map.get(dept.organizationId) ?? 0) + 1);
+    }
+    return map;
+  }, [departments]);
+
+  const membersByOrg = useMemo(() => {
+    const map = new Map<string, User[]>();
+    for (const user of users) {
+      if (!user.organizationId) continue;
+      const list = map.get(user.organizationId) ?? [];
+      list.push(user);
+      map.set(user.organizationId, list);
+    }
+    return map;
+  }, [users]);
+
+  const deptCountFor = (org: OrganizationRecord) =>
+    org.departmentCount || deptCountByOrg.get(org.id) || 0;
+
+  const filteredOrgs = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    let list = organizations;
+    if (term) {
+      list = list.filter(
+        (org) =>
+          org.name.toLowerCase().includes(term) ||
+          (org.contactEmail ?? "").toLowerCase().includes(term) ||
+          (org.address ?? "").toLowerCase().includes(term),
+      );
+    }
+    const sorted = [...list];
+    if (sortMode === "departments-desc") {
+      sorted.sort((a, b) => deptCountFor(b) - deptCountFor(a) || a.name.localeCompare(b.name));
+    } else if (sortMode === "departments-asc") {
+      sorted.sort((a, b) => deptCountFor(a) - deptCountFor(b) || a.name.localeCompare(b.name));
+    } else {
+      sorted.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    return sorted;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organizations, searchTerm, sortMode, deptCountByOrg]);
 
   const checkBeforeDelete = (type: "org" | "dept", id: string, name: string) => {
     let warning = "";
@@ -129,6 +204,7 @@ export function OrganizationStructurePage() {
       }
       addToast(`${deleteConfirm.type === "org" ? "Organization" : "Department"} deleted successfully.`);
       setDeleteConfirm({ open: false, type: "org", id: "", name: "" });
+      setDetailOpen(false);
       loadData();
     } catch (e) {
       addToast(`Error: ${e instanceof Error ? e.message : "Deletion failed"}`, "error");
@@ -186,61 +262,152 @@ export function OrganizationStructurePage() {
     });
   }, [setNavHeader, canCreateOrganization]);
 
+  const openOrgDetail = (orgId: string) => {
+    setSelectedOrgId(orgId);
+    setDetailOpen(true);
+  };
+
   if (loading) return <LoadingPage label="Loading organizations..." />;
 
   return (
     <div className="relative">
       <AnimatedBackground />
 
-      {/* Stats Row */}
-      <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        <StatCard label="Organizations" value={organizations.length} color="indigo" icon="corporate_fare" />
-        <StatCard label="Departments" value={totalDepartments} color="violet" icon="groups" />
-        <StatCard label="Team Members" value={totalTeamMembers} color="emerald" icon="people" />
-        <StatCard label="Total Capacity" value={totalCapacity} color="amber" icon="trending_up" />
-      </div>
-
-      {/* Main Layout */}
-      <div className={`${canCreateOrganization ? "grid grid-cols-1 lg:grid-cols-[320px_1fr]" : "grid grid-cols-1"} gap-4 relative z-10`}>
-        {canCreateOrganization && (
-          <OrganizationList
-            organizations={organizations}
-            selectedOrgId={selectedOrgId}
-            onSelect={setSelectedOrgId}
-            searchTerm={searchTerm}
+      <PageContainer
+        stats={
+          <>
+            <StatCard label="Organizations" value={stats.organizations} color="indigo" icon="corporate_fare" />
+            <StatCard label="Departments" value={stats.departments} color="violet" icon="groups" />
+            <StatCard label="Team Members" value={stats.members} color="emerald" icon="people" />
+            <StatCard label="Total Capacity" value={stats.capacity} color="amber" icon="trending_up" />
+          </>
+        }
+        filters={
+          <FilterBar
+            searchValue={searchTerm}
             onSearchChange={setSearchTerm}
+            searchPlaceholder="Search organizations..."
+            leftExtras={
+              <span className="text-[11px] font-semibold text-slate-400 whitespace-nowrap">
+                {filteredOrgs.length} of {organizations.length}
+              </span>
+            }
+            actions={
+              <>
+                <SortDropdown value={sortMode} onChange={(value) => setSortMode(value as SortMode)} options={SORT_OPTIONS} />
+                <ViewToggle value={viewMode} onChange={(mode) => setViewMode(mode as ViewMode)} available={["card", "list"]} />
+                {canCreateOrganization && (
+                  <PageAction
+                    label="New organization"
+                    icon="add"
+                    onClick={() => setOrgModal({ open: true })}
+                  />
+                )}
+              </>
+            }
+          />
+        }
+      >
+        {organizations.length === 0 ? (
+          <GlassCard className="min-h-80 flex items-center justify-center">
+            <EmptyState
+              icon="account_balance"
+              title="No organizations yet"
+              description="Create your first organization to start structuring teams, departments, and projects."
+              accent="primary"
+              action={
+                canCreateOrganization ? (
+                  <PageAction label="New organization" icon="add" onClick={() => setOrgModal({ open: true })} />
+                ) : undefined
+              }
+            />
+          </GlassCard>
+        ) : filteredOrgs.length === 0 ? (
+          <GlassCard className="min-h-80 flex items-center justify-center">
+            <EmptyState
+              icon="search_off"
+              title="No organizations match the current filters"
+              description="Try a different search term, or clear the search to see all organizations."
+              compact
+              action={
+                searchTerm ? (
+                  <button
+                    type="button"
+                    onClick={() => setSearchTerm("")}
+                    className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-semibold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all"
+                  >
+                    Clear search
+                  </button>
+                ) : undefined
+              }
+            />
+          </GlassCard>
+        ) : viewMode === "card" ? (
+          <div className="view-fade grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {filteredOrgs.map((org, index) => (
+              <OrganizationCard
+                key={org.id}
+                org={org}
+                index={index}
+                deptCount={deptCountFor(org)}
+                members={membersByOrg.get(org.id) ?? []}
+                canManage={canManageOrganization}
+                canDelete={canDeleteOrganization}
+                onOpen={() => openOrgDetail(org.id)}
+                onEdit={() => setOrgModal({ open: true, editOrg: org })}
+                onDelete={() => checkBeforeDelete("org", org.id, org.name)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="view-fade">
+            <OrganizationList
+              organizations={filteredOrgs}
+              selectedOrgId={selectedOrgId}
+              onSelect={openOrgDetail}
+              departments={departments}
+              users={users}
+              canEdit={canManageOrganization}
+              canDelete={canDeleteOrganization}
+              onEdit={(org) => setOrgModal({ open: true, editOrg: org })}
+              onDelete={(org) => checkBeforeDelete("org", org.id, org.name)}
+            />
+          </div>
+        )}
+      </PageContainer>
+
+      {/* Organization detail — right sheet */}
+      <Sheet
+        open={detailOpen && !!selectedOrg}
+        onClose={() => setDetailOpen(false)}
+        size="lg"
+        icon="account_balance"
+        accent="primary"
+        title={selectedOrg?.name}
+        description={
+          selectedOrg
+            ? `${deptCountFor(selectedOrg)} department${deptCountFor(selectedOrg) !== 1 ? "s" : ""} · ${(membersByOrg.get(selectedOrg.id) ?? []).length} member${(membersByOrg.get(selectedOrg.id) ?? []).length !== 1 ? "s" : ""}`
+            : undefined
+        }
+      >
+        {selectedOrg && (
+          <OrganizationDetail
+            organization={selectedOrgDetail ?? selectedOrg}
+            departments={orgDepartments}
+            users={users}
+            isAdmin={canManageOrganization}
+            canDeleteOrg={canDeleteOrganization}
+            canManageDepartments={canManageDepartments}
+            canCreateDepartments={canCreateDepartments}
+            canEditDepartment={() => perm.has(PERMISSION_GROUPS.department.edit)}
+            onEditOrg={() => setOrgModal({ open: true, editOrg: selectedOrg })}
+            onDeleteOrg={() => checkBeforeDelete("org", selectedOrg.id, selectedOrg.name)}
+            onAddDept={() => setDeptModal({ open: true })}
+            onEditDept={(dept) => setDeptModal({ open: true, editDept: { ...dept, organizationId: selectedOrg.id } })}
+            onDeleteDept={(dept) => checkBeforeDelete("dept", dept.id, dept.name)}
           />
         )}
-
-        <div className="flex flex-col gap-4 min-w-0">
-          {selectedOrg ? (
-            <OrganizationDetail
-              organization={selectedOrgDetail ?? selectedOrg}
-              departments={orgDepartments}
-              users={users}
-              isAdmin={canManageOrganization}
-              canDeleteOrg={perm.has(PERMISSION_GROUPS.organization.delete)}
-              canManageDepartments={canManageDepartments}
-              canCreateDepartments={canCreateDepartments}
-              canEditDepartment={() => perm.has(PERMISSION_GROUPS.department.edit)}
-              onEditOrg={() => setOrgModal({ open: true, editOrg: selectedOrg })}
-              onDeleteOrg={() => checkBeforeDelete("org", selectedOrg.id, selectedOrg.name)}
-              onAddDept={() => setDeptModal({ open: true })}
-              onEditDept={(dept) => setDeptModal({ open: true, editDept: { ...dept, organizationId: selectedOrg.id } })}
-              onDeleteDept={(dept) => checkBeforeDelete("dept", dept.id, dept.name)}
-            />
-          ) : (
-            <GlassCard className="flex-1 min-h-96 flex items-center justify-center">
-              <EmptyState
-                icon="corporate_fare"
-                title="Select an organization"
-                description="Choose an organization from the left panel to view its details and manage departments."
-                accent="primary"
-              />
-            </GlassCard>
-          )}
-        </div>
-      </div>
+      </Sheet>
 
       {/* Modals */}
       {orgModal.open && (
@@ -272,5 +439,113 @@ export function OrganizationStructurePage() {
         />
       )}
     </div>
+  );
+}
+
+interface OrganizationCardProps {
+  org: OrganizationRecord;
+  index: number;
+  deptCount: number;
+  members: User[];
+  canManage: boolean;
+  canDelete: boolean;
+  onOpen: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}
+
+function OrganizationCard({ org, index, deptCount, members, canManage, canDelete, onOpen, onEdit, onDelete }: OrganizationCardProps) {
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onOpen();
+    }
+  };
+
+  return (
+    <GlassCard
+      role="button"
+      tabIndex={0}
+      aria-label={`View ${org.name}`}
+      onClick={onOpen}
+      onKeyDown={handleKeyDown}
+      className="card-stagger group p-4 flex flex-col cursor-pointer hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-500/5 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200"
+      style={{ animationDelay: `${Math.min(index * 30, 300)}ms` }}
+    >
+      {/* Header */}
+      <div className="flex items-start gap-2.5 mb-3">
+        <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+          <Icon name="account_balance" size={17} className="text-indigo-600" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="font-semibold text-sm text-slate-800 truncate group-hover:text-slate-900">{org.name}</h3>
+          <div className="text-[11px] text-slate-400 truncate mt-0.5">
+            {org.contactEmail || org.address || "No contact details"}
+          </div>
+        </div>
+        <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border bg-slate-100 text-slate-500 border-slate-200">
+          <Icon name="layers" size={10} />
+          {deptCount} dept{deptCount !== 1 ? "s" : ""}
+        </span>
+      </div>
+
+      {/* Department chips */}
+      <div className="flex flex-wrap gap-1.5 mb-3 min-h-[26px]">
+        {org.departments.length > 0 ? (
+          <>
+            {org.departments.slice(0, 4).map((dept, i) => {
+              const color = getDepartmentColor(i);
+              return (
+                <span
+                  key={dept.id}
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold border ${color.bg} ${color.text} ${color.border}`}
+                  title={`${dept.name} (${dept.code})`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${color.dot}`} />
+                  {dept.name}
+                </span>
+              );
+            })}
+            {org.departments.length > 4 && (
+              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold bg-slate-100 text-slate-500 border border-slate-200">
+                +{org.departments.length - 4} more
+              </span>
+            )}
+          </>
+        ) : (
+          <span className="text-[11px] text-slate-400 italic">No departments yet</span>
+        )}
+      </div>
+
+      {/* Footer: members + actions */}
+      <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          {members.length > 0 ? (
+            <>
+              <AvatarStack people={members} limit={3} size="sm" />
+              <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">
+                {members.length} member{members.length !== 1 ? "s" : ""}
+              </span>
+            </>
+          ) : (
+            <span className="text-[11px] text-slate-400 italic">No members</span>
+          )}
+        </div>
+
+        {/* Actions — delete always visible (permission-gated), view/edit on hover */}
+        <HoverActions
+          entity="organizations"
+          always={
+            canDelete
+              ? [{ icon: "delete", label: "Delete organization", tone: "danger", onClick: onDelete }]
+              : []
+          }
+          onHover={[
+            { icon: "view", label: "View organization", onClick: onOpen },
+            ...(canManage ? [{ icon: "edit", label: "Edit organization", onClick: onEdit }] : []),
+          ]}
+        />
+      </div>
+    </GlassCard>
   );
 }

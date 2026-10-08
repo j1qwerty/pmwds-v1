@@ -1,6 +1,5 @@
-import { getPriorityColor, usePermission } from "../../shared/index";
+import { getPriorityColor, usePermission, HoverActions } from "../../shared/index";
 import type { Task } from "../../../types";
-import { Icon } from "../../../components/ui/Icon";
 
 interface TaskCardProps {
   task: Task;
@@ -22,7 +21,7 @@ export function TaskCard({ task, canEdit, permissionEdit, onViewTask, onEditTask
   };
 
   return (
-    <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 hover:shadow-md  hover:border-blue-500 hover:shadow-blue-300 transition-shadow duration-200">
+    <div className="group bg-white rounded-xl p-4 shadow-sm border border-slate-100 hover:shadow-md  hover:border-blue-500 hover:shadow-blue-300 transition-shadow duration-200">
       <div
         className={onViewTask ? "cursor-pointer" : ""}
         onClick={handleCardOpen}
@@ -66,19 +65,24 @@ export function TaskCard({ task, canEdit, permissionEdit, onViewTask, onEditTask
         </span>
 
         <div className="flex items-center gap-2">
-          {mayEdit && onEditTask && (
-            <button
-              title="Edit task"
-              className="p-1 text-slate-400 hover:text-amber-500 transition-colors"
-              onClick={() => onEditTask?.(task)}
-            >
-              <Icon name="edit" size={16} />
-            </button>
-          )}
+          {/* Secondary actions (view / edit) revealed on card hover — the card
+              root carries the `group` class. This card has no delete / add-subtask
+              affordance of its own today, so none is invented here. */}
+          <HoverActions
+            entity="tasks"
+            onHover={[
+              ...(onViewTask
+                ? [{ icon: "view", label: "View task", onClick: () => onViewTask(task) }]
+                : []),
+              ...(mayEdit && onEditTask
+                ? [{ icon: "edit", label: "Edit task", onClick: () => onEditTask(task) }]
+                : []),
+            ]}
+          />
 
           {task.assignees?.[0] && (
             <div
-              className="w-5 h-5 rounded-full bg-cyan-100 text-cyan-700 text-[9px] font-semibold flex items-center justify-center"
+              className="w-5 h-5 rounded-full bg-sky-100 text-sky-700 text-[9px] font-semibold flex items-center justify-center"
               title={task.assignees[0].fullName ?? "Assignee"}
             >
               {(task.assignees[0].fullName ?? "?").charAt(0).toUpperCase()}

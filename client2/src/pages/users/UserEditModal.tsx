@@ -1,6 +1,6 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState } from "react";
 import type { Department, OrganizationRecord, User } from "../../types";
-import { Avatar, Modal, ModalCancelButton, ModalPrimaryButton } from "../shared";
+import { Avatar, ModalCancelButton, ModalPrimaryButton, Sheet } from "../shared";
 import { Icon } from "../../components/ui/Icon";
 import { ROLE_DISPLAY_NAMES, ROLE_LEVELS, RoleKey, normalizeRoleKey, type RoleKeyCode } from "../../permissions";
 
@@ -68,8 +68,8 @@ export function UserEditModal({ user, departments, organizations, canSelectSuper
     });
   };
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
+  const submit = async () => {
+    if (saving) return;
     setSaving(true);
     setError("");
     try {
@@ -92,19 +92,19 @@ export function UserEditModal({ user, departments, organizations, canSelectSuper
   };
 
   return (
-    <Modal
+    <Sheet
       open={true}
       onClose={onClose}
       title="Edit user"
       description={user.fullName}
-      icon="manage_accounts"
+      icon="edit"
       accent="primary"
       size="lg"
       footer={
         <>
           <ModalCancelButton onClick={onClose} />
           <ModalPrimaryButton
-            onClick={() => submit({ preventDefault: () => {} } as FormEvent)}
+            onClick={() => void submit()}
             loading={saving}
             label="Save changes"
             icon="check"
@@ -112,7 +112,13 @@ export function UserEditModal({ user, departments, organizations, canSelectSuper
         </>
       }
     >
-      <form onSubmit={submit} className="space-y-6">
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          void submit();
+        }}
+        className="space-y-5"
+      >
         {/* Profile preview */}
         <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50/70 border border-slate-100">
           <Avatar person={user} size="lg" src={user.profilePictureUrl ?? undefined} />
@@ -133,7 +139,7 @@ export function UserEditModal({ user, departments, organizations, canSelectSuper
         {/* Personal information */}
         <section className="space-y-3">
           <SectionLabel icon="badge">Personal information</SectionLabel>
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Field label="First name" value={firstName} onChange={setFirstName} required />
             <Field label="Last name" value={lastName} onChange={setLastName} required />
             <Field label="Email" value={email} onChange={() => undefined} disabled />
@@ -145,11 +151,11 @@ export function UserEditModal({ user, departments, organizations, canSelectSuper
         <section className="space-y-2">
           <SectionLabel icon="schedule">Availability</SectionLabel>
           <label className="block">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Status</span>
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Status</span>
             <select
               value={availabilityStatus}
               onChange={(event) => setAvailabilityStatus(event.target.value)}
-              className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+              className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
             >
               {availabilityOptions.map((item) => (
                 <option key={item} value={item}>{item}</option>
@@ -160,7 +166,7 @@ export function UserEditModal({ user, departments, organizations, canSelectSuper
 
         {/* Roles */}
         <section className="space-y-2">
-          <SectionLabel icon="workspace_premium">Roles</SectionLabel>
+          <SectionLabel icon="verified_user">Roles</SectionLabel>
           <p className="text-[11px] text-slate-500">Viewer is the default role for newly registered users.</p>
           <div className="flex flex-wrap gap-1.5">
             {visibleRoleOptions.map((role) => {
@@ -186,19 +192,19 @@ export function UserEditModal({ user, departments, organizations, canSelectSuper
 
         {/* Organization & Departments */}
         <section className="space-y-2">
-          <SectionLabel icon="corporate_fare">{canSelectSuperAdminRole ? "Organization & departments" : "Departments"}</SectionLabel>
+          <SectionLabel icon="apartment">{canSelectSuperAdminRole ? "Organization & departments" : "Departments"}</SectionLabel>
           <p className="text-[11px] text-slate-500">Select departments for this user.</p>
 
           {canSelectSuperAdminRole && (
             <label className="block">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Organization</span>
+              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Organization</span>
               <select
                 value={organizationId}
                 onChange={(event) => {
                   setOrganizationId(event.target.value);
                   setDepartmentIds([]);
                 }}
-                className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+                className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
               >
                 <option value="">Unassigned</option>
                 {organizations.map((organization) => (
@@ -208,10 +214,10 @@ export function UserEditModal({ user, departments, organizations, canSelectSuper
             </label>
           )}
 
-          <div className="grid gap-2 md:grid-cols-2">
+          <div className="grid gap-2 sm:grid-cols-2">
             {departmentsByOrg.map(({ org, departments: orgDepartments }) => (
               <div key={org.id} className="rounded-lg border border-slate-200 p-3 bg-white">
-                <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">{org.name}</div>
+                <div className="mb-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{org.name}</div>
                 <div className="space-y-1.5">
                   {orgDepartments.map((department) => {
                     const checked = departmentIds.includes(department.id);
@@ -242,7 +248,7 @@ export function UserEditModal({ user, departments, organizations, canSelectSuper
         {/* Hidden submit to allow form submission via Enter key */}
         <button type="submit" className="hidden" aria-hidden tabIndex={-1} />
       </form>
-    </Modal>
+    </Sheet>
   );
 }
 
@@ -250,7 +256,7 @@ function SectionLabel({ icon, children }: { icon: string; children: React.ReactN
   return (
     <div className="flex items-center gap-1.5">
       <Icon name={icon} size={13} className="text-slate-400" />
-      <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{children}</h4>
+      <h4 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{children}</h4>
     </div>
   );
 }
@@ -270,13 +276,16 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">{label}</span>
+      <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
+        {label}
+        {required && <span className="text-red-500 ml-0.5">*</span>}
+      </span>
       <input
         value={value}
         required={required}
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
+        className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
       />
     </label>
   );

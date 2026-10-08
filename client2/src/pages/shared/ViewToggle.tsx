@@ -10,11 +10,16 @@ interface ViewToggleProps {
   size?: "sm" | "md";
 }
 
+/**
+ * Icon names are keys of the shared Icon component's iconMap
+ * (src/components/ui/Icon.tsx). Names that are NOT in the map render as
+ * nothing — which used to turn this control into an empty white pill.
+ */
 const ICON_MAP: Record<ViewMode, string> = {
-  card: "grid_view",
-  list: "view_list",
-  grid: "apps",
-  table: "table_rows",
+  card: "hi-view-grid",
+  list: "hi-view-list",
+  grid: "grid",
+  table: "hi-table",
 };
 
 const LABEL_MAP: Record<ViewMode, string> = {
@@ -27,8 +32,9 @@ const LABEL_MAP: Record<ViewMode, string> = {
 /**
  * Segmented control for switching between card / list / grid / table views.
  *
- * Visually similar to Notion / Linear view toggles — compact, with
- * icon-only buttons and a tooltip title.
+ * Visually similar to Notion / Linear view toggles — icon-only buttons on a
+ * slate track with an obvious white active pill, so the control never
+ * disappears into the background.
  */
 export function ViewToggle({
   value,
@@ -40,10 +46,14 @@ export function ViewToggle({
   if (modes.length <= 1) return null;
 
   const sizeCls = size === "sm" ? "h-8 w-8" : "h-9 w-9";
-  const iconSize = size === "sm" ? 15 : 17;
+  const iconSize = size === "sm" ? 16 : 18;
 
   return (
-    <div className="inline-flex items-center gap-0.5 p-1 rounded-lg bg-slate-100 border border-slate-200/60">
+    <div
+      role="group"
+      aria-label="View mode"
+      className="inline-flex items-center gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200 shadow-sm"
+    >
       {modes.map((mode) => {
         const active = mode === value;
         return (
@@ -53,10 +63,10 @@ export function ViewToggle({
             onClick={() => onChange(mode)}
             title={`${LABEL_MAP[mode]} view`}
             aria-pressed={active}
-            className={`${sizeCls} flex items-center justify-center rounded-md transition-all ${
+            className={`${sizeCls} flex items-center justify-center rounded-lg transition-all ${
               active
-                ? "bg-white text-indigo-600 shadow-sm"
-                : "text-slate-400 hover:text-slate-700 hover:bg-white/50"
+                ? "bg-white text-indigo-600 shadow-sm border border-slate-200/80"
+                : "text-slate-500 border border-transparent hover:text-slate-700 hover:bg-white/80"
             }`}
           >
             <Icon name={ICON_MAP[mode]} size={iconSize} />

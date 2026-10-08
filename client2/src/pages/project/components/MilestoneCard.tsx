@@ -1,5 +1,6 @@
 import type { Milestone } from "../../../types";
-import { getStatusColor } from "../../shared/index";
+import { useAppData } from "../../../appData";
+import { getStatusColor, HoverActions } from "../../shared/index";
 import { Icon } from "../../../components/ui/Icon";
 
 interface MilestoneCardProps {
@@ -13,8 +14,16 @@ interface MilestoneCardProps {
 }
 
 export function MilestoneCard({ milestone, isSelected, index, onSelectMilestone, onViewMilestone, onEditMilestone, canManage = false }: MilestoneCardProps) {
+  const { data: appData } = useAppData();
   const statusColors = getStatusColor(milestone.status);
   const progress = milestone.progressPercentage || 0;
+
+  // Prefer the milestone's own denormalized name; fall back to the shared
+  // department directory by id. Missing department renders nothing.
+  const departmentName =
+    milestone.departmentName ||
+    appData.departments.find((d) => d.id === milestone.departmentId)?.name ||
+    null;
 
   const handleSelect = () => onSelectMilestone(milestone.id);
 
@@ -30,7 +39,7 @@ export function MilestoneCard({ milestone, isSelected, index, onSelectMilestone,
       handleSelect();
     }
   }}
-  className={`text-left p-3 rounded-xl shadow-sm border cursor-pointer transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-blue-400 overflow-hidden ${
+  className={`group text-left p-3 rounded-xl shadow-sm border cursor-pointer transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-blue-400 overflow-hidden ${
     isSelected
       ? "bg-indigo-50 border-blue-500 border-b hover:bg-blue-100"
       : milestone.isBlocked
@@ -76,9 +85,15 @@ export function MilestoneCard({ milestone, isSelected, index, onSelectMilestone,
   {/* Row 3: Critical tag and action buttons */}
   <div className="flex items-start justify-between gap-2">
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0 flex-1">
-      {milestone.departmentName && (
-        <span className="text-[10px] text-slate-400 break-words">
-          {milestone.departmentName}
+      {departmentName && (
+        <span
+          className="inline-flex items-center gap-1 min-w-0 max-w-full rounded-full bg-indigo-50 border border-indigo-100 px-1.5 py-0.5"
+          title={departmentName}
+        >
+          <Icon name="apartment" size={11} className="text-indigo-500 shrink-0" />
+          <span className="text-[11px] font-medium text-slate-500 truncate">
+            {departmentName}
+          </span>
         </span>
       )}
       {milestone.dueDate && (
@@ -92,32 +107,21 @@ export function MilestoneCard({ milestone, isSelected, index, onSelectMilestone,
         </span>
       )}
     </div>
-    <div className="flex items-center gap-1 shrink-0">
-      {onViewMilestone && (
-        <button
-          title="View milestone"
-          className="p-1 text-slate-400 hover:text-cyan-500 transition-colors"
-          onClick={(e) => {
-            e.stopPropagation();
-            onViewMilestone(milestone);
-          }}
-        >
-          <Icon name="view" size={16} />
-        </button>
-      )}
-      {canManage && onEditMilestone && (
-        <button
-          title="Edit milestone"
-          className="p-1 text-slate-400 hover:text-amber-500 transition-colors"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEditMilestone(milestone);
-          }}
-        >
-          <Icon name="edit" size={16} />
-        </button>
-      )}
-    </div>
+    {/* Secondary actions (view / edit) revealed on card hover — the card root
+        carries the `group` class; delete / add-task are panel-level actions and
+        intentionally NOT duplicated here. */}
+    <HoverActions
+      entity="milestones"
+      className="shrink-0"
+      onHover={[
+        ...(onViewMilestone
+          ? [{ icon: "view", label: "View milestone", onClick: () => onViewMilestone(milestone) }]
+          : []),
+        ...(canManage && onEditMilestone
+          ? [{ icon: "edit", label: "Edit milestone", onClick: () => onEditMilestone(milestone) }]
+          : []),
+      ]}
+    />
   </div>
 
   {/* Blocked message */}

@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { FiChevronDown, FiCheck, FiPlus, FiMessageSquare, FiX } from "react-icons/fi";
+import { FiChevronDown, FiCheck, FiPlus, FiMessageSquare } from "react-icons/fi";
 import type { Task } from "../../../types";
-import { StatusBadge } from "../../shared/index";
+import { StatusBadge, HoverActions } from "../../shared/index";
 import { StatusDropdown } from "./StatusDropdown";
 import { SubtaskProgressBar } from "./SubtaskProgressBar";
 
@@ -51,6 +51,7 @@ export function SubtasksSection({
         className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer"
       >
         <div className="flex items-center gap-2">
+          <FiMessageSquare className="w-4 h-4 text-indigo-600" />
           <span className="text-sm font-semibold text-slate-800">Subtasks</span>
           <span className="px-2 py-0.5 rounded-full bg-slate-100 text-[10px] font-bold text-slate-500">
             {subtasks.length}
@@ -67,7 +68,7 @@ export function SubtasksSection({
             const isCompleted = subtask.status === "Completed";
             const isExpanded = expandedSubtaskIds.has(subtask.id);
             return (
-              <div key={subtask.id} className="border border-slate-100 rounded-lg overflow-hidden">
+              <div key={subtask.id} className="border border-slate-200/70 rounded-lg overflow-hidden hover:border-slate-300 transition-colors">
                 <div className="flex items-center gap-2 p-2 bg-slate-50/50 cursor-pointer"
                      onClick={() => onToggleExpand(subtask.id)}>
                   {mayEdit && (
@@ -76,7 +77,8 @@ export function SubtasksSection({
                         e.stopPropagation();
                         onToggleCompleted(subtask.id, isCompleted);
                       }}
-                      className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${
+                      aria-label={isCompleted ? "Mark subtask as not completed" : "Mark subtask as completed"}
+                      className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${
                         isCompleted
                           ? "bg-emerald-500 border-emerald-500 text-white cursor-pointer"
                           : "bg-white border-slate-300 hover:border-indigo-400 cursor-pointer"
@@ -95,17 +97,20 @@ export function SubtasksSection({
                     />
                   </div>
                   <StatusBadge status={subtask.status} />
-                  <FiChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                  <FiChevronDown className={`w-4 h-4 text-slate-400 transition-transform shrink-0 ${isExpanded ? "rotate-180" : ""}`} />
                   {mayEdit && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDelete(subtask.id);
-                      }}
-                      className="p-1 rounded hover:bg-red-100 text-slate-400 hover:text-red-500 cursor-pointer"
-                    >
-                      <FiX className="w-3.5 h-3.5" />
-                    </button>
+                    <HoverActions
+                      entity="subtasks"
+                      className="shrink-0"
+                      always={[
+                        {
+                          icon: "delete",
+                          label: `Delete subtask: ${subtask.title}`,
+                          tone: "danger",
+                          onClick: () => onDelete(subtask.id),
+                        },
+                      ]}
+                    />
                   )}
                 </div>
                 {isExpanded && (
@@ -117,11 +122,11 @@ export function SubtasksSection({
                       />
                     )}
                     <div className="flex gap-2 items-start">
-                      <FiMessageSquare className="w-4 h-4 text-slate-400 mt-1.5" />
+                      <FiMessageSquare className="w-4 h-4 text-slate-400 mt-2 shrink-0" />
                       <div className="flex-1 flex gap-2">
                         <input
                           placeholder="Add a comment..."
-                          className="flex-1 px-2 py-1.5 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-300"
+                          className="flex-1 h-8 px-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
                           onKeyDown={(e) => {
                             if (e.key === "Enter" && (e.target as HTMLInputElement).value.trim()) {
                               onAddComment(subtask.id, (e.target as HTMLInputElement).value);
@@ -137,7 +142,7 @@ export function SubtasksSection({
                               input.value = "";
                             }
                           }}
-                          className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 cursor-pointer"
+                          className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white text-xs font-semibold transition-all cursor-pointer"
                         >
                           Post
                         </button>
@@ -145,7 +150,7 @@ export function SubtasksSection({
                     </div>
                     {mayEdit && (
                       <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Status</label>
+                        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Status</label>
                         <StatusDropdown
                           currentStatus={subtask.status}
                           onChange={(status) => onStatusChange(subtask.id, status)}
@@ -165,12 +170,12 @@ export function SubtasksSection({
                     value={subtaskForm.title}
                     onChange={(e) => onSubtaskFormChange({ ...subtaskForm, title: e.target.value })}
                     placeholder="Subtask title"
-                    className="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-300"
+                    className="flex-1 h-8 px-2.5 rounded-lg bg-slate-50 border border-slate-200 text-sm outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
                   />
-                  <button onClick={onCreateSubtask} disabled={!subtaskForm.title} className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50 cursor-pointer">
+                  <button onClick={onCreateSubtask} disabled={!subtaskForm.title} className="px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white text-xs font-semibold rounded-lg transition-all disabled:opacity-50 cursor-pointer">
                     Add
                   </button>
-                  <button onClick={onCancelSubtaskForm} className="px-3 py-1.5 bg-slate-100 text-slate-600 text-xs rounded-lg hover:bg-slate-200 cursor-pointer">
+                  <button onClick={onCancelSubtaskForm} className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 text-xs font-semibold rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-colors cursor-pointer">
                     Cancel
                   </button>
                 </div>
@@ -179,7 +184,7 @@ export function SubtasksSection({
                     type="date"
                     value={subtaskForm.dueDate}
                     onChange={(e) => onSubtaskFormChange({ ...subtaskForm, dueDate: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-300"
+                    className="w-full h-8 px-2.5 rounded-lg bg-slate-50 border border-slate-200 text-sm outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
                   />
                   {subtaskForm.dueDate && parentTaskDueDate && subtaskForm.dueDate > parentTaskDueDate.slice(0, 10) && (
                     <div className="flex items-start gap-1.5 mt-1.5 p-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
@@ -192,7 +197,7 @@ export function SubtasksSection({
             ) : (
               <button
                 onClick={onToggleShowForm}
-                className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 font-medium mt-1 cursor-pointer"
+                className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 font-semibold mt-1 cursor-pointer transition-colors"
               >
                 <FiPlus className="w-3.5 h-3.5" /> Add subtask
               </button>

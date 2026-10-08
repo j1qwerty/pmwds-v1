@@ -46,7 +46,7 @@ function UcModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/35 backdrop-blur-sm"
+      className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/35 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
@@ -107,7 +107,7 @@ const STATUS_STYLES: Record<UtilizationCertificateStatus, { label: string; class
   },
   Rejected: {
     label: "Rejected",
-    className: "bg-rose-50 text-rose-700 border-rose-200",
+    className: "bg-red-50 text-red-700 border-red-200",
     icon: "cancel",
   },
 };
@@ -560,14 +560,14 @@ export function UtilizationCertificates({
                     <span className="text-slate-400">
                       Period {formatDate(cert.periodStart)} → {formatDate(cert.periodEnd)}
                     </span>
-                    <span className={`font-semibold ${overClaimed ? "text-rose-600" : "text-slate-600"}`}>
+                    <span className={`font-semibold ${overClaimed ? "text-red-600" : "text-slate-600"}`}>
                       {cert.utilizationPercentage}% used
                     </span>
                   </div>
                   <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all ${
-                        overClaimed ? "bg-rose-500" : "bg-indigo-500"
+                        overClaimed ? "bg-red-500" : "bg-indigo-500"
                       }`}
                       style={{ width: `${Math.min(100, Math.max(0, cert.utilizationPercentage))}%` }}
                     />
@@ -798,7 +798,7 @@ export function UtilizationCertificates({
               </Field>
 
               {formError && (
-                <p className="text-[11px] text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
+                <p className="text-[11px] text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
                   {formError}
                 </p>
               )}
@@ -853,7 +853,7 @@ export function UtilizationCertificates({
                   onClick={() => setReviewApprove(false)}
                   className={`px-4 py-2.5 rounded-xl text-xs font-semibold border transition-colors ${
                     !reviewApprove
-                      ? "bg-rose-50 border-rose-300 text-rose-700"
+                      ? "bg-red-50 border-red-300 text-red-700"
                       : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                   }`}
                 >
@@ -887,7 +887,7 @@ export function UtilizationCertificates({
                 onClick={handleReview}
                 disabled={busyId === reviewTarget.id}
                 className={`px-5 py-2 rounded-xl text-xs font-semibold text-white transition-colors disabled:opacity-50 ${
-                  reviewApprove ? "bg-emerald-600 hover:bg-emerald-700" : "bg-rose-600 hover:bg-rose-700"
+                  reviewApprove ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700"
                 }`}
               >
                 {reviewApprove ? "Approve certificate" : "Reject certificate"}
@@ -901,7 +901,7 @@ export function UtilizationCertificates({
 }
 
 const fieldClass =
-  "w-full p-2.5 rounded-lg border border-[#e0e3e5] text-[13px] outline-none bg-[#fafafa] box-border focus:border-indigo-400";
+  "w-full p-2.5 rounded-lg border border-[#e0e3e5] text-sm outline-none bg-[#fafafa] box-border focus:border-indigo-400";
 
 function Field({
   label,
@@ -960,7 +960,7 @@ function ActionButton({
 }) {
   const toneClass =
     tone === "danger"
-      ? "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
+      ? "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
       : "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100";
   return (
     <button

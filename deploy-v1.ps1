@@ -13,8 +13,15 @@
     pmwds-sqlite or pmwds-mssql deployments (verified post-deploy: both
     services must still be active).
 
+    The client2 target serves the client2 SPA on the bare IP at port 8090
+    (http://147.93.155.185:8090) against the v1 API. It only adds a new nginx
+    site file, a firewall rule for 8090/tcp, and /var/www/pmwds-v1/html-client2;
+    no existing vhost, service, or data dir is modified.
+
 .PARAMETER Target
-    api | web | both. Prompted for when omitted.
+    api | web | both | client2. Prompted for when omitted.
+    client2 builds the client2 SPA and serves it on the bare IP at a new
+    port (http://147.93.155.185:8090) against the v1 API. No service restart.
 
 .PARAMETER SkipConfirm
     Deploy without the interactive y/N confirmation.
@@ -32,7 +39,7 @@
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('api', 'web', 'both')]
+    [ValidateSet('api', 'web', 'both', 'client2')]
     [string] $Target,
 
     [switch] $SkipConfirm,
@@ -47,8 +54,10 @@ Set-StrictMode -Version Latest
 $RepoRoot    = $PSScriptRoot
 $PublishDir  = Join-Path $RepoRoot 'pmwds-pub'
 $DistDir     = Join-Path $RepoRoot 'Client\dist'
+$Client2DistDir = Join-Path $RepoRoot 'client2\dist'
 $ApiArchive  = Join-Path $RepoRoot 'pmwds-v1-api.tar.gz'
 $WebArchive  = Join-Path $RepoRoot 'pmwds-v1-web.tar.gz'
+$Client2Archive = Join-Path $RepoRoot 'pmwds-v1-client2.tar.gz'
 
 $WebUser     = 'www-data'
 
@@ -70,6 +79,13 @@ $VariantTable = @{
         HostLabel   = 'v1        '
         Branch      = 'main'
         Tls         = $true
+        # client2 (second SPA) lives beside the v1 client, never inside its
+        # html dir, so web/api deploys can never wipe it. Served on the bare
+        # IP at a dedicated port against this variant's API (port 5003).
+        Client2Web   = '/var/www/pmwds-v1/html-client2'
+        Client2Port  = 8090
+        Client2Host  = 'http://147.93.155.185:8090'
+        Client2Nginx = 'pmwds-v1-client2'
     }
 }
 
@@ -247,23 +263,27 @@ if (-not $Target) {
     Write-Host '         [1] both  - API + web client' -ForegroundColor Gray
     Write-Host '         [2] api   - API only (leaves the current client build in place)' -ForegroundColor Gray
     Write-Host '         [3] web   - web client only (no service restart)' -ForegroundColor Gray
+    Write-Host '         [4] client2 - client2 SPA only, on bare IP port 8090 (no service restart)' -ForegroundColor Gray
     Write-Host ''
     $choice = Read-Host '       Choice [1]'
     switch ($choice.Trim()) {
         '2'     { $Target = 'api'  }
         '3'     { $Target = 'web'  }
+        '4'     { $Target = 'client2' }
         default { $Target = 'both' }
     }
 }
 
 $doApi = $Target -in @('api', 'both')
 $doWeb = $Target -in @('web', 'both')
+$doClient2 = $Target -eq 'client2'
 Write-Info "variant: $Variant  ->  $($V.Label)"
 Write-Info "target:  $Target"
 
 # ── Build ───────────────────────────────────────────────────────────────
 $apiAssets = @()
 $webAssets = @()
+$client2Assets = @()
 
 if ($doApi) {
     Write-Step 'Build API (dotnet publish -c Release)'
@@ -305,6 +325,35 @@ if ($doWeb) {
     $webAssets | ForEach-Object { Write-Detail "  $_" }
 }
 
+if ($doClient2) {
+    Write-Step 'Build client2 SPA (pnpm build)'
+    Write-Running 'pnpm build is running in client2/. Vite output will appear live below.'
+
+    # Relative base so the bundle calls the API on whichever origin serves it
+    # (here: the bare IP port, proxied to the v1 API on 127.0.0.1:5003).
+    $prevBase = $env:VITE_API_BASE_URL
+    $env:VITE_API_BASE_URL = '/api/v1'
+    try {
+        Invoke-Checked pnpm @('build') -What 'pnpm build client2' `
+            -WorkingDirectory (Join-Path $RepoRoot 'client2') `
+            -OnSuccessPatterns @('built in') `
+            -StreamOutput -OutputLabel 'build' | Out-Null
+    } finally {
+        $env:VITE_API_BASE_URL = $prevBase
+    }
+
+    $c2IndexPath = Join-Path $Client2DistDir 'index.html'
+    if (-not (Test-Path $c2IndexPath)) { Fail 'client2/dist/index.html missing - build did not produce output' }
+
+    # Read the real hashed filenames out of index.html. Never assume them.
+    $c2Html = Get-Content $c2IndexPath -Raw
+    $client2Assets = @([regex]::Matches($c2Html, '/assets/[^"'']+') | ForEach-Object { $_.Value } | Sort-Object -Unique)
+    if (-not $client2Assets.Count) { Fail 'could not find any /assets/ references in client2/dist/index.html' }
+
+    Write-Ok ("{0} asset(s) referenced:" -f $client2Assets.Count)
+    $client2Assets | ForEach-Object { Write-Detail "  $_" }
+}
+
 # ── Package ─────────────────────────────────────────────────────────────
 # tar, NOT Compress-Archive. Compress-Archive writes backslash path separators;
 # Linux treats those as literal filename characters, producing files named
@@ -338,6 +387,22 @@ if ($doWeb) {
     $uploads += @{ Local = $WebArchive; Remote = '/tmp/pmwds-v1-web.tar.gz' }
 }
 
+if ($doClient2) {
+    Write-Step 'Package client2 (tar)'
+    Write-Running "creating $([IO.Path]::GetFileName($Client2Archive))"
+    if (Test-Path $Client2Archive) { Remove-Item $Client2Archive -Force }
+    Invoke-Checked tar @('-czf', $Client2Archive, '-C', $Client2DistDir, '.') -What 'tar client2' | Out-Null
+
+    $c2Entries = (Invoke-Checked tar @('-tzf', $Client2Archive) -What 'tar list client2') -split "`r?`n" | Where-Object { $_ }
+    $c2Bad = @($c2Entries | Where-Object { $_ -match '\\' })
+    if ($c2Bad.Count) {
+        $c2Bad | ForEach-Object { Write-Host "       $_" -ForegroundColor DarkRed }
+        Fail 'archive contains backslash path separators - this is the Compress-Archive bug, refusing to deploy'
+    }
+    Write-Ok ("{0:N2} MB, {1} entries, no backslashes" -f ((Get-Item $Client2Archive).Length / 1MB), $c2Entries.Count)
+    $uploads += @{ Local = $Client2Archive; Remote = '/tmp/pmwds-v1-client2.tar.gz' }
+}
+
 # ── Confirm ─────────────────────────────────────────────────────────────
 Write-Step 'Confirm'
 Write-Running 'waiting for deployment confirmation'
@@ -350,8 +415,13 @@ Write-Host "         host       $Host_   ->  $($V.PublicHost)" -ForegroundColor 
 Write-Host "         service    $ServiceName   (port $($V.ApiPort))" -ForegroundColor Gray
 Write-Host "         api dir    $RemoteApp" -ForegroundColor Gray
 Write-Host "         web dir    $RemoteWeb" -ForegroundColor Gray
+if ($doClient2) {
+    Write-Host "         c2 dir     $($V.Client2Web)  (new; v1 html/ untouched)" -ForegroundColor Gray
+    Write-Host "         c2 url     $($V.Client2Host)  ->  v1 API 127.0.0.1:$($V.ApiPort)" -ForegroundColor Gray
+    Write-Host "         c2 nginx   /etc/nginx/sites-enabled/$($V.Client2Nginx) (new file only)" -ForegroundColor Gray
+}
 Write-Host "         data dir   $DataDir  (never touched by this script)" -ForegroundColor Gray
-if (-not $V.Tls) {
+if ((-not $V.Tls) -or $doClient2) {
     Write-Host ''
     Write-Host '         NOTE: this variant is served over plain HTTP on a bare IP.' -ForegroundColor Yellow
     Write-Host '               Login passwords and JWTs travel in clear text.' -ForegroundColor Yellow
@@ -421,6 +491,9 @@ WEB="$2"
 SERVICE="$3"
 DATA="$4"
 TARGET="$5"
+WEB2="$6"
+PORT="$7"
+SITE="$8"
 
 if [ -f /tmp/pmwds-v1-api.tar.gz ]; then
   echo "extracting api -> $APP"
@@ -450,7 +523,96 @@ if [ -f /tmp/pmwds-v1-web.tar.gz ]; then
   echo "web: $(ls "$WEB" | wc -l) entries"
 fi
 
-rm -f /tmp/pmwds-v1-api.tar.gz /tmp/pmwds-v1-web.tar.gz
+if [ -f /tmp/pmwds-v1-client2.tar.gz ]; then
+  echo "extracting client2 -> $WEB2"
+  rm -rf /tmp/dep-c2 && mkdir -p /tmp/dep-c2
+  tar -xzf /tmp/pmwds-v1-client2.tar.gz -C /tmp/dep-c2
+  rm -rf "$WEB2"
+  mkdir -p "$WEB2"
+  cp -a /tmp/dep-c2/. "$WEB2"/
+  chown -R www-data:www-data "$WEB2"
+  chmod -R 755 "$WEB2"
+  rm -rf /tmp/dep-c2
+  echo "client2: $(ls "$WEB2" | wc -l) entries"
+
+  # Dedicated nginx site on the bare IP port, proxying the v1 API on loopback.
+  # Same-origin SPA, so no CORS preflight. Only this new site file is written;
+  # no existing vhost is modified.
+  echo "writing nginx site $SITE on port $PORT"
+  cat > "/etc/nginx/sites-available/$SITE" <<NGINX
+server {
+    listen $PORT;
+    listen [::]:$PORT;
+    server_name _;
+
+    root $WEB2;
+    index index.html;
+
+    access_log /var/log/nginx/$SITE.access.log;
+    error_log /var/log/nginx/$SITE.error.log;
+
+    client_max_body_size 50M;
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:5003;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+
+    location /hubs/ {
+        proxy_pass http://127.0.0.1:5003;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+
+    location /files/ {
+        proxy_pass http://127.0.0.1:5003;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    location /avatars/ {
+        proxy_pass http://127.0.0.1:5003;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    location / {
+        try_files \$uri \$uri/ /index.html;
+    }
+
+    location /assets/ {
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+    }
+
+    location = /index.html {
+        add_header Cache-Control "no-store, must-revalidate" always;
+    }
+}
+NGINX
+  ln -sf "/etc/nginx/sites-available/$SITE" "/etc/nginx/sites-enabled/$SITE"
+  if ! ufw status | grep -q "$PORT/tcp"; then
+    echo "opening firewall port $PORT/tcp"
+    ufw allow "$PORT/tcp"
+  fi
+  nginx -t
+  systemctl reload nginx
+  echo "nginx reloaded with $SITE"
+fi
+
+rm -f /tmp/pmwds-v1-api.tar.gz /tmp/pmwds-v1-web.tar.gz /tmp/pmwds-v1-client2.tar.gz
 
 if [ "$TARGET" = "api" ] || [ "$TARGET" = "both" ]; then
   echo "restarting $SERVICE"
@@ -473,7 +635,7 @@ $tmpScript = Join-Path ([System.IO.Path]::GetTempPath()) ("pmwds-deploy-" + [gui
 try {
     scp -o BatchMode=yes -o ConnectTimeout=10 $tmpScript "${Host_}:/tmp/pmwds-deploy.sh" | Out-Null
 
-    $remoteArgs = "bash /tmp/pmwds-deploy.sh '$RemoteApp' '$RemoteWeb' '$ServiceName' '$DataDir' '$Target'"
+    $remoteArgs = "bash /tmp/pmwds-deploy.sh '$RemoteApp' '$RemoteWeb' '$ServiceName' '$DataDir' '$Target' '$($V.Client2Web)' '$($V.Client2Port)' '$($V.Client2Nginx)'"
     $out = Invoke-Checked ssh @('-o','BatchMode=yes', $Host_, $remoteArgs) `
         -What 'remote deploy' -StreamOutput -OutputLabel 'server'
 
@@ -513,15 +675,25 @@ $tmpCurl = Join-Path ([System.IO.Path]::GetTempPath()) ("pmwds-curl-" + [guid]::
 [System.IO.File]::WriteAllText($tmpCurl, ($script:remoteCurl -replace "`r`n", "`n"))
 
 $allOk = $true
+
+# client2 is verified against its own bare-IP port, not the subdomain.
+$verifyHosts = $PublicHosts
+$verifyAssets = $webAssets
+$verifyDeepLink = $V.PublicHost + '/projects'
+if ($doClient2) {
+    $verifyHosts = @(@{ Label = 'c2(IP:8090)'; Url = $V.Client2Host; Insecure = $true })
+    $verifyAssets = $client2Assets
+    $verifyDeepLink = $V.Client2Host + '/projects'
+}
 try {
     scp -o BatchMode=yes $tmpCurl "${Host_}:/tmp/pmwds-curl.sh" | Out-Null
 
-    if ($doWeb) {
+    if ($doWeb -or $doClient2) {
         Write-Running 'checking every referenced web asset on both public hosts. Results will appear live below.'
         $urls = @()
         $labels = @{}
-        foreach ($h in $PublicHosts) {
-            foreach ($a in $webAssets) {
+        foreach ($h in $verifyHosts) {
+            foreach ($a in $verifyAssets) {
                 $urls += ($h.Url + $a)
                 $labels[($h.Url + $a)] = $h.Label
             }
@@ -547,7 +719,7 @@ try {
 
     # Deep link proves the SPA fallback works on this variant's host.
     Write-Running 'checking SPA deep link /projects'
-    $deepUrl = $V.PublicHost + '/projects'
+    $deepUrl = $verifyDeepLink
     $out = Invoke-Checked ssh @('-o','BatchMode=yes', $Host_, "bash /tmp/pmwds-curl.sh $deepUrl") `
         -What 'deep link' -StreamOutput -OutputLabel 'check'
     $deep = ($out -split "`r?`n") | Where-Object { $_ -match '^\d{3} \d+' } | Select-Object -First 1
@@ -574,6 +746,18 @@ try {
         }
     }
 
+    # client2 rides the v1 API without restarting it, so assert the API is
+    # still serving after the nginx reload.
+    if ($doClient2) {
+        Write-Running 'checking the v1 API is still active (client2 proxies to it)'
+        $out = Invoke-Checked ssh @('-o','BatchMode=yes', $Host_,
+            "systemctl is-active $ServiceName 2>/dev/null || echo not-installed") `
+            -What 'v1 api' -StreamOutput -OutputLabel 'check'
+        $v1State = (($out -split "`r?`n") | Where-Object { $_ -match '\S' } | Select-Object -Last 1).Trim()
+        if ($v1State -eq 'active') { Write-Ok "$ServiceName still active" }
+        else { Write-Err "$ServiceName is '$v1State'"; $allOk = $false }
+    }
+
     # The SignalR handshake must be checked explicitly. Every other check here can pass
     # while live updates are completely broken: GET / and the SPA deep link are served
     # from static files by try_files, so they return 200 regardless of whether /hubs/ is
@@ -582,7 +766,7 @@ try {
     #
     # Checked for both web and api targets, because this is a web/nginx concern and a
     # web-only deploy is exactly when it would regress unnoticed.
-    foreach ($h in $PublicHosts) {
+    foreach ($h in $verifyHosts) {
         Write-Running "checking SignalR negotiate on $($h.Url)"
         $negotiateUrl = $h.Url + '/hubs/dashboard/negotiate?negotiateVersion=1'
         $out = Invoke-Checked ssh @('-o','BatchMode=yes', $Host_,
@@ -677,6 +861,9 @@ if ($allOk) {
     Write-Host "   Service   $ServiceName" -ForegroundColor Gray
     Write-Host "   API       $RemoteApp" -ForegroundColor Gray
     Write-Host "   Web       $RemoteWeb" -ForegroundColor Gray
+    if ($doClient2) {
+        Write-Host "   Client2   $($V.Client2Host)  (dir $($V.Client2Web))" -ForegroundColor Gray
+    }
     Write-Host ''
     exit 0
 } else {

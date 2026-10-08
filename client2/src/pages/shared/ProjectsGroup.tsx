@@ -166,7 +166,7 @@ export function ProjectsGroup({
       <button
         type="button"
         onClick={() => setSectionCollapsed((p) => !p)}
-        className={`w-full flex items-center justify-between px-[clamp(8px,1.5vw,12px)] pb-[clamp(2px,0.5vw,4px)] text-cyan-600 text-[clamp(9px,1.2vw,10px)] uppercase tracking-[0.18em] font-semibold ${theme.textDefault}`}
+        className={`w-full flex items-center justify-between px-[clamp(8px,1.5vw,12px)] pb-[clamp(2px,0.5vw,4px)] text-sky-600 text-[clamp(9px,1.2vw,10px)] uppercase tracking-[0.18em] font-semibold ${theme.textDefault}`}
       >
         <span>Projects</span>
         <HiOutlineChevronRight
@@ -289,7 +289,7 @@ export function ProjectsGroup({
           <button
             type="button"
             onClick={() => setShowAllProjects(true)}
-            className="w-full flex items-center justify-center gap-1 text-[clamp(10px,1.3vw,11px)] text-cyan-500 hover:text-cyan-400 font-medium py-[clamp(4px,0.5vw,6px)] transition-colors rounded-md hover:bg-white/5"
+            className="w-full flex items-center justify-center gap-1 text-[clamp(10px,1.3vw,11px)] text-sky-500 hover:text-sky-400 font-medium py-[clamp(4px,0.5vw,6px)] transition-colors rounded-md hover:bg-white/5"
           >
             <span>+ Show more ({visibleProjects.length - DISPLAY_LIMIT} more)</span>
           </button>
@@ -298,7 +298,7 @@ export function ProjectsGroup({
           <button
             type="button"
             onClick={() => setShowAllProjects(false)}
-            className="w-full flex items-center justify-center gap-1 text-[clamp(10px,1.3vw,11px)] text-cyan-500 hover:text-cyan-400 font-medium py-[clamp(4px,0.5vw,6px)] transition-colors rounded-md hover:bg-white/5"
+            className="w-full flex items-center justify-center gap-1 text-[clamp(10px,1.3vw,11px)] text-sky-500 hover:text-sky-400 font-medium py-[clamp(4px,0.5vw,6px)] transition-colors rounded-md hover:bg-white/5"
           >
             <span>- Show less</span>
           </button>

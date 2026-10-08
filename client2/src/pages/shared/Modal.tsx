@@ -39,6 +39,14 @@ interface ModalProps {
   scrollable?: boolean;
   /** Extra classes merged into the content area (padding overrides, etc.) */
   contentClassName?: string;
+  /**
+   * If true, the white card chrome (header, padded content area, footer bar,
+   * close button) is skipped and children render directly in the centered
+   * width container. Use when the content brings its own cards and close
+   * affordance (e.g. the New project wizard: steps header + step card with
+   * their own X). Scrim click, Esc, and body scroll-lock still work.
+   */
+  bare?: boolean;
 }
 
 const ACCENT_MAP: Record<NonNullable<ModalProps["accent"]>, string> = {
@@ -98,6 +106,7 @@ export function Modal({
   accent = "primary",
   scrollable = true,
   contentClassName = "",
+  bare = false,
 }: ModalProps) {
   const [visible, setVisible] = useState(false);
   const [exiting, setExiting] = useState(false);
@@ -161,6 +170,12 @@ export function Modal({
         }`}
         onClick={(e) => e.stopPropagation()}
       >
+        {bare ? (
+          // No card chrome: content scrolls within the viewport height and
+          // owns its own background + close affordance. Scrollbar hidden —
+          // the content (e.g. wizard cards) is the visual frame, not this box.
+          <div className="max-h-[90vh] overflow-y-auto no-scrollbar">{children}</div>
+        ) : (
         <div className="bg-white rounded-2xl shadow-2xl shadow-slate-900/10 border border-slate-200/80 overflow-hidden max-h-[90vh] flex flex-col">
           {hasHeader ? (
             <div
@@ -210,6 +225,7 @@ export function Modal({
             </div>
           )}
         </div>
+        )}
       </div>
     </div>,
     document.body

@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import type { Milestone, MilestoneDependency } from "../../../types";
-import { Modal, ModalCancelButton, ModalPrimaryButton, useToast } from "../../shared/index";
+import { Sheet, ModalCancelButton, ModalPrimaryButton, useToast, getStatusColor } from "../../shared/index";
+import { Icon } from "../../../components/ui/Icon";
 
 interface DependencyFormModalProps {
   open: boolean;
@@ -12,10 +13,10 @@ interface DependencyFormModalProps {
 }
 
 const SELECT_CLASS =
-  "w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed";
+  "w-full h-9 px-3 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-800 outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed appearance-none pr-8";
 
 const LABEL_CLASS =
-  "text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1";
+  "text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5";
 
 export function DependencyFormModal({
   open,
@@ -88,13 +89,15 @@ export function DependencyFormModal({
     }
   };
 
-  if (!open) return null;
+  // Sheet handles open/closed internally (stays mounted so the exit animation plays)
+  const prerequisite = milestones.find((m) => m.id === form.prerequisiteMilestoneId);
+  const dependent = milestones.find((m) => m.id === form.dependentMilestoneId);
 
   return (
-    <Modal
+    <Sheet
       open={open}
       onClose={onClose}
-      title={editDep ? "Edit Dependency" : "New Dependency"}
+      title={editDep ? "Edit dependency" : "New dependency"}
       description={editDep ? "Update the dependency condition" : "Define which milestone blocks another"}
       icon="link"
       accent="primary"
@@ -105,63 +108,77 @@ export function DependencyFormModal({
           <ModalPrimaryButton
             onClick={() => handleSave()}
             loading={submitting}
-            label={editDep ? "Update" : "Add Dependency"}
+            label={editDep ? "Update" : "Add dependency"}
             icon="check"
           />
         </>
       }
     >
-      <form onSubmit={handleSave} className="flex flex-col gap-4">
+      <form onSubmit={handleSave} className="space-y-4">
         {/* Prerequisite + Dependent */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={LABEL_CLASS}>
               Prerequisite <span className="text-red-500">*</span>
             </label>
-            <select
-              value={form.prerequisiteMilestoneId}
-              onChange={(e) => setForm({ ...form, prerequisiteMilestoneId: e.target.value })}
-              disabled={!!editDep}
-              className={SELECT_CLASS}
-            >
-              <option value="">Select...</option>
-              {milestones.map((m) => (
-                <option key={m.id} value={m.id} disabled={m.id === form.dependentMilestoneId}>
-                  {m.name} ({m.status})
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={form.prerequisiteMilestoneId}
+                onChange={(e) => setForm({ ...form, prerequisiteMilestoneId: e.target.value })}
+                disabled={!!editDep}
+                className={SELECT_CLASS}
+              >
+                <option value="">Select...</option>
+                {milestones.map((m) => (
+                  <option key={m.id} value={m.id} disabled={m.id === form.dependentMilestoneId}>
+                    {m.name} ({m.status})
+                  </option>
+                ))}
+              </select>
+              {prerequisite && (
+                <span
+                  className={`absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full pointer-events-none ${getStatusColor(prerequisite.status).dot}`}
+                />
+              )}
+            </div>
           </div>
           <div>
             <label className={LABEL_CLASS}>
               Dependent <span className="text-red-500">*</span>
             </label>
-            <select
-              value={form.dependentMilestoneId}
-              onChange={(e) => setForm({ ...form, dependentMilestoneId: e.target.value })}
-              disabled={!!editDep}
-              className={SELECT_CLASS}
-            >
-              <option value="">Select...</option>
-              {milestones.map((m) => (
-                <option key={m.id} value={m.id} disabled={m.id === form.prerequisiteMilestoneId}>
-                  {m.name} ({m.status})
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={form.dependentMilestoneId}
+                onChange={(e) => setForm({ ...form, dependentMilestoneId: e.target.value })}
+                disabled={!!editDep}
+                className={SELECT_CLASS}
+              >
+                <option value="">Select...</option>
+                {milestones.map((m) => (
+                  <option key={m.id} value={m.id} disabled={m.id === form.prerequisiteMilestoneId}>
+                    {m.name} ({m.status})
+                  </option>
+                ))}
+              </select>
+              {dependent && (
+                <span
+                  className={`absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full pointer-events-none ${getStatusColor(dependent.status).dot}`}
+                />
+              )}
+            </div>
           </div>
         </div>
 
         {/* Flow indicator */}
         {form.prerequisiteMilestoneId && form.dependentMilestoneId && (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-600">
-            <span className="material-symbols-outlined text-base text-slate-400">flag</span>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+            <Icon name="flag" size={13} className="text-slate-400 shrink-0" />
             <span className="font-medium text-slate-700 truncate">
-              {milestones.find((m) => m.id === form.prerequisiteMilestoneId)?.name ?? "—"}
+              {prerequisite?.name ?? "—"}
             </span>
-            <span className="material-symbols-outlined text-base text-indigo-500 mx-1">arrow_forward</span>
+            <Icon name="arrow_forward" size={13} className="text-indigo-500 shrink-0" />
             <span className="font-medium text-slate-700 truncate">
-              {milestones.find((m) => m.id === form.dependentMilestoneId)?.name ?? "—"}
+              {dependent?.name ?? "—"}
             </span>
           </div>
         )}
@@ -240,6 +257,6 @@ export function DependencyFormModal({
         {/* Hidden submit so Enter inside form submits */}
         <button type="submit" className="hidden" aria-hidden="true" />
       </form>
-    </Modal>
+    </Sheet>
   );
 }

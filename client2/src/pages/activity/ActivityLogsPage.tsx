@@ -4,11 +4,15 @@ import { useAuth } from "../../auth";
 import type { ActivityLogRecord, User } from "../../types";
 import {
   AnimatedBackground,
-  LoadingPage,
+  EmptyState,
+  GlassCard,
+  PageAction,
+  PageContainer,
+  PageSkeleton,
   PERMISSION_GROUPS,
+  StatCard,
   useNavHeader,
   usePermission,
-  StatCard,
   useToast,
   type ViewMode,
 } from "../shared";
@@ -29,6 +33,7 @@ export function ActivityLogsPage() {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<ViewMode>("card");
+  const [formOpen, setFormOpen] = useState(false);
 
   // Filters
   const [selectedUserId, setSelectedUserId] = useState("");
@@ -39,8 +44,18 @@ export function ActivityLogsPage() {
   const { setNavHeader } = useNavHeader();
 
   useEffect(() => {
-    setNavHeader({ title: "Activity Logs", description: "Track and monitor user activities across the platform" });
-  }, [setNavHeader]);
+    setNavHeader({
+      title: "Activity Logs",
+      description: "Audit trail of user activity across your organization",
+      ...(canCreateActivity
+        ? {
+            actions: [
+              { label: "Log activity", icon: "note_add", onClick: () => setFormOpen(true) },
+            ],
+          }
+        : {}),
+    });
+  }, [setNavHeader, canCreateActivity]);
 
   const loadData = () => {
     if (!auth) return;
@@ -82,6 +97,15 @@ export function ActivityLogsPage() {
     [logs]
   );
 
+  // Per-type counts for the filter chips (derived from the loaded logs)
+  const typeCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const log of logs) {
+      if (log.activityType) counts[log.activityType] = (counts[log.activityType] ?? 0) + 1;
+    }
+    return counts;
+  }, [logs]);
+
   // Filter logs
   const filteredLogs = useMemo(() => {
     let result = logs;
@@ -92,11 +116,20 @@ export function ActivityLogsPage() {
 
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
-      result = result.filter(
-        (l) =>
+      result = result.filter((l) => {
+        const user = users.find((u) => u.id === l.userId);
+        const matchesUser =
+          !!user &&
+          (user.fullName.toLowerCase().includes(search) ||
+            user.email.toLowerCase().includes(search));
+        const matchesLogUser = !!l.userName && l.userName.toLowerCase().includes(search);
+        return (
           l.activityType.toLowerCase().includes(search) ||
-          (l.description && l.description.toLowerCase().includes(search))
-      );
+          (l.description && l.description.toLowerCase().includes(search)) ||
+          matchesUser ||
+          matchesLogUser
+        );
+      });
     }
 
     if (dateRange.from) {
@@ -109,20 +142,27 @@ export function ActivityLogsPage() {
     }
 
     return result;
-  }, [logs, selectedType, searchTerm, dateRange]);
+  }, [logs, users, selectedType, searchTerm, dateRange]);
 
-  // Stats
-  const todayLogs = filteredLogs.filter((l) => {
-    const today = new Date();
-    const logDate = new Date(l.timestamp);
-    return logDate.toDateString() === today.toDateString();
-  }).length;
+  // KPI stats derived from the loaded logs
+  const stats = useMemo(() => {
+    const todayKey = new Date().toDateString();
+    let today = 0;
+    let created = 0;
+    let updated = 0;
+    for (const log of logs) {
+      if (new Date(log.timestamp).toDateString() === todayKey) today += 1;
+      const type = log.activityType.toLowerCase();
+      if (type.includes("create") || type.includes("add")) created += 1;
+      if (type.includes("update") || type.includes("edit")) updated += 1;
+    }
+    return { total: logs.length, today, created, updated };
+  }, [logs]);
 
-  const uniqueTypes = [...new Set(filteredLogs.map((l) => l.activityType))].length;
-  const uniqueUsers = [...new Set(filteredLogs.map((l) => l.userId))].length;
+  const hasActiveFilters = !!(selectedUserId || selectedType || searchTerm || dateRange.from || dateRange.to);
 
   const handleCreateLog = async (form: { activityType: string; description: string; metadata: string }) => {
-    if (!auth) return;
+    if (!auth) return false;
     try {
       await api.createActivityLog(auth.token, {
         activityType: form.activityType,
@@ -131,29 +171,29 @@ export function ActivityLogsPage() {
       });
       addToast("Activity logged successfully.");
       loadData();
+      return true;
     } catch (e) {
       addToast(`Error: ${e instanceof Error ? e.message : "Failed to log activity"}`, "error");
+      return false;
     }
   };
 
-  if (loading) return <LoadingPage label="Loading activity logs..." />;
+  if (loading) return <PageSkeleton />;
 
   return (
     <div className="relative">
       <AnimatedBackground />
 
-      {/* Stats Row */}
-      <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        <StatCard label="Total Activities" value={filteredLogs.length} color="indigo" icon="receipt_long" />
-        <StatCard label="Today" value={todayLogs} color="emerald" icon="today" />
-        <StatCard label="Activity Types" value={uniqueTypes} color="violet" icon="category" />
-        <StatCard label="Active Users" value={uniqueUsers} color="amber" icon="people" />
-      </div>
-
-      {/* Main Layout */}
-      <div className={`relative z-10 grid grid-cols-1 gap-4 ${canCreateActivity ? "lg:grid-cols-[1fr_360px]" : "lg:grid-cols-1"}`}>
-        {/* Left: Filters + Activity List */}
-        <div className="flex flex-col gap-4 min-w-0">
+      <PageContainer
+        stats={
+          <>
+            <StatCard label="Total events" value={stats.total} color="indigo" icon="receipt_long" />
+            <StatCard label="Today" value={stats.today} color="emerald" icon="today" />
+            <StatCard label="Created" value={stats.created} color="violet" icon="add_circle" />
+            <StatCard label="Updated" value={stats.updated} color="amber" icon="edit" />
+          </>
+        }
+        filters={
           <ActivityFilters
             users={users}
             activityTypes={activityTypes}
@@ -166,18 +206,62 @@ export function ActivityLogsPage() {
             onSearchChange={setSearchTerm}
             onDateRangeChange={setDateRange}
             canViewAll={canViewAll}
+            typeCounts={typeCounts}
+            totalEvents={logs.length}
+            resultCount={filteredLogs.length}
+            view={view}
+            onViewChange={setView}
+            canCreateActivity={canCreateActivity}
+            onLogActivity={() => setFormOpen(true)}
           />
-
-          <ActivityList logs={filteredLogs} users={users} view={view} onViewChange={setView} />
-        </div>
-
-        {/* Right: Log Activity Form */}
-        {canCreateActivity && (
-          <div className="lg:sticky lg:top-7 h-fit">
-            <ActivityForm onSubmit={handleCreateLog} />
+        }
+      >
+        {filteredLogs.length === 0 ? (
+          <GlassCard className="view-fade">
+            <EmptyState
+              icon="history"
+              title="No activity found"
+              description="Nothing matches the current filters. Adjust or clear the filters, or log a new activity to see it here."
+              accent="primary"
+              action={
+                hasActiveFilters || canCreateActivity ? (
+                  <div className="flex items-center justify-center gap-2">
+                    {hasActiveFilters && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedUserId("");
+                          setSelectedType("");
+                          setSearchTerm("");
+                          setDateRange({ from: "", to: "" });
+                        }}
+                        className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all"
+                      >
+                        Clear filters
+                      </button>
+                    )}
+                    {canCreateActivity && (
+                      <PageAction label="Log activity" icon="add" onClick={() => setFormOpen(true)} />
+                    )}
+                  </div>
+                ) : undefined
+              }
+            />
+          </GlassCard>
+        ) : (
+          <div key={view} className="view-fade">
+            <ActivityList logs={filteredLogs} users={users} view={view} />
           </div>
         )}
-      </div>
+      </PageContainer>
+
+      {canCreateActivity && (
+        <ActivityForm
+          open={formOpen}
+          onClose={() => setFormOpen(false)}
+          onSubmit={handleCreateLog}
+        />
+      )}
     </div>
   );
 }

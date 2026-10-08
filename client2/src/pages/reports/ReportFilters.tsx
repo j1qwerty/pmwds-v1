@@ -22,9 +22,9 @@ interface ReportFiltersProps {
 }
 
 const inputCls =
-  "w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all";
+  "w-full h-9 px-3 rounded-lg bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-slate-700 transition-all";
 const labelCls =
-  "text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5";
+  "text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5";
 
 export function ReportFilters({ filters, projects, onFilterChange, scopeFields }: ReportFiltersProps) {
   const hasFilters = filters.organizationId || filters.projectId || filters.departmentId || filters.startDate || filters.endDate || filters.status;
@@ -35,14 +35,14 @@ export function ReportFilters({ filters, projects, onFilterChange, scopeFields }
 
   return (
     <SectionCard
-      title="Report Filters"
+      title="Report filters"
       description="Narrow down the data your report will analyze"
       icon="hi-filter"
       actions={hasFilters ? (
         <button
           type="button"
           onClick={clearFilters}
-          className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
+          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-lg text-xs font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all"
         >
           <Icon name="close" size={12} />
           Clear all
@@ -55,13 +55,14 @@ export function ReportFilters({ filters, projects, onFilterChange, scopeFields }
 
         {/* Project */}
         <div>
-          <label className={labelCls}>Project</label>
+          <label className={labelCls} htmlFor="report-filter-project">Project</label>
           <select
+            id="report-filter-project"
             value={filters.projectId}
             onChange={(e) => onFilterChange({ ...filters, projectId: e.target.value })}
             className={inputCls}
           >
-            <option value="">All Projects</option>
+            <option value="">All projects</option>
             {projects.map((project) => (
               <option key={project.id} value={project.id}>{project.name}</option>
             ))}
@@ -70,13 +71,14 @@ export function ReportFilters({ filters, projects, onFilterChange, scopeFields }
 
         {/* Status */}
         <div>
-          <label className={labelCls}>Status</label>
+          <label className={labelCls} htmlFor="report-filter-status">Status</label>
           <select
+            id="report-filter-status"
             value={filters.status}
             onChange={(e) => onFilterChange({ ...filters, status: e.target.value })}
             className={inputCls}
           >
-            <option value="">All Statuses</option>
+            <option value="">All statuses</option>
             <option value="active">Active</option>
             <option value="completed">Completed</option>
             <option value="onHold">On Hold</option>
@@ -87,8 +89,9 @@ export function ReportFilters({ filters, projects, onFilterChange, scopeFields }
 
         {/* Start Date */}
         <div>
-          <label className={labelCls}>Start Date</label>
+          <label className={labelCls} htmlFor="report-filter-start">Start date</label>
           <input
+            id="report-filter-start"
             type="date"
             value={filters.startDate}
             onChange={(e) => onFilterChange({ ...filters, startDate: e.target.value })}
@@ -98,8 +101,9 @@ export function ReportFilters({ filters, projects, onFilterChange, scopeFields }
 
         {/* End Date */}
         <div>
-          <label className={labelCls}>End Date</label>
+          <label className={labelCls} htmlFor="report-filter-end">End date</label>
           <input
+            id="report-filter-end"
             type="date"
             value={filters.endDate}
             onChange={(e) => onFilterChange({ ...filters, endDate: e.target.value })}

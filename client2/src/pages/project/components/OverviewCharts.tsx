@@ -16,8 +16,25 @@ const statusHexColors: Record<string, string> = {
   Cancelled: "#ef4444",
 };
 
+const STATUS_DISPLAY: Record<string, string> = {
+  NotStarted: "Not started",
+  Todo: "To do",
+  InProgress: "In progress",
+  OnHold: "On hold",
+  Completed: "Completed",
+  Delayed: "Delayed",
+  Cancelled: "Cancelled",
+  Planning: "Planning",
+  Pending: "Pending",
+  Active: "Active",
+};
+
 function hexFromStatus(status: string): string {
   return statusHexColors[status] || "#94a3b8";
+}
+
+function statusLabel(status: string): string {
+  return STATUS_DISPLAY[status] || status;
 }
 
 function getHealthColor(score: number): string {
@@ -38,9 +55,9 @@ function getRiskColor(score: number): string {
 
 const gaugeHexMap: Record<string, string> = {
   emerald: "#10b981",
-  cyan: "#06b6d4",
+  cyan: "#0ea5e9", // sky-500 (palette: cyan→sky)
   amber: "#f59e0b",
-  rose: "#f43f5e",
+  rose: "#f87171", // red-400 (palette: rose→red, keeps a distinct step from red-500)
   red: "#ef4444",
 };
 
@@ -63,16 +80,16 @@ export function AIGauge({
 
   const bgClasses: Record<string, string> = {
     emerald: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    cyan: "bg-cyan-50 text-cyan-700 border-cyan-200",
+    cyan: "bg-sky-50 text-sky-700 border-sky-200",
     amber: "bg-amber-50 text-amber-700 border-amber-200",
-    rose: "bg-rose-50 text-rose-700 border-rose-200",
+    rose: "bg-red-50 text-red-700 border-red-200",
     red: "bg-red-50 text-red-700 border-red-200",
   };
 
   return (
     <div className={`rounded-2xl border p-4 flex flex-col items-center ${bgClasses[colorKey]}`}>
-      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">{label}</span>
-      <svg width="140" height="90" viewBox="0 0 140 100">
+      <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">{label}</span>
+      <svg width="140" height="90" viewBox="0 0 140 100" aria-hidden="true">
         <path d="M 20 80 A 50 50 0 1 1 120 80" fill="none" stroke="rgba(0,0,0,0.08)" strokeWidth="12" strokeLinecap="round" />
         <path
           d="M 20 80 A 50 50 0 1 1 120 80"
@@ -85,7 +102,7 @@ export function AIGauge({
           style={{ transition: "stroke-dashoffset 1s ease-out" }}
         />
       </svg>
-      <span className="text-2xl font-bold mt-1" style={{ color: strokeColor }}>{Math.round(score)}</span>
+      <span className="text-2xl font-bold tracking-tight mt-1" style={{ color: strokeColor }}>{Math.round(score)}</span>
       {subtitle && <span className="text-[10px] text-slate-500 mt-0.5">{subtitle}</span>}
     </div>
   );
@@ -114,9 +131,9 @@ export function TaskStatusDonut({
     });
 
   return (
-    <div className="flex flex-col items-center gap-3">
-      <svg width="160" height="160" viewBox="0 0 160 160">
-        <circle cx="80" cy="80" r={radius} fill="none" stroke="#e2e8f0" strokeWidth="18" />
+    <div className="flex flex-col items-center gap-4">
+      <svg width="160" height="160" viewBox="0 0 160 160" role="img" aria-label={`Task status distribution, ${total} tasks`}>
+        <circle cx="80" cy="80" r={radius} fill="none" stroke="#f1f5f9" strokeWidth="18" />
         {segments.map((seg) => (
           <circle
             key={seg.status}
@@ -131,16 +148,16 @@ export function TaskStatusDonut({
           />
         ))}
         <text x="80" y="76" textAnchor="middle" className="text-lg font-bold" fill="#334155">{total}</text>
-        <text x="80" y="92" textAnchor="middle" className="text-[9px]" fill="#94a3b8">Total</text>
+        <text x="80" y="92" textAnchor="middle" className="text-[9px]" fill="#94a3b8">tasks</text>
       </svg>
-      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
+      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5">
         {segments.map((seg) => {
           const c = getStatusColor(seg.status);
           return (
-            <div key={seg.status} className="flex items-center gap-1.5 text-[10px]">
+            <div key={seg.status} className="flex items-center gap-1.5 text-[11px]">
               <span className={`w-2 h-2 rounded-full ${c.dot}`} />
-              <span className="text-slate-500">{seg.status}</span>
-              <span className="font-semibold text-slate-700">{seg.count}</span>
+              <span className="text-slate-500">{statusLabel(seg.status)}</span>
+              <span className="font-bold text-slate-700">{seg.count}</span>
             </div>
           );
         })}
@@ -179,7 +196,7 @@ export function MilestoneTimeline({
         return (
           <div
             key={m.id}
-            className="flex items-center gap-3 group cursor-pointer"
+            className="flex items-center gap-3 group cursor-pointer rounded-lg px-1.5 py-1 -mx-1.5 hover:bg-slate-50 transition-colors"
             onClick={() => onNavigate?.(m.id)}
           >
             <div className="w-8 text-right shrink-0">
@@ -194,7 +211,7 @@ export function MilestoneTimeline({
                   <Icon name="check-circle" size={12} className="text-emerald-500 shrink-0" />
                 )}
                 {overdue && (
-                  <span className="text-[9px] font-semibold text-red-500 shrink-0">OVERDUE</span>
+                  <span className="text-[9px] font-semibold text-red-500 shrink-0">Overdue</span>
                 )}
               </div>
               <div className="relative h-2 bg-slate-100 rounded-full mt-1 overflow-hidden">
@@ -210,6 +227,12 @@ export function MilestoneTimeline({
           </div>
         );
       })}
+      {/* Timeline range hint */}
+      <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-100">
+        <span>{new Date(start).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+        <span>Project window</span>
+        <span>{new Date(end).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+      </div>
     </div>
   );
 }
@@ -228,12 +251,12 @@ export function BudgetBar({
   const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
   return (
     <div>
-      <div className="flex justify-between text-xs mb-1">
+      <div className="flex justify-between text-xs mb-1.5">
         <span className="text-slate-500">{label}</span>
-        <span className="font-semibold text-slate-700">{formatLakhs(value)}</span>
+        <span className="font-bold text-slate-700">{formatLakhs(value)}</span>
       </div>
-      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-        <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
+      <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+        <div className={`h-full rounded-full transition-all duration-500 ${color}`} style={{ width: `${pct}%` }} />
       </div>
     </div>
   );

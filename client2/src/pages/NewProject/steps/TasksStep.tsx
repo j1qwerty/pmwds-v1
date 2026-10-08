@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { priorities } from "../../constants";
-import { GlassCard, Avatar } from "../../shared";
+import { GlassCard, Avatar, EmptyState } from "../../shared";
+import { getPriorityColor } from "../../shared/colors";
 import type { User } from "../../../types";
 import { Icon } from "../../../components/ui/Icon";
 
@@ -30,6 +31,12 @@ interface TasksStepProps {
   onChange: (tasks: TaskEntry[]) => void;
   users: User[];
 }
+
+const INPUT_CLASS =
+  "w-full h-9 px-3 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-700 outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all placeholder:text-slate-400";
+
+const LABEL_CLASS =
+  "text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5";
 
 export function TasksStep({ milestones, tasks, onChange, users }: TasksStepProps) {
   const [showFormForMilestone, setShowFormForMilestone] = useState<string | null>(null);
@@ -107,32 +114,31 @@ export function TasksStep({ milestones, tasks, onChange, users }: TasksStepProps
 
   if (milestones.length === 0) {
     return (
-      <GlassCard className="p-10 text-center">
-        <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-4">
-          <Icon name="task_alt" size={24} className="text-amber-400" />
-        </div>
-        <p className="text-sm font-semibold text-slate-600">Add milestones first</p>
-        <p className="text-xs text-slate-400 mt-1">Go back to the Milestones step to create milestones before adding tasks.</p>
+      <GlassCard>
+        <EmptyState
+          icon="task_alt"
+          title="Add milestones first"
+          description="Go back to the Milestones step to create milestones before adding tasks."
+          accent="warning"
+        />
       </GlassCard>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {milestones.map((ms) => {
         const msTasks = activeMilestoneTasks(ms.id);
         const isFormOpen = activeFormMilestone === ms.id;
 
         return (
-          <div key={ms.id} className="rounded-xl border border-slate-200 bg-white/80 overflow-hidden">
+          <div key={ms.id} className="rounded-xl border border-slate-200 bg-white overflow-hidden">
             {/* Milestone header */}
-            <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 border-b border-slate-200">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                ms.isCritical ? "bg-red-100" : "bg-indigo-100"
+            <div className="flex items-center gap-3 px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                ms.isCritical ? "bg-red-50" : "bg-indigo-50"
               }`}>
-                <span className={`material-symbols-outlined text-base ${
-                  ms.isCritical ? "text-red-500" : "text-indigo-600"
-                }`}>flag</span>
+                <Icon name="flag" size={15} className={ms.isCritical ? "text-red-500" : "text-indigo-600"} />
               </div>
               <div className="flex-1 min-w-0">
                 <span className="font-semibold text-sm text-slate-800">{ms.name}</span>
@@ -140,7 +146,7 @@ export function TasksStep({ milestones, tasks, onChange, users }: TasksStepProps
                   <span className="text-xs text-slate-400 ml-2 truncate">{ms.description}</span>
                 )}
               </div>
-              <span className="text-[10px] text-slate-400 font-medium">{msTasks.length} tasks</span>
+              <span className="text-[10px] text-slate-400 font-semibold">{msTasks.length} task{msTasks.length !== 1 ? "s" : ""}</span>
               {!isFormOpen && (
                 <button
                   type="button"
@@ -148,9 +154,9 @@ export function TasksStep({ milestones, tasks, onChange, users }: TasksStepProps
                     resetForm(getMilestoneDueDate(ms.id));
                     setShowFormForMilestone(ms.id);
                   }}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors"
+                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-sm shadow-indigo-500/20 transition-all"
                 >
-                  <Icon name="add" size={15} />
+                  <Icon name="add" size={14} />
                   Task
                 </button>
               )}
@@ -159,113 +165,112 @@ export function TasksStep({ milestones, tasks, onChange, users }: TasksStepProps
             {/* Tasks list */}
             {msTasks.length > 0 && (
               <div className="divide-y divide-slate-100">
-                {msTasks.map((task) => (
-                  <div key={task.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors group">
-                    <div className={`w-2 h-2 rounded-full shrink-0 ${
-                      task.priority === "Critical" ? "bg-red-500" :
-                      task.priority === "High" ? "bg-amber-500" :
-                      task.priority === "Medium" ? "bg-blue-500" : "bg-slate-400"
-                    }`} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-slate-700">{task.title}</span>
-                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider
-                          ${task.priority === 'Critical' ? 'bg-red-50 text-red-600' :
-                            task.priority === 'High' ? 'bg-amber-50 text-amber-600' :
-                            task.priority === 'Medium' ? 'bg-blue-50 text-blue-600' :
-                            'bg-slate-50 text-slate-500'}`}>
-                          {task.priority}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        {task.description && (
-                          <span className="text-xs text-slate-400 truncate max-w-60">{task.description}</span>
-                        )}
-                        {task.estimatedHours > 0 && (
-                          <span className="text-[10px] text-slate-400">{task.estimatedHours}h</span>
-                        )}
-                        {task.startDate && (
-                          <span className="text-[10px] text-slate-400">Start: {new Date(task.startDate).toLocaleDateString()}</span>
-                        )}
-                        {task.dueDate && (
-                          <span className="text-[10px] text-slate-400">Due: {new Date(task.dueDate).toLocaleDateString()}</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {task.assignedToUserIds.length > 0 && (
-                        <div className="flex -space-x-1 mr-2">
-                          {task.assignedToUserIds.slice(0, 3).map((uid) => {
-                            const u = users.find((user) => user.id === uid);
-                            return u ? <Avatar key={uid} person={u} size="xs" className="ring-2 ring-white" /> : null;
-                          })}
+                {msTasks.map((task) => {
+                  const pColor = getPriorityColor(task.priority);
+                  return (
+                    <div key={task.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50/70 transition-colors group">
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${pColor.dot}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-slate-700">{task.title}</span>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${pColor.bg} ${pColor.text} ${pColor.border}`}>
+                            {task.priority}
+                          </span>
                         </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handleEdit(task)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition-colors"
-                      >
-                        <Icon name="edit" size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(task.id)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                      >
-                        <Icon name="delete" size={16} />
-                      </button>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {task.description && (
+                            <span className="text-xs text-slate-400 truncate max-w-60">{task.description}</span>
+                          )}
+                          {task.estimatedHours > 0 && (
+                            <span className="text-[10px] text-slate-400">{task.estimatedHours}h</span>
+                          )}
+                          {task.startDate && (
+                            <span className="text-[10px] text-slate-400">Start: {new Date(task.startDate).toLocaleDateString()}</span>
+                          )}
+                          {task.dueDate && (
+                            <span className="text-[10px] text-slate-400">Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                        {task.assignedToUserIds.length > 0 && (
+                          <div className="flex -space-x-1 mr-2">
+                            {task.assignedToUserIds.slice(0, 3).map((uid) => {
+                              const u = users.find((user) => user.id === uid);
+                              return u ? <Avatar key={uid} person={u} size="xs" className="ring-2 ring-white" /> : null;
+                            })}
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(task)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                          title="Edit task"
+                          aria-label={`Edit task: ${task.title}`}
+                        >
+                          <Icon name="edit" size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(task.id)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                          title="Remove task"
+                          aria-label={`Remove task: ${task.title}`}
+                        >
+                          <Icon name="delete" size={16} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
             {msTasks.length === 0 && !isFormOpen && (
-              <div className="px-4 py-6 text-center text-slate-400">
+              <div className="px-4 py-5 text-center text-slate-400">
                 <p className="text-xs">No tasks yet. Click "Task" to add one.</p>
               </div>
             )}
 
             {/* Add/Edit task form */}
             {isFormOpen && (
-              <div className="p-4 bg-indigo-50/30 border-t border-indigo-100 space-y-3">
+              <div className="p-3 bg-indigo-50/30 border-t border-indigo-100 space-y-3">
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Title <span className="text-red-500">*</span></label>
+                  <label className={LABEL_CLASS}>Title <span className="text-red-500">*</span></label>
                   <input
                     value={form.title}
                     onChange={(e) => setForm({ ...form, title: e.target.value })}
                     placeholder="Task title"
-                    className="w-full p-2.5 rounded-lg border border-slate-200 text-sm outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+                    className={INPUT_CLASS}
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Description</label>
+                  <label className={LABEL_CLASS}>Description</label>
                   <textarea
                     value={form.description}
                     onChange={(e) => setForm({ ...form, description: e.target.value })}
                     placeholder="Optional description"
                     rows={2}
-                    className="w-full p-2.5 rounded-lg border border-slate-200 text-sm outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all resize-none"
+                    className={`${INPUT_CLASS} min-h-[64px] py-2 resize-y`}
                   />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Start Date</label>
+                    <label className={LABEL_CLASS}>Start date</label>
                     <input
                       type="date"
                       value={form.startDate}
                       onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                      className="w-full p-2.5 rounded-lg border border-slate-200 text-sm outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+                      className={INPUT_CLASS}
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Due Date</label>
+                    <label className={LABEL_CLASS}>Due date</label>
                     <input
                       type="date"
                       value={form.dueDate}
                       onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-                      className="w-full p-2.5 rounded-lg border border-slate-200 text-sm outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+                      className={INPUT_CLASS}
                     />
                     {form.dueDate && showFormForMilestone && (() => {
                       const msDue = getMilestoneDueDate(showFormForMilestone);
@@ -278,36 +283,37 @@ export function TasksStep({ milestones, tasks, onChange, users }: TasksStepProps
                     })()}
                   </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Priority</label>
+                    <label className={LABEL_CLASS}>Priority</label>
                     <select
                       value={form.priority}
                       onChange={(e) => setForm({ ...form, priority: e.target.value })}
-                      className="w-full p-2.5 rounded-lg border border-slate-200 text-sm outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+                      className={INPUT_CLASS}
                     >
                       {priorities.map((p) => <option key={p} value={p}>{p}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Est. Hours</label>
+                    <label className={LABEL_CLASS}>Est. hours</label>
                     <input
                       type="number"
                       value={form.estimatedHours}
                       onChange={(e) => setForm({ ...form, estimatedHours: Number(e.target.value) })}
                       min={0}
-                      className="w-full p-2.5 rounded-lg border border-slate-200 text-sm outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+                      className={INPUT_CLASS}
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Assignees</label>
+                  <label className={LABEL_CLASS}>Assignees</label>
                   <div className="flex flex-wrap gap-1.5">
                     {users.filter(u => u.isActive !== false).map((u) => (
                       <button
                         key={u.id}
                         type="button"
                         onClick={() => toggleAssignee(u.id)}
+                        aria-pressed={form.assignedToUserIds.includes(u.id)}
                         className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
                           form.assignedToUserIds.includes(u.id)
                             ? "bg-indigo-100 border-indigo-200 text-indigo-700"
@@ -320,11 +326,11 @@ export function TasksStep({ milestones, tasks, onChange, users }: TasksStepProps
                     ))}
                   </div>
                 </div>
-                <div className="flex justify-end gap-2 pt-2 border-t border-indigo-100">
+                <div className="flex justify-end gap-2 pt-3 border-t border-indigo-100">
                   <button
                     type="button"
                     onClick={() => resetForm()}
-                    className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                    className="inline-flex items-center h-9 px-3.5 rounded-lg text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all"
                   >
                     Cancel
                   </button>
@@ -332,9 +338,9 @@ export function TasksStep({ milestones, tasks, onChange, users }: TasksStepProps
                     type="button"
                     onClick={handleSave}
                     disabled={!form.title.trim()}
-                    className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                    className="inline-flex items-center h-9 px-3.5 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-sm shadow-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {editTaskId ? "Update" : "Add"} Task
+                    {editTaskId ? "Update task" : "Add task"}
                   </button>
                 </div>
               </div>

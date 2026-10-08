@@ -82,15 +82,15 @@ export function InfoTip({
           onMouseEnter={() => setOpen(true)}
           onMouseLeave={() => setOpen(false)}
         >
-          <p className="text-[12px] font-bold text-slate-800 leading-snug">{title}</p>
-          <p className="text-[11px] text-slate-600 leading-relaxed mt-1.5">{summary}</p>
+          <p className="text-xs font-bold text-slate-800 leading-snug">{title}</p>
+          <p className="text-xs text-slate-500 leading-relaxed mt-1.5">{summary}</p>
 
           {points && points.length > 0 && (
             <ul className="mt-2.5 space-y-1.5">
               {points.map((point) => (
-                <li key={point} className="flex gap-1.5 text-[11px] text-slate-600 leading-relaxed">
+                <li key={point} className="flex gap-1.5 text-xs text-slate-500 leading-relaxed">
                   <span className="text-indigo-500 shrink-0 mt-[1px]">
-                    <span className="material-symbols-outlined text-[12px]">chevron_right</span>
+                    <span className="material-symbols-outlined text-[14px]">chevron_right</span>
                   </span>
                   <span>{point}</span>
                 </li>
@@ -149,20 +149,20 @@ export function InfoTipCard({
       >
         {icon}
         How this works
-        <span className="material-symbols-outlined text-[13px]">
+        <span className="material-symbols-outlined text-[14px]">
           {open ? "expand_less" : "help_outline"}
         </span>
       </button>
 
       {open && (
         <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-[320px] rounded-xl border border-slate-200 bg-white p-4 text-left shadow-xl shadow-slate-900/10">
-          <p className="text-[13px] font-bold text-slate-800">{title}</p>
-          <p className="text-[11.5px] text-slate-600 leading-relaxed mt-1.5">{summary}</p>
+          <p className="text-sm font-bold text-slate-800">{title}</p>
+          <p className="text-xs text-slate-500 leading-relaxed mt-1.5">{summary}</p>
 
           {points && points.length > 0 && (
             <ul className="mt-3 space-y-2">
               {points.map((point) => (
-                <li key={point} className="flex gap-2 text-[11.5px] text-slate-600 leading-relaxed">
+                <li key={point} className="flex gap-2 text-xs text-slate-500 leading-relaxed">
                   <span className="mt-[2px] w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
                   <span>{point}</span>
                 </li>
@@ -171,7 +171,7 @@ export function InfoTipCard({
           )}
 
           {note && (
-            <p className="mt-3 pt-3 border-t border-slate-100 text-[10.5px] text-slate-500 leading-relaxed italic">
+            <p className="mt-3 pt-3 border-t border-slate-100 text-[10px] text-slate-500 leading-relaxed italic">
               {note}
             </p>
           )}

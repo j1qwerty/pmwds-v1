@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { GlassCard } from "../../shared";
+import { GlassCard, EmptyState } from "../../shared";
 import { Icon } from "../../../components/ui/Icon";
 
 interface MilestoneEntry {
@@ -16,6 +16,12 @@ interface MilestonesStepProps {
   onChange: (milestones: MilestoneEntry[]) => void;
   projectEndDate: string;
 }
+
+const INPUT_CLASS =
+  "w-full h-9 px-3 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-700 outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all placeholder:text-slate-400";
+
+const LABEL_CLASS =
+  "text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5";
 
 export function MilestonesStep({ milestones, onChange, projectEndDate }: MilestonesStepProps) {
   const [showForm, setShowForm] = useState(false);
@@ -56,7 +62,7 @@ export function MilestonesStep({ milestones, onChange, projectEndDate }: Milesto
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       <p className="text-xs text-slate-500">
         At least one milestone is required <span className="text-red-500">*</span>
       </p>
@@ -67,20 +73,18 @@ export function MilestonesStep({ milestones, onChange, projectEndDate }: Milesto
           {milestones.map((m, idx) => (
             <div
               key={m.id}
-              className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 bg-white/80 hover:border-indigo-200 transition-colors group"
+              className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-white hover:border-indigo-200 transition-colors group"
             >
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-                m.isCritical ? "bg-red-100" : "bg-indigo-100"
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                m.isCritical ? "bg-red-50" : "bg-indigo-50"
               }`}>
-                <span className={`material-symbols-outlined text-lg ${
-                  m.isCritical ? "text-red-500" : "text-indigo-600"
-                }`}>flag</span>
+                <Icon name="flag" size={16} className={m.isCritical ? "text-red-500" : "text-indigo-600"} />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-sm text-slate-800">{m.name}</span>
                   {m.isCritical && (
-                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-100 text-red-600 uppercase">Critical</span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-50 text-red-600 border border-red-100 uppercase">Critical</span>
                   )}
                 </div>
                 <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
@@ -88,22 +92,22 @@ export function MilestonesStep({ milestones, onChange, projectEndDate }: Milesto
                   {m.dueDate && <span>Due: {new Date(m.dueDate).toLocaleDateString()}</span>}
                 </div>
               </div>
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                 <button
                   type="button"
                   onClick={() => handleEdit(idx)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition-colors"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
                   title="Edit milestone"
+                  aria-label={`Edit milestone: ${m.name}`}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
+                  <Icon name="edit" size={15} />
                 </button>
                 <button
                   type="button"
                   onClick={() => handleDelete(m.id)}
                   className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
                   title="Remove milestone"
+                  aria-label={`Remove milestone: ${m.name}`}
                 >
                   <Icon name="delete" size={16} />
                 </button>
@@ -115,45 +119,35 @@ export function MilestonesStep({ milestones, onChange, projectEndDate }: Milesto
 
       {/* Empty state */}
       {milestones.length === 0 && !showForm && (
-        <GlassCard className="p-10 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center mx-auto mb-4">
-            <span className="material-symbols-outlined text-3xl text-indigo-400">flag</span>
-          </div>
-          <p className="text-sm font-semibold text-slate-600">No milestones yet</p>
-          <p className="text-xs text-slate-400 mt-1 mb-4">Break your project into key milestones to track progress. At least one milestone is required <span className="text-red-500">*</span></p>
+        <GlassCard>
+          <EmptyState
+            icon="flag"
+            title="No milestones yet"
+            description="Break your project into key milestones to track progress. At least one milestone is required."
+          />
         </GlassCard>
       )}
 
       {/* Add milestone form */}
       {showForm ? (
-        <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-5 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="sm:col-span-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Name <span className="text-red-500">*</span></label>
+        <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-4 space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className={LABEL_CLASS}>Name <span className="text-red-500">*</span></label>
               <input
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="Milestone name"
-                className="w-full p-2.5 rounded-lg border border-slate-200 text-sm outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Description</label>
-              <textarea
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="What marks this milestone?"
-                rows={2}
-                className="w-full p-2.5 rounded-lg border border-slate-200 text-sm outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all resize-none"
+                className={INPUT_CLASS}
               />
             </div>
             <div>
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Due Date <span className="text-red-500">*</span></label>
+              <label className={LABEL_CLASS}>Due date <span className="text-red-500">*</span></label>
               <input
                 type="date"
                 value={form.dueDate}
                 onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-                className="w-full p-2.5 rounded-lg border border-slate-200 text-sm outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+                className={INPUT_CLASS}
               />
               {form.dueDate && projectEndDate && form.dueDate > projectEndDate && (
                 <div className="flex items-start gap-1.5 mt-1.5 p-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
@@ -162,23 +156,33 @@ export function MilestonesStep({ milestones, onChange, projectEndDate }: Milesto
                 </div>
               )}
             </div>
-            <div className="flex items-end pb-2">
+            <div className="md:col-span-2">
+              <label className={LABEL_CLASS}>Description</label>
+              <textarea
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                placeholder="What marks this milestone?"
+                rows={2}
+                className={`${INPUT_CLASS} min-h-[64px] py-2 resize-y`}
+              />
+            </div>
+            <div className="md:col-span-2 flex items-center">
               <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={form.isCritical}
                   onChange={(e) => setForm({ ...form, isCritical: e.target.checked })}
-                  className="rounded border-slate-300"
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                 />
                 Critical milestone
               </label>
             </div>
           </div>
-          <div className="flex justify-end gap-2 pt-2 border-t border-indigo-100">
+          <div className="flex justify-end gap-2 pt-3 border-t border-indigo-100">
             <button
               type="button"
               onClick={resetForm}
-              className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+              className="inline-flex items-center h-9 px-3.5 rounded-lg text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all"
             >
               Cancel
             </button>
@@ -186,9 +190,9 @@ export function MilestonesStep({ milestones, onChange, projectEndDate }: Milesto
               type="button"
               onClick={handleSave}
               disabled={!form.name.trim() || !form.dueDate.trim()}
-              className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
+              className="inline-flex items-center h-9 px-3.5 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-sm shadow-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {editIdx !== null ? "Update" : "Add"} Milestone
+              {editIdx !== null ? "Update milestone" : "Add milestone"}
             </button>
           </div>
         </div>
@@ -196,10 +200,10 @@ export function MilestonesStep({ milestones, onChange, projectEndDate }: Milesto
         <button
           type="button"
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-slate-300 text-sm font-medium text-slate-500 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/50 transition-all w-full justify-center"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-dashed border-slate-300 text-sm font-medium text-slate-500 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/50 transition-all w-full justify-center"
         >
           <Icon name="add" size={16} />
-          Add Milestone
+          Add milestone
         </button>
       )}
     </div>

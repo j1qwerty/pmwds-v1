@@ -17,9 +17,9 @@ export function DatabaseStatusSection({
 }: DatabaseStatusSectionProps) {
   return (
     <SectionCard
-      title="Database"
+      title="Database status"
       description="Connection provider and selection log"
-      icon="database"
+      icon="hi-database"
       actions={
         <button
           type="button"
@@ -63,8 +63,8 @@ export function DatabaseStatusSection({
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <div className="text-[10px] font-bold uppercase text-slate-400 mb-1 tracking-wider">
-                Data Source
+              <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                Data source
               </div>
               <div className="text-sm font-mono text-slate-700 break-all">{status.dataSource}</div>
             </div>
@@ -72,8 +72,8 @@ export function DatabaseStatusSection({
             <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
               <div className="flex items-center gap-1.5 mb-2">
                 <Icon name="history" size={14} className="text-slate-400" />
-                <div className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
-                  Selection Log
+                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Selection log
                 </div>
               </div>
               <div className="space-y-1.5">

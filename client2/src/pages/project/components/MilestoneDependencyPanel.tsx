@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Milestone, MilestoneDependency } from "../../../types";
 import { useToast, EmptyState, SectionCard } from "../../shared/index";
 import { Icon } from "../../../components/ui/Icon";
@@ -13,6 +13,11 @@ interface MilestoneDependencyPanelProps {
   onUpdate: (id: string, payload: Record<string, unknown>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onRefresh: () => Promise<void>;
+  /**
+   * Increment to open the "New dependency" form (e.g. from a topbar action).
+   * The panel owns the form modal, so parents signal through this counter.
+   */
+  newRequestKey?: number;
 }
 
 export function MilestoneDependencyPanel({
@@ -22,11 +27,21 @@ export function MilestoneDependencyPanel({
   onAdd,
   onUpdate,
   onDelete,
+  newRequestKey = 0,
 }: MilestoneDependencyPanelProps) {
   const { addToast } = useToast();
   const [modalOpen, setModalOpen] = useState(false);
   const [editDep, setEditDep] = useState<MilestoneDependency | null>(null);
   const [filter, setFilter] = useState<"all" | "met" | "blocking">("all");
+
+  // External open requests (topbar "New dependency" action). Guarded so the
+  // initial 0 never opens the form on mount.
+  useEffect(() => {
+    if (newRequestKey > 0) {
+      setEditDep(null);
+      setModalOpen(true);
+    }
+  }, [newRequestKey]);
 
   const getMilestoneName = (id: string) => milestones.find((m) => m.id === id)?.name || "Unknown";
   const getMilestoneStatus = (id: string) => milestones.find((m) => m.id === id)?.status || "";
@@ -60,10 +75,10 @@ export function MilestoneDependencyPanel({
             <button
               type="button"
               onClick={() => { setEditDep(null); setModalOpen(true); }}
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-sm shadow-amber-500/20 transition-all"
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-sm shadow-indigo-500/20 transition-all"
             >
               <Icon name="add" size={14} />
-              New Dependency
+              New dependency
             </button>
           ) : undefined
         }
@@ -72,7 +87,7 @@ export function MilestoneDependencyPanel({
         <div className="grid grid-cols-3 gap-2.5 mb-4">
           <StatBox label="Total" value={dependencies.length} color="indigo" icon="link" />
           <StatBox label="Met" value={metCount} color="emerald" icon="check_circle" />
-          <StatBox label="Blocking" value={blockingCount} color="rose" icon="block" />
+          <StatBox label="Blocking" value={blockingCount} color="red" icon="block" />
         </div>
 
         {/* Filter chips */}
@@ -85,14 +100,14 @@ export function MilestoneDependencyPanel({
                   key={f}
                   type="button"
                   onClick={() => setFilter(f)}
-                  className={`inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-[11px] font-semibold transition-all ${
+                  className={`inline-flex items-center gap-1 h-8 px-2.5 rounded-lg text-[11px] font-semibold transition-all ${
                     active
                       ? f === "met"
-                        ? "bg-emerald-600 text-white"
+                        ? "bg-emerald-600 text-white shadow-sm"
                         : f === "blocking"
-                          ? "bg-rose-600 text-white"
-                          : "bg-indigo-600 text-white"
-                      : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                          ? "bg-red-600 text-white shadow-sm"
+                          : "bg-indigo-600 text-white shadow-sm"
+                      : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:border-slate-300"
                   }`}
                 >
                   {f === "all" && "All"}
@@ -151,7 +166,7 @@ export function MilestoneDependencyPanel({
                       </span>
                       <Icon name="arrow_forward" size={13} className="text-slate-400" />
                       <span className={`text-sm font-semibold ${
-                        dep.isMet ? "text-slate-800" : "text-rose-600"
+                        dep.isMet ? "text-slate-800" : "text-red-600"
                       }`}>
                         {getMilestoneName(dep.dependentMilestoneId)}
                       </span>
@@ -166,9 +181,9 @@ export function MilestoneDependencyPanel({
                         </span>
                       ) : (
                         <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                          prereqMet ? "bg-emerald-50 text-emerald-700" : "bg-purple-50 text-purple-700"
+                          prereqMet ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
                         }`}>
-                          <Icon name="percent" size={10} />
+                          <Icon name="analytics" size={10} />
                           {prereqProgress}% / {dep.thresholdPercentage}%
                         </span>
                       )}
@@ -228,7 +243,7 @@ function StatBox({
   const colors: Record<string, { bg: string; text: string; border: string }> = {
     indigo: { bg: "bg-indigo-50", text: "text-indigo-600", border: "border-indigo-100" },
     emerald: { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-100" },
-    rose: { bg: "bg-rose-50", text: "text-rose-600", border: "border-rose-100" },
+    red: { bg: "bg-red-50", text: "text-red-600", border: "border-red-100" },
   };
   const c = colors[color] || colors.indigo;
   return (

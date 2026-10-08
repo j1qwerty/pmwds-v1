@@ -5,6 +5,10 @@ import { Icon } from "../../components/ui/Icon";
 interface DeleteConfirmationModalProps {
   name: string;
   warning?: string;
+  /** Optional custom title (defaults to "Confirm deletion") */
+  title?: string;
+  /** Optional custom body copy (defaults to a message naming `name`) */
+  description?: string;
   onConfirm: () => void | Promise<void>;
   onCancel: () => void;
 }
@@ -16,7 +20,7 @@ interface DeleteConfirmationModalProps {
  * mounting via conditional rendering). Callers that previously wrapped this
  * component in `<ModalOverlay>` no longer need to do so.
  */
-export function DeleteConfirmationModal({ name, warning, onConfirm, onCancel }: DeleteConfirmationModalProps) {
+export function DeleteConfirmationModal({ name, warning, title, description, onConfirm, onCancel }: DeleteConfirmationModalProps) {
   const [deleting, setDeleting] = useState(false);
 
   const handleConfirm = async () => {
@@ -33,15 +37,15 @@ export function DeleteConfirmationModal({ name, warning, onConfirm, onCancel }: 
     <Modal
       open={true}
       onClose={onCancel}
-      title="Confirm Deletion"
-      description={`Are you sure you want to permanently delete "${name}"? This action cannot be undone.`}
-      icon="warning"
+      title={title ?? "Confirm deletion"}
+      description={description ?? `Are you sure you want to permanently delete "${name}"? This action cannot be undone.`}
+      icon="delete"
       accent="danger"
       size="sm"
       footer={
         <>
           <ModalCancelButton onClick={onCancel} />
-          <ModalDangerButton onClick={handleConfirm} loading={deleting} label="Delete Permanently" />
+          <ModalDangerButton onClick={handleConfirm} loading={deleting} label="Delete permanently" />
         </>
       }
     >

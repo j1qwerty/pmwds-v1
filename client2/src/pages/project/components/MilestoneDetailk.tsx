@@ -228,8 +228,8 @@ export function MilestoneDetailk({
                   getProgressColor={(p) => {
                     if (p === 100) return "bg-emerald-500";
                     if (p >= 75) return "bg-amber-400";
-                    if (p >= 50) return "bg-cyan-400";
-                    if (p >= 25) return "bg-rose-400";
+                    if (p >= 50) return "bg-sky-400";
+                    if (p >= 25) return "bg-red-400";
                     return "bg-slate-300";
                   }}
                 />

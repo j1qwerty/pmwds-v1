@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import type { Milestone, MilestoneDependency, Project, User } from "../../../types";
 import { api } from "../../../api";
-import { Modal } from "../../shared/index";
+import { Sheet } from "../../shared/index";
 import { formatMoney } from "../../../lib/formatters";
 import { AIInsightsSection } from "./AIInsightsSection";
 import { DocumentsSection } from "./DocumentsSection";
@@ -21,6 +21,11 @@ interface ProjectDetailModalProps {
   dependencies?: MilestoneDependency[];
 }
 
+/**
+ * Right-side detail sheet for a single project: summary header with inline
+ * status change, plus Documents / AI insights / Dependencies tabs.
+ * Rendered as a Sheet so the underlying board stays visible.
+ */
 export function ProjectDetailModal({
   project,
   canManage,
@@ -71,22 +76,24 @@ export function ProjectDetailModal({
   const progress = project.progressPercentage || 0;
   const manager = users.find((user) => user.id === project.projectManagerId);
 
-  const tabs: Array<{ id: typeof activeTab; label: string; icon: string }> = [
+  const tabs: Array<{ id: typeof activeTab; label: string; icon: string; count?: number }> = [
     { id: "documents", label: "Documents", icon: "description" },
-    { id: "ai", label: "AI Insights", icon: "hi-sparkles" },
-    { id: "dependencies", label: "Dependencies", icon: "account_tree" },
+    { id: "ai", label: "AI insights", icon: "hi-sparkles" },
+    { id: "dependencies", label: "Dependencies", icon: "account_tree", count: dependencies.length },
   ];
 
   return (
-    <Modal
+    <Sheet
       open={true}
       onClose={onClose}
       size="xl"
-      showCloseButton={true}
-      hideHeaderBorder
+      icon="folder_open"
+      accent="primary"
+      title={project.name}
+      description={project.projectCode ? `${project.projectCode} · ${project.category}` : project.category}
     >
       <div className="space-y-5">
-        {/* Project Basic Details */}
+        {/* Project basic details (status change lives here) */}
         <ProjectBasicDetails
           project={project}
           canManage={canManage}
@@ -101,34 +108,47 @@ export function ProjectDetailModal({
           handleForceComplete={handleForceComplete}
         />
 
-        {/* Tabs */}
-        <div className="border-b border-slate-200">
-          <nav className="flex gap-1" aria-label="Tabs">
+        {/* Tabs — clean underline style */}
+        <div className="border-b border-slate-200/80">
+          <nav className="flex gap-1 overflow-x-auto" aria-label="Project detail sections">
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`
-                    inline-flex items-center gap-1.5 px-3 py-2.5 -mb-px border-b-2 text-xs font-semibold transition-colors
-                    ${
-                      isActive
-                        ? "border-indigo-500 text-indigo-600"
-                        : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                    }
-                  `}
+                  className={`relative flex items-center gap-1.5 whitespace-nowrap rounded-t-lg px-3.5 py-2.5 text-xs font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-indigo-200 ${
+                    isActive ? "text-indigo-600" : "text-slate-500 hover:bg-slate-50/80 hover:text-slate-700"
+                  }`}
                 >
-                  <Icon name={tab.icon} size={14} />
+                  <Icon name={tab.icon} size={14} className={isActive ? "text-indigo-600" : "text-slate-400"} />
                   {tab.label}
+                  {tab.count !== undefined && tab.count > 0 && (
+                    <span
+                      className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                        isActive ? "bg-indigo-100 text-indigo-600" : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {tab.count}
+                    </span>
+                  )}
+                  {isActive && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600"
+                    />
+                  )}
                 </button>
               );
             })}
           </nav>
         </div>
 
-        {/* Tab Content */}
-        <div className="min-h-[300px]">
+        {/* Tab content */}
+        <div className="min-h-[300px] view-fade" key={activeTab}>
           {activeTab === "ai" ? (
             <AIInsightsSection
               project={project}
@@ -141,11 +161,16 @@ export function ProjectDetailModal({
           ) : activeTab === "dependencies" ? (
             <DependenciesSection dependencies={dependencies} milestones={milestones} />
           ) : (
-            <DocumentsSection projectId={project.id} authToken={authToken} milestones={milestones} />
+            <DocumentsSection
+              projectId={project.id}
+              authToken={authToken}
+              milestones={milestones}
+              users={users}
+            />
           )}
         </div>
       </div>
-    </Modal>
+    </Sheet>
   );
 }
 
@@ -173,7 +198,7 @@ function DependenciesSection({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-semibold border border-indigo-100">
           <Icon name="account_tree" size={14} />
           {dependencies.length} total
@@ -201,14 +226,18 @@ function DependenciesSection({
           return (
             <div
               key={dep.id}
-              className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50/60 transition-colors"
+              className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                dep.isMet
+                  ? "border-emerald-200 bg-emerald-50/40 hover:bg-emerald-50/70"
+                  : "border-amber-200 bg-amber-50/40 hover:bg-amber-50/70"
+              }`}
             >
               <div
-                className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                   dep.isMet ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"
                 }`}
               >
-                <Icon name={dep.isMet ? "check-circle" : "hi-ban"} size={16} />
+                <Icon name={dep.isMet ? "check-circle" : "hi-ban"} size={15} />
               </div>
               <div className="text-xs flex-1 min-w-0 flex flex-wrap items-center gap-1">
                 <span className="font-semibold text-slate-700">{prereqName}</span>

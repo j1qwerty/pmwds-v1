@@ -1,7 +1,7 @@
 // ProfileFormModal.tsx
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent, type ReactNode } from "react";
 import type { User, UserProfileRecord } from "../../types";
-import { Avatar, Modal, ModalCancelButton, ModalPrimaryButton } from "../shared";
+import { Avatar, ModalCancelButton, ModalPrimaryButton, Sheet } from "../shared";
 
 interface ProfileFormModalProps {
   open: boolean;
@@ -47,22 +47,25 @@ export function ProfileFormModal({ open, user, profile, onSubmit, onCancel }: Pr
     setTimeout(() => setSubmitting(false), 500);
   };
 
+  const inputClass =
+    "w-full h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all placeholder:text-slate-400";
+
   return (
-    <Modal
+    <Sheet
       open={open}
       onClose={onCancel}
-      title={`Edit Profile · ${user.fullName}`}
-      description="Update personal and professional details"
-      icon="person"
+      title="Edit profile"
+      description={user.fullName}
+      icon="edit"
       accent="primary"
-      size="lg"
+      size="md"
       footer={
         <>
           <ModalCancelButton onClick={onCancel} />
           <ModalPrimaryButton
             onClick={() => handleSubmit()}
             loading={submitting}
-            label="Save Profile"
+            label="Save profile"
             icon="check"
           />
         </>
@@ -73,7 +76,7 @@ export function ProfileFormModal({ open, user, profile, onSubmit, onCancel }: Pr
           e.preventDefault();
           handleSubmit(e);
         }}
-        className="flex flex-col gap-4"
+        className="space-y-4"
       >
         {/* Header preview */}
         <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
@@ -84,92 +87,85 @@ export function ProfileFormModal({ open, user, profile, onSubmit, onCancel }: Pr
           </div>
         </div>
 
-        {/* Job Title */}
-        <div>
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
-            Job Title
-          </label>
-          <input
-            type="text"
-            value={form.jobTitle}
-            onChange={(e) => setForm({ ...form, jobTitle: e.target.value })}
-            className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm outline-none bg-white placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
-            placeholder="e.g., Senior Developer"
-          />
-        </div>
-
-        {/* Date of Birth */}
-        <div>
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
-            Date of Birth
-          </label>
-          <input
-            type="date"
-            value={form.dateOfBirth}
-            onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })}
-            className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm outline-none bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
-          />
+        {/* Job Title + Date of Birth */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field label="Job title">
+            <input
+              type="text"
+              value={form.jobTitle}
+              onChange={(e) => setForm({ ...form, jobTitle: e.target.value })}
+              className={inputClass}
+              placeholder="e.g., Senior Developer"
+            />
+          </Field>
+          <Field label="Date of birth">
+            <input
+              type="date"
+              value={form.dateOfBirth}
+              onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })}
+              className={inputClass}
+            />
+          </Field>
         </div>
 
         {/* Bio */}
-        <div>
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
-            Bio
-          </label>
+        <Field label="Bio">
           <textarea
             value={form.bio}
             onChange={(e) => setForm({ ...form, bio: e.target.value })}
             rows={4}
-            className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm outline-none bg-white placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all resize-none"
+            className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all resize-none min-h-[80px] placeholder:text-slate-400"
             placeholder="Tell us about yourself..."
           />
-        </div>
+        </Field>
 
         {/* Address */}
-        <div>
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
-            Address
-          </label>
+        <Field label="Address">
           <textarea
             value={form.address}
             onChange={(e) => setForm({ ...form, address: e.target.value })}
             rows={2}
-            className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm outline-none bg-white placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all resize-none"
+            className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all resize-none placeholder:text-slate-400"
             placeholder="Full address"
           />
-        </div>
+        </Field>
 
         {/* Emergency Contact & LinkedIn */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
-              Emergency Contact
-            </label>
+          <Field label="Emergency contact">
             <input
               type="text"
               value={form.emergencyContact}
               onChange={(e) => setForm({ ...form, emergencyContact: e.target.value })}
-              className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm outline-none bg-white placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+              className={inputClass}
               placeholder="Name and phone number"
             />
-          </div>
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
-              LinkedIn URL
-            </label>
+          </Field>
+          <Field label="LinkedIn URL">
             <input
               type="url"
               value={form.linkedInUrl}
               onChange={(e) => setForm({ ...form, linkedInUrl: e.target.value })}
-              className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm outline-none bg-white placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+              className={inputClass}
               placeholder="https://linkedin.com/in/username"
             />
-          </div>
+          </Field>
         </div>
 
         {/* Hidden submit so Enter key works */}
         <button type="submit" className="hidden" aria-hidden />
       </form>
-    </Modal>
+    </Sheet>
+  );
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="block">
+      <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">
+        {label}
+      </span>
+      {children}
+    </label>
   );
 }

@@ -6,7 +6,6 @@ import { useAppData } from "../../appData";
 import type { Department } from "../../types";
 import { lakhsToRupees } from "../../lib/formatters";
 import {
-  GlassCard,
   useToast,
   LoadingPage,
   usePermission,
@@ -78,7 +77,7 @@ interface ProjectWizardDraft {
 
 // Shared four-step flow for every role allowed to create projects.
 const PROJECT_WIZARD_STEPS: StepConfig[] = [
-  { key: "details", label: "Project Details", icon: "folder" },
+  { key: "details", label: "Project Details", icon: "folder_open" },
   { key: "milestones", label: "Milestones", icon: "flag" },
   { key: "milestoneDepartments", label: "Assign Departments", icon: "account_tree" },
   { key: "dependencies", label: "Dependencies", icon: "account_tree" },
@@ -86,6 +85,17 @@ const PROJECT_WIZARD_STEPS: StepConfig[] = [
   { key: "users", label: "Users", icon: "person" },
   { key: "tasks", label: "Tasks", icon: "task_alt" },
 ];
+
+// Short helper copy shown at the top of each step container (presentation only).
+const STEP_DESCRIPTIONS: Record<string, string> = {
+  details: "Name the project, set the schedule, budget, and priority.",
+  milestones: "Break the project into key milestones with due dates.",
+  milestoneDepartments: "Assign each milestone to an owning department.",
+  dependencies: "Optionally define which milestones wait on others.",
+  departments: "Choose the departments involved in the project.",
+  users: "Review the people in each selected department.",
+  tasks: "Add tasks under milestones and assign owners.",
+};
 
 export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const navigate = useNavigate();
@@ -186,28 +196,34 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
     const userId = auth?.userId;
     if (!userId || !draftHasUserChanges.current || draftChangedByUserId.current !== userId) return;
 
-    const draft: ProjectWizardDraft = {
-      version: 1,
-      savedAt: new Date().toISOString(),
-      currentStep,
-      name,
-      description,
-      priority,
-      budget,
-      startDate,
-      endDate,
-      primaryDepartmentId,
-      selectedDepartmentIds,
-      milestones,
-      dependencies,
-      tasks,
-    };
-    try {
-      window.localStorage.setItem(draftStorageKey, JSON.stringify(draft));
-      setHasSavedDraft(true);
-    } catch {
-      // Continue working if browser storage is unavailable or full.
-    }
+    // Debounced: typing a name/description fires this effect per keystroke,
+    // and a synchronous JSON.stringify + localStorage write on every keystroke
+    // is what made the wizard feel laggy. Flush 500ms after the last change.
+    const timer = window.setTimeout(() => {
+      const draft: ProjectWizardDraft = {
+        version: 1,
+        savedAt: new Date().toISOString(),
+        currentStep,
+        name,
+        description,
+        priority,
+        budget,
+        startDate,
+        endDate,
+        primaryDepartmentId,
+        selectedDepartmentIds,
+        milestones,
+        dependencies,
+        tasks,
+      };
+      try {
+        window.localStorage.setItem(draftStorageKey, JSON.stringify(draft));
+        setHasSavedDraft(true);
+      } catch {
+        // Continue working if browser storage is unavailable or full.
+      }
+    }, 500);
+    return () => window.clearTimeout(timer);
   }, [
     auth?.userId,
     budget,
@@ -342,6 +358,16 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
       addToast("Saved project wizard data restored.", "success");
     } catch {
       addToast("Could not restore the saved project draft.", "error");
+    }
+  };
+
+  // Exit affordance for the wizard header: reuse the host-provided onClose
+  // when mounted inside a host modal/sheet, otherwise navigate back to /projects.
+  const handleExit = () => {
+    if (onClose) {
+      onClose();
+    } else {
+      navigate("/projects");
     }
   };
 
@@ -518,30 +544,55 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   }, [milestones, data.users]);
 
   return (
-    <div className="max-w-full mx-auto ">
-      <div className=" bg-white shadow-md rounded-2xl p-6 md:p-8">
-        <div className="flex justify-end mb-3">
-          <button
-            type="button"
-            onClick={restoreDraft}
-            title={hasSavedDraft ? "Restore saved project wizard data" : "No saved project wizard data yet"}
-            aria-label="Project wizard history"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
-          >
-            <Icon name="history" size={16} />
-            <span>History</span>
-          </button>
+    <div className="max-w-full mx-auto relative z-10">
+      {/* ── Step progress header (solid white, not glass: translucent cards
+          pick up the page gradient + modal scrim and render gray) ── */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-3 md:p-4 mb-3">
+        <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+              <Icon name="folder_open" size={16} className="text-indigo-600" />
+            </span>
+            <div>
+              <h2 className="text-sm font-bold text-slate-800 leading-tight">New project</h2>
+              <p className="text-[11px] text-slate-400">
+                Step {currentStep + 1} of {visibleSteps.length} · <span className="text-red-500">*</span> required
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={restoreDraft}
+              title={hasSavedDraft ? "Restore saved project wizard data" : "No saved project wizard data yet"}
+              aria-label="Project wizard history"
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all"
+            >
+              <Icon name="history" size={14} />
+              <span>History</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleExit}
+              title="Close the project wizard"
+              aria-label="Close project wizard"
+              className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <Icon name="close" size={16} />
+            </button>
+          </div>
         </div>
-        {/* Steps indicator */}
-        <div className="mb-8">
-          <div className="flex items-center justify-center gap-0">
+
+        <div className="overflow-x-auto pb-1 -mx-1 px-1">
+          <div className="flex items-start min-w-[560px]">
             {visibleSteps.map((step, idx) => {
               const completed = idx < currentStep;
               const active = idx === currentStep;
               const pending = idx > currentStep;
+              const clickable = idx < currentStep || isStepComplete(currentStep);
 
               return (
-                <div key={step.key} className="flex items-center flex-1 last:flex-none">
+                <div key={step.key} className={`flex items-start ${idx < visibleSteps.length - 1 ? "flex-1" : ""}`}>
                   {/* Circle + label */}
                   <div className="flex flex-col items-center">
                     <button
@@ -553,38 +604,29 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
                         }
                       }}
                       disabled={!isStepComplete(currentStep) && idx > currentStep}
+                      aria-current={active ? "step" : undefined}
                       className={`
-                        relative w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300
+                        relative w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200
                         ${completed
-                          ? "bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-200 scale-100"
+                          ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/30"
                           : active
-                          ? "bg-white border-2 border-indigo-500 text-indigo-600 shadow-lg shadow-indigo-100 scale-110"
-                          : pending
-                          ? "bg-slate-50 border-2 border-slate-200 text-slate-300"
-                          : "bg-slate-50 border-2 border-slate-200 text-slate-400"
+                          ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-sm shadow-indigo-500/30 ring-4 ring-indigo-100"
+                          : "bg-slate-100 border border-slate-200 text-slate-400"
                         }
-                        ${idx < currentStep ? "cursor-pointer hover:scale-105" : ""}
-                        ${!isStepComplete(currentStep) && idx > currentStep ? "cursor-not-allowed" : "cursor-pointer"}
+                        ${clickable && !active ? "cursor-pointer hover:brightness-105" : "cursor-default"}
+                        ${!isStepComplete(currentStep) && idx > currentStep ? "cursor-not-allowed" : ""}
                       `}
                       title={step.label}
                     >
                       {completed ? (
-                        <Icon name="check-circle" size={20} />
+                        <Icon name="check" size={15} />
                       ) : (
-                        <span className="material-symbols-outlined text-xl">{step.icon}</span>
-                      )}
-                      {pending && (
-                        <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-slate-300 text-white text-[10px] font-bold flex items-center justify-center">
-                          {idx + 1}
-                        </span>
-                      )}
-                      {active && (
-                        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-indigo-500" />
+                        idx + 1
                       )}
                     </button>
                     <span className={`
-                      mt-2 text-center whitespace-nowrap text-[10px] font-bold uppercase tracking-wider transition-colors duration-200
-                      ${completed ? "text-indigo-600" : active ? "text-indigo-600" : pending ? "text-slate-300" : "text-slate-400"}
+                      mt-1.5 text-center whitespace-nowrap text-[10px] font-bold uppercase tracking-wider transition-colors duration-200
+                      ${completed ? "text-emerald-600" : active ? "text-indigo-600" : "text-slate-400"}
                     `}>
                       {step.label}
                     </span>
@@ -592,16 +634,10 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
 
                   {/* Connector line */}
                   {idx < visibleSteps.length - 1 && (
-                    <div className="flex-1 h-0.5 mx-3 mt-[-1.5rem] rounded-full relative">
-                      <div className={`
-                        absolute inset-0 rounded-full transition-all duration-500
-                        ${idx < currentStep ? "bg-indigo-500" : "bg-slate-200"}
-                      `} />
-                      <div className={`
-                        absolute inset-0 rounded-full bg-indigo-500 transition-all duration-500
-                      `} style={{
-                        width: idx < currentStep ? "100%" : "0%",
-                      }} />
+                    <div className="flex-1 h-0.5 rounded-full mt-4 mx-2 bg-slate-200 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${completed ? "bg-emerald-500 w-full" : "bg-slate-200 w-0"}`}
+                      />
                     </div>
                   )}
                 </div>
@@ -609,25 +645,22 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
             })}
           </div>
         </div>
+      </div>
 
-        {/* Step title */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
-            <span className="material-symbols-outlined text-indigo-600 text-xl">
-              {steps[currentStep].icon}
-            </span>
+      {/* ── Step container (solid white, see header note) ── */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm p-4 md:p-5">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+            <Icon name={steps[currentStep].icon} size={17} className="text-indigo-600" />
           </div>
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">{steps[currentStep].label}</h2>
-            <p className="text-xs text-slate-400">
-              Step {currentStep + 1} of {visibleSteps.length} ·{" "}
-              <span className="text-red-500">*</span> required
-            </p>
+          <div className="min-w-0">
+            <h3 className="text-base font-bold text-slate-800">{steps[currentStep].label}</h3>
+            <p className="text-xs text-slate-400">{STEP_DESCRIPTIONS[steps[currentStep].key] ?? ""}</p>
           </div>
         </div>
 
         {/* Step body */}
-        <div className="min-h-[300px]">
+        <div key={currentStepKey} className="min-h-[200px] view-fade">
           {currentStepKey === "details" && (
             <ProjectDetailsStep
               name={name}
@@ -699,55 +732,50 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
           )}
         </div>
 
-        {/* Navigation buttons */}
-        <div className="flex items-center justify-between mt-8 pt-6 border-t border-slate-100">
+        {/* Bottom action bar — sticky to the card bottom */}
+        <div className="sticky bottom-0 -mx-4 md:-mx-5 -mb-4 md:-mb-5 mt-4 px-4 md:px-5 py-3 border-t border-slate-100 bg-white/90 backdrop-blur flex items-center justify-between rounded-b-2xl">
           <div>
             {currentStep > 0 && (
               <button
                 type="button"
                 onClick={handleBack}
-                className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all"
               >
-                <Icon name="arrow-left" size={16} />
+                <Icon name="arrow_back" size={15} />
                 Back
               </button>
             )}
           </div>
-          <div className="flex items-center gap-3">
-            {currentStep < visibleSteps.length - 1 ? (
-              <button
-                type="button"
-                onClick={handleNext}
-                disabled={!canProceed}
-                className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-                <Icon name="arrow-right" size={16} />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleFinish}
-                disabled={submitting || !canProceed}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-sm font-semibold hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-lg shadow-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {submitting ? (
-                  <>
-                    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Icon name="check-circle" size={16} />
-                    Finish
-                  </>
-                )}
-              </button>
-            )}
-          </div>
+          {currentStep < visibleSteps.length - 1 ? (
+            <button
+              type="button"
+              onClick={handleNext}
+              disabled={!canProceed}
+              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-sm shadow-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+              <Icon name="arrow_forward" size={15} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleFinish}
+              disabled={submitting || !canProceed}
+              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-sm shadow-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {submitting ? (
+                <>
+                  <span className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                  Creating project...
+                </>
+              ) : (
+                <>
+                  <Icon name="check_circle" size={15} />
+                  Create project
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>

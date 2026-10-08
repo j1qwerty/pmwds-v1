@@ -27,7 +27,6 @@ import {
 } from "./components/index";
 import { useProjectWorkspace } from "./useProjectWorkspace";
 import { ProjectNotFound } from "./ProjectNotFound";
-import { ProjectInfoCard } from "./ProjectInfoCard";
 import { Icon } from "../../components/ui/Icon";
 
 export function ProjectMilestonesPage() {
@@ -39,7 +38,6 @@ export function ProjectMilestonesPage() {
   const { userOrganizationId } = useUserOrganization(appData.users, appData.departments);
   const canManageMilestones = perm.isSuperAdmin || hasRoleKey(perm.roleKeys, RoleKey.Director);
   const canManageTasks = perm.has(PERMISSION_GROUPS.task.manage);
-  const canManageProjects = perm.has(PERMISSION_GROUPS.project.manage);
 
   const [pickedMilestoneId, setPickedMilestoneId] = useState("");
 
@@ -120,8 +118,8 @@ export function ProjectMilestonesPage() {
   const getProgressColor = (progress: number): string => {
     if (progress === 100) return "bg-emerald-500";
     if (progress >= 75) return "bg-amber-400";
-    if (progress >= 50) return "bg-cyan-400";
-    if (progress >= 25) return "bg-rose-400";
+    if (progress >= 50) return "bg-sky-400";
+    if (progress >= 25) return "bg-red-400";
     return "bg-slate-300";
   };
 
@@ -396,18 +394,6 @@ export function ProjectMilestonesPage() {
           </div>
         </div>
       )}
-
-      <div className="relative z-10 mb-5">
-        <ProjectInfoCard
-          project={ws.project}
-          milestonesCount={ws.milestones.length}
-          milestones={ws.milestones}
-          dependencies={ws.dependencies}
-          canManageProjects={canManageProjects}
-          users={ws.users}
-          onProjectUpdated={() => ws.refresh()}
-        />
-      </div>
 
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[280px_1fr_240px] gap-4">
         {/* Left: Milestone list */}

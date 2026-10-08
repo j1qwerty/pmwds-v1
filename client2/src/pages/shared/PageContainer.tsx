@@ -18,7 +18,13 @@ interface PageContainerProps {
  * Standard page scaffold: stats row + filter bar + content.
  *
  * Keeps spacing consistent across all redesigned pages and matches the
- * AI page rhythm: tight 5-unit gaps, white cards on the soft slate bg.
+ * AI page rhythm: tight gaps, white cards on the soft slate bg.
+ *
+ * Card-grid guidance: list/card grids inside `children` should use equal
+ * width columns — `grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4`
+ * — and each card must be able to shrink (`min-w-0`) so long content can
+ * never force a column wider than its track. Both wrappers below already
+ * enforce `min-w-0` on their children/content.
  */
 export function PageContainer({
   stats,
@@ -30,7 +36,7 @@ export function PageContainer({
   return (
     <div className="relative">
       {stats && (
-        <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4 [&>*]:min-w-0">
           {stats}
         </div>
       )}
@@ -43,7 +49,7 @@ export function PageContainer({
         <div className="relative z-10 mb-4 flex justify-end">{headerActions}</div>
       )}
 
-      <div className={`relative z-10 ${contentClassName}`}>{children}</div>
+      <div className={`relative z-10 min-w-0 ${contentClassName}`}>{children}</div>
     </div>
   );
 }
@@ -125,7 +131,7 @@ export function PageAction({ label, onClick, icon, variant = "primary" }: PageHe
       onClick={onClick}
       className={`inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-semibold transition-all ${variantCls}`}
     >
-      {icon && <Icon name={icon} size={14} />}
+      {icon && <Icon name={icon} size={16} />}
       {label}
     </button>
   );
