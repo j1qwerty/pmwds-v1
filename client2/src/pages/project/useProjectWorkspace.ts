@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
@@ -34,19 +34,24 @@ export function useProjectWorkspace(): ProjectWorkspaceData {
   const [dependencies, setDependencies] = useState<MilestoneDependency[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const loadedWorkspaceKey = useRef<string | null>(null);
 
   // No client-side organization narrowing here. The project came from
   // `GET /projects/{id}`, which the API scopes to what the caller may access, so the role
   // filter would be redundant - and when the department list was empty or stale it resolved
   // every project to `null` and every tab rendered "project not found".
   const visibleProject = project;
+  const workspaceKey = auth && projectId ? `${auth.userId}:${projectId}` : null;
 
   const load = useCallback(async () => {
     if (!auth || !projectId) {
       setLoading(false);
       return;
     }
-    setLoading(true);
+    // Focus and realtime refreshes happen while users interact with this page (including
+    // when a native file picker closes). Keep the current workspace mounted during those
+    // background refreshes so local form and upload state is not discarded.
+    if (loadedWorkspaceKey.current !== workspaceKey) setLoading(true);
     setError("");
     try {
       const projectData = await api.getProject(auth.token, projectId).catch(() => {
@@ -74,12 +79,13 @@ export function useProjectWorkspace(): ProjectWorkspaceData {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load project data.");
     } finally {
+      loadedWorkspaceKey.current = workspaceKey;
       setLoading(false);
     }
     // `data` is intentionally not a dependency: it is a large memo that changes on every
     // refetch, which would make `load` unstable and re-trigger the effect below in a loop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth, projectId]);
+  }, [auth, projectId, workspaceKey]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
