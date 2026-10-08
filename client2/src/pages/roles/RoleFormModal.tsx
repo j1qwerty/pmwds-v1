@@ -1,0 +1,538 @@
+import { useMemo, useRef, useState, type FormEvent } from "react";
+import type { PermissionRecord, RoleRecord } from "../../types";
+import {
+  Modal,
+  ModalCancelButton,
+  ModalPrimaryButton,
+} from "../shared";
+import { Icon } from "../../components/ui/Icon";
+
+interface RoleFormModalProps {
+  initialData?: RoleRecord;
+  permissions: PermissionRecord[];
+  onSubmit: (payload: Record<string, unknown>) => void;
+  onCancel: () => void;
+}
+
+type Scope = "OWN" | "ALL";
+type CrudAction = "VIEW" | "CREATE" | "EDIT" | "DELETE" | "MANAGE";
+type MatrixPermission = {
+  module: string;
+  scope: Scope;
+  action: string;
+  permission: PermissionRecord;
+};
+
+const SCOPED_CODE = /^(.+?)_(OWN|ALL)_(.+)$/;
+const LEGACY_CODE = /^(DEPARTMENT|PROJECT|MILESTONE|TASK|SUBTASK|USER|NOTIFICATION|REPORT|ACTIVITY_LOG|DOCUMENT|UTILIZATION_CERTIFICATE|KNOWLEDGE)_(VIEW|CREATE|EDIT|DELETE|MANAGE|ASSIGN|COMMENT_CREATE|ATTACHMENT_CREATE)$/;
+
+function parseScoped(permission: PermissionRecord): MatrixPermission | null {
+  const match = permission.code.match(SCOPED_CODE);
+  if (!match) return null;
+  return {
+    module: permission.module,
+    scope: match[2] as Scope,
+    action: match[3] as MatrixPermission["action"],
+    permission,
+  };
+}
+
+const CRUD_ACTIONS = new Set(["VIEW", "CREATE", "EDIT", "DELETE"]);
+
+function crudRows(rows: MatrixPermission[], scope: Scope) {
+  return rows.filter((row) => row.scope === scope && CRUD_ACTIONS.has(row.action));
+}
+
+function extraRows(rows: MatrixPermission[], scope: Scope) {
+  return rows.filter((row) => row.scope === scope && row.action !== "MANAGE" && !CRUD_ACTIONS.has(row.action));
+}
+
+function legacyEquivalent(permission: PermissionRecord, permissions: PermissionRecord[]) {
+  const match = permission.code.match(/^(.+?)_(OWN|ALL)_(.+)$/);
+  if (!match) return undefined;
+  return permissions.find((candidate) => candidate.code === `${match[1]}_${match[3]}`);
+}
+
+function manageRow(rows: MatrixPermission[], scope: Scope) {
+  return rows.find((row) => row.scope === scope && row.action === "MANAGE");
+}
+
+/**
+ * Why an Own Department grant reads as checked without being ticked itself.
+ * "ALL" means an All Departments grant covers it; "OWN_MANAGE" means the same
+ * scope's Manage covers it. Anything else (e.g. a legacy code on an old role)
+ * reports as "OTHER" so the tooltip never blames the wrong grant.
+ */
+function ownGrantSource(
+  row: MatrixPermission,
+  rows: MatrixPermission[],
+  selected: Set<string>,
+): "ALL" | "OWN_MANAGE" | "OTHER" | null {
+  if (row.scope !== "OWN" || selected.has(row.permission.id)) return null;
+  if (CRUD_ACTIONS.has(row.action)) {
+    const allAction = rows.find((item) => item.scope === "ALL" && item.action === row.action);
+    if (allAction && selected.has(allAction.permission.id)) return "ALL";
+    const allManage = manageRow(rows, "ALL");
+    if (allManage && selected.has(allManage.permission.id)) return "ALL";
+    const ownManage = manageRow(rows, "OWN");
+    if (ownManage && selected.has(ownManage.permission.id)) return "OWN_MANAGE";
+    return "OTHER";
+  }
+  const all = rows.find((item) => item.scope === "ALL" && item.action === row.action);
+  if (all && selected.has(all.permission.id)) return "ALL";
+  return "OTHER";
+}
+
+function inheritedTitle(source: "ALL" | "OWN_MANAGE" | "OTHER" | null, fallback: string) {
+  if (source === "ALL") return "Granted by All Departments";
+  if (source === "OWN_MANAGE") return "Granted by Manage — uncheck Manage to change it";
+  if (source === "OTHER") return "Granted by another permission on this role";
+  return fallback;
+}
+
+export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: RoleFormModalProps) {
+  const [submitting, setSubmitting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(
+    () => new Set(initialData?.permissions?.map((permission) => permission.id) ?? []),
+  );
+  const formRef = useRef<HTMLFormElement>(null);
+
+  const matrix = useMemo(() => {
+    const groups = new Map<string, MatrixPermission[]>();
+    for (const permission of permissions) {
+      const parsed = parseScoped(permission);
+      if (!parsed || LEGACY_CODE.test(permission.code)) continue;
+      const list = groups.get(permission.module) ?? [];
+      list.push(parsed);
+      groups.set(permission.module, list);
+    }
+    return Array.from(groups.entries())
+      .map(([module, rows]) => [module, rows] as const)
+      .sort(([a], [b]) => a.localeCompare(b));
+  }, [permissions]);
+
+  const primaryDepartmentPermission = useMemo(
+    () => permissions.find((permission) => permission.code === "PROJECT_PRIMARY_DEPARTMENT_MANAGE"),
+    [permissions],
+  );
+
+  const globalPermissions = useMemo(
+    () => permissions
+      .filter((permission) => !SCOPED_CODE.test(permission.code) && !LEGACY_CODE.test(permission.code) && permission.code !== "PROJECT_PRIMARY_DEPARTMENT_MANAGE")
+      .sort((a, b) => (a.module + a.name).localeCompare(b.module + b.name)),
+    [permissions],
+  );
+
+  const filteredMatrix = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return matrix;
+    return matrix.filter(([module, rows]) =>
+      module.toLowerCase().includes(query) ||
+      rows.some(({ permission }) =>
+        permission.name.toLowerCase().includes(query) ||
+        permission.code.toLowerCase().includes(query),
+      ),
+    );
+  }, [matrix, searchQuery]);
+
+  const isEffective = (permission: PermissionRecord) => {
+    if (selected.has(permission.id)) return true;
+    const legacy = legacyEquivalent(permission, permissions);
+    if (legacy && selected.has(legacy.id)) return true;
+    const row = parseScoped(permission);
+    if (!row) return false;
+
+    const rows = matrix
+      .flatMap(([, moduleRows]) => moduleRows)
+      .filter((item) => item.module === row.module);
+
+    if (!CRUD_ACTIONS.has(row.action)) {
+      if (row.scope === "OWN") {
+        const all = rows.find((item) => item.scope === "ALL" && item.action === row.action);
+        return Boolean(all && selected.has(all.permission.id));
+      }
+      return false;
+    }
+
+    const manage = manageRow(rows, row.scope);
+    if (manage && selected.has(manage.permission.id)) return true;
+
+    if (row.scope === "OWN") {
+      const allAction = rows.find((item) => item.scope === "ALL" && item.action === row.action);
+      const allManage = manageRow(rows, "ALL");
+      return Boolean(
+        (allAction && selected.has(allAction.permission.id)) ||
+        (allManage && selected.has(allManage.permission.id)),
+      );
+    }
+
+    return false;
+  };
+
+  const togglePermission = (row: MatrixPermission, rows: MatrixPermission[]) => {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (!CRUD_ACTIONS.has(row.action)) {
+        if (next.has(row.permission.id)) next.delete(row.permission.id);
+        else next.add(row.permission.id);
+        return next;
+      }
+      const manage = manageRow(rows, row.scope);
+
+      const inheritedFromAll =
+        row.scope === "OWN" &&
+        !next.has(row.permission.id) &&
+        (
+          Boolean(rows.find((item) => item.scope === "ALL" && item.action === row.action && next.has(item.permission.id))) ||
+          Boolean(manageRow(rows, "ALL") && next.has(manageRow(rows, "ALL")!.permission.id))
+        );
+
+      if (inheritedFromAll) return next;
+
+      if (manage && next.has(manage.permission.id)) {
+        next.delete(manage.permission.id);
+        for (const sibling of crudRows(rows, row.scope)) {
+          if (sibling.action !== row.action) next.add(sibling.permission.id);
+        }
+        return next;
+      }
+
+      if (next.has(row.permission.id)) next.delete(row.permission.id);
+      else next.add(row.permission.id);
+
+      const allCrudSelected = crudRows(rows, row.scope).every(
+        (item) => item.permission.id === row.permission.id
+          ? next.has(item.permission.id)
+          : isEffective(item.permission),
+      );
+
+      if (manage && allCrudSelected) {
+        for (const item of crudRows(rows, row.scope)) next.delete(item.permission.id);
+        next.add(manage.permission.id);
+      }
+
+      return next;
+    });
+  };
+
+  const toggleManage = (scope: Scope, rows: MatrixPermission[]) => {
+    const manage = manageRow(rows, scope);
+    if (!manage) return;
+
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(manage.permission.id)) {
+        next.delete(manage.permission.id);
+        return next;
+      }
+      next.add(manage.permission.id);
+      for (const item of crudRows(rows, scope)) next.delete(item.permission.id);
+      return next;
+    });
+  };
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
+
+    const normalized = new Set(selected);
+
+    for (const legacy of permissions.filter((permission) => LEGACY_CODE.test(permission.code))) {
+      if (!normalized.has(legacy.id)) continue;
+      const canonical = permissions.find((permission) => {
+        if (legacy.code.startsWith("KNOWLEDGE_") || legacy.code.startsWith("UTILIZATION_CERTIFICATE_")) {
+          return permission.code === `${legacy.code.split("_").slice(0, -1).join("_")}_ALL_${legacy.code.split("_").at(-1)}`;
+        }
+        return permission.code === `${legacy.code.split("_").slice(0, -1).join("_")}_ALL_${legacy.code.split("_").at(-1)}`;
+      });
+      if (canonical) {
+        normalized.delete(legacy.id);
+        normalized.add(canonical.id);
+      }
+    }
+    for (const [, rows] of matrix) {
+      for (const scope of ["OWN", "ALL"] as Scope[]) {
+        const manage = manageRow(rows, scope);
+        const crud = crudRows(rows, scope);
+        if (manage && crud.every((item) => isEffective(item.permission))) {
+          for (const item of crud) normalized.delete(item.permission.id);
+          normalized.add(manage.permission.id);
+        }
+      }
+    }
+
+    const form = event.currentTarget as HTMLFormElement;
+    const name = new FormData(form).get("name")?.toString().trim() ?? "";
+    const description = new FormData(form).get("description")?.toString() ?? "";
+    onSubmit({ name, description, permissionLevel: Number(new FormData(form).get("permissionLevel") ?? 10), permissionIds: Array.from(normalized) });
+  };
+
+  const handleSaveClick = () => {
+    formRef.current?.requestSubmit();
+  };
+
+  return (
+    <Modal
+      open
+      onClose={onCancel}
+      title={initialData ? "Edit Role" : "Create Role"}
+      description="Configure permissions by feature and department scope. All Departments includes the user's own departments."
+      icon={initialData ? "edit" : "verified_user"}
+      accent="primary"
+      size="2xl"
+      scrollable={false}
+      footer={
+        <>
+          <ModalCancelButton onClick={onCancel} />
+          <ModalPrimaryButton
+            onClick={handleSaveClick}
+            loading={submitting}
+            label={initialData ? "Save Changes" : "Create Role"}
+            icon="check-circle"
+          />
+        </>
+      }
+    >
+      <form ref={formRef} onSubmit={handleSubmit} className="flex min-h-0 flex-col">
+        {/* Top form fields */}
+        <div className="grid grid-cols-1 lg:grid-cols-[240px_160px_1fr] gap-3 pb-3 border-b border-slate-100">
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+              Role name *
+            </label>
+            <input
+              required
+              defaultValue={initialData?.name ?? ""}
+              name="name"
+              placeholder="e.g. Department Reviewer"
+              className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+              Level
+            </label>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              defaultValue={initialData?.permissionLevel ?? 10}
+              name="permissionLevel"
+              className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+              Description
+            </label>
+            <input
+              defaultValue={initialData?.description ?? ""}
+              name="description"
+              placeholder="What this role is responsible for"
+              className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+            />
+          </div>
+        </div>
+
+        {/* Search + grant count */}
+        <div className="py-3 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <span className="rounded-full bg-indigo-50 px-2 py-1 font-semibold text-indigo-600">
+              {selected.size} grants stored
+            </span>
+            <span className="hidden sm:inline">Manage checks View, Create, Edit and Delete.</span>
+          </div>
+          <div className="relative w-[min(360px,55vw)]">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+              <Icon name="search" size={16} />
+            </span>
+            <input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search features or permissions"
+              className="w-full h-9 pl-9 pr-3 rounded-lg border border-slate-200 bg-white text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+            />
+          </div>
+        </div>
+
+        {/* Matrix (scrollable) */}
+        <div className="min-h-0 max-h-[50vh] overflow-y-auto space-y-3 pr-1">
+          {filteredMatrix.map(([module, rows]) => (
+            <section key={module} className="rounded-xl border border-slate-200 overflow-hidden">
+              <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800">{module}</h3>
+                  <p className="text-[10px] text-slate-400">Department-scoped feature permissions</p>
+                </div>
+              </div>
+              {module === "Projects" && primaryDepartmentPermission && (
+                <div className="border-t border-slate-100 bg-amber-50/50 px-4 py-2.5">
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(primaryDepartmentPermission.id)}
+                      onChange={() => setSelected((current) => {
+                        const next = new Set(current);
+                        if (next.has(primaryDepartmentPermission.id)) next.delete(primaryDepartmentPermission.id);
+                        else next.add(primaryDepartmentPermission.id);
+                        return next;
+                      })}
+                      className="mt-0.5 size-4 accent-amber-600"
+                      title={primaryDepartmentPermission.description}
+                    />
+                    <span>
+                      <span className="block text-xs font-semibold text-slate-700">Primary Department Control</span>
+                      <span className="block text-[10px] text-slate-500">
+                        Full project-detail visibility for the project's primary department. Other departments remain limited to their assigned milestones and tasks.
+                      </span>
+                    </span>
+                  </label>
+                </div>
+              )}
+
+              {(["OWN", "ALL"] as Scope[]).map((scope) => {
+                const extras = extraRows(rows, scope);
+                if (extras.length === 0) return null;
+                return (
+                  <div key={scope} className="border-t border-slate-100 px-4 py-2.5 bg-slate-50/40">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                      Additional permissions · {scope === "OWN" ? "Own Department" : "All Departments"}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {extras.map((row) => {
+                        const source = ownGrantSource(row, rows, selected);
+                        const inherited = scope === "OWN" && isEffective(row.permission) && !selected.has(row.permission.id);
+                        return (
+                          <label key={row.permission.id} className="flex items-start gap-2 rounded-lg border border-slate-100 bg-white px-3 py-2 hover:bg-slate-50 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={isEffective(row.permission)}
+                              disabled={inherited}
+                              onChange={() => togglePermission(row, rows)}
+                              title={inherited ? inheritedTitle(source, row.permission.description) : row.permission.description}
+                              className="mt-0.5 size-4 accent-indigo-600"
+                            />
+                            <span className="min-w-0">
+                              <span className="block text-xs font-semibold text-slate-700">{row.permission.name}</span>
+                              <span className="block text-[10px] text-slate-400">{row.permission.description}</span>
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[720px] text-xs">
+                  <thead className="bg-white border-b border-slate-100">
+                    <tr>
+                      <th className="text-left px-4 py-2.5 font-semibold text-slate-500">Scope</th>
+                      {(["VIEW", "CREATE", "EDIT", "DELETE", "MANAGE"] as const).map((action) => (
+                        <th key={action} className="text-center px-3 py-2.5 font-semibold text-slate-500">{action}</th>
+                      ))}
+                      <th className="text-left px-4 py-2.5 font-semibold text-slate-500">Scope meaning</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {(["OWN", "ALL"] as Scope[]).map((scope) => {
+                      const scopeRows = rows.filter((row) => row.scope === scope);
+                      const manage = manageRow(rows, scope);
+                      return (
+                        <tr key={scope} className="hover:bg-slate-50/50">
+                          <td className="px-4 py-3 font-semibold text-slate-700 whitespace-nowrap">
+                            {scope === "OWN" ? "Own Department" : "All Departments"}
+                          </td>
+                          {(["VIEW", "CREATE", "EDIT", "DELETE"] as CrudAction[]).map((action) => {
+                            const row = scopeRows.find((item) => item.action === action);
+                            if (!row) return <td key={action} className="px-3 py-3 text-center text-slate-300">—</td>;
+                            const checked = isEffective(row.permission);
+                            const inherited = scope === "OWN" && checked && !selected.has(row.permission.id);
+                            const source = scope === "OWN" ? ownGrantSource(row, rows, selected) : null;
+                            return (
+                              <td key={action} className="px-3 py-3 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  disabled={inherited}
+                                  onChange={() => togglePermission(row, rows)}
+                                  title={inherited ? inheritedTitle(source, row.permission.description) : row.permission.description}
+                                  className="size-4 accent-indigo-600"
+                                />
+                              </td>
+                            );
+                          })}
+                          <td className="px-4 py-3">
+                            {manage ? (
+                              (() => {
+                                const manageInherited = scope === "OWN" && !selected.has(manage.permission.id) && isEffective(manage.permission);
+                                return (
+                                  <label className="inline-flex items-center gap-2 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={isEffective(manage.permission)}
+                                      disabled={manageInherited}
+                                      onChange={() => toggleManage(scope, rows)}
+                                      title={manageInherited ? "Granted by All Departments" : manage.permission.description}
+                                      className="size-4 accent-emerald-600"
+                                    />
+                                    <span className="font-semibold text-emerald-700">Manage</span>
+                                  </label>
+                                );
+                              })()
+                            ) : (
+                              <span className="text-slate-300">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ))}
+
+          {globalPermissions.length > 0 && (
+            <section className="rounded-xl border border-slate-200 overflow-hidden">
+              <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+                <h3 className="text-sm font-bold text-slate-800">Global permissions</h3>
+                <p className="text-[10px] text-slate-400">Organization, authorization and other non-department capabilities.</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 p-3">
+                {globalPermissions.map((permission) => (
+                  <label key={permission.id} className="flex items-start gap-2 rounded-lg border border-slate-100 px-3 py-2.5 hover:bg-slate-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(permission.id)}
+                      onChange={() => setSelected((current) => {
+                        const next = new Set(current);
+                        if (next.has(permission.id)) next.delete(permission.id);
+                        else next.add(permission.id);
+                        return next;
+                      })}
+                      className="mt-0.5 size-4 accent-indigo-600"
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-xs font-semibold text-slate-700">{permission.name}</span>
+                      <span className="block text-[10px] text-slate-400 font-mono">{permission.code}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {filteredMatrix.length === 0 && globalPermissions.length === 0 && (
+            <div className="py-12 text-center text-sm text-slate-400">
+              No assignable permissions match this search.
+            </div>
+          )}
+        </div>
+      </form>
+    </Modal>
+  );
+}
