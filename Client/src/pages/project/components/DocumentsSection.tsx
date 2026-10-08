@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   Milestone,
   ProjectDocument,
@@ -153,8 +153,7 @@ export function DocumentsSection({
     setUploadOpen(true);
   };
 
-  const handleFileUpload = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleFileUpload = async () => {
     if (!authToken || !uploadFile) return;
     if ((uploadLevel === "milestone" || uploadLevel === "task") && !targetId) return;
 
@@ -302,10 +301,7 @@ export function DocumentsSection({
       ) : canViewDocuments ? (
         <>
           {uploadOpen && (
-            <form
-              onSubmit={handleFileUpload}
-              className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-4 space-y-3"
-            >
+            <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-4 space-y-3">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-bold text-slate-800">Upload document</p>
@@ -376,7 +372,9 @@ export function DocumentsSection({
                   </span>
                   <input
                     type="file"
+                    onClick={(event) => event.stopPropagation()}
                     onChange={(event) => {
+                      event.stopPropagation();
                       setUploadFile(event.target.files?.[0] ?? null);
                       setUploadError("");
                     }}
@@ -403,7 +401,8 @@ export function DocumentsSection({
                   Cancel
                 </button>
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={() => void handleFileUpload()}
                   disabled={
                     !uploadFile ||
                     uploading ||
@@ -414,7 +413,7 @@ export function DocumentsSection({
                   {uploading ? "Uploading..." : "Upload"}
                 </button>
               </div>
-            </form>
+            </div>
           )}
 
           {documentActionError && (
