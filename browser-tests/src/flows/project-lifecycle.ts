@@ -4,8 +4,8 @@ import { USERS, ROUTES } from "../config.js";
 import type { FlowState } from "./types.js";
 import { StepRunner } from "../lib/step-runner.js";
 import {
-  clickDepartmentRow,
-  clickFinishWizard,
+  clickButton,
+  clickCreateProjectWizard,
   clickNextWizard,
   fillLabel,
   fillPlaceholder,
@@ -54,39 +54,39 @@ export async function createProject(
     if (await fileInputs.count()) await fileInputs.first().setInputFiles(file);
   });
 
-  await runner.step("Select PWD, PWD Civil and Procurement departments", async () => {
+  // client2's wizard runs details -> milestones -> assign departments ->
+  // dependencies and finishes with "Create project". It requires at least one
+  // milestone with a department, so the PWD milestone is created inline here;
+  // the Director adds the PWDC and PROC milestones afterwards on the
+  // milestones page.
+  await runner.step("Add the PWD milestone in the wizard", async () => {
     await clickNextWizard(page);
-    await clickDepartmentRow(page, "Public Works Department");
-    await clickDepartmentRow(page, "PWD Civil Division");
-    // Also Procurement: the work flow later creates a milestone scoped to it, and
-    // the API rejects a milestone whose department is not assigned to the project
-    // (POST /milestones returns 400 for an unassigned department).
-    await clickDepartmentRow(page, "Procurement & Finance");
+    await expect(
+      page.getByText(/at least one milestone is required/i).first(),
+    ).toBeVisible();
+    await addWizardMilestone(
+      page,
+      "PWD Coordination Milestone",
+      "Milestone for Public Works Department.",
+      "2027-03-31",
+    );
+    state.milestoneByDepartment.PWD = "PWD Coordination Milestone";
   });
 
-  await runner.step("Review project users", async () => {
+  await runner.step("Assign the PWD milestone to Public Works Department", async () => {
     await clickNextWizard(page);
-    await expect(page.getByText(/Public Works Department/i).first()).toBeVisible();
-    await expect(page.getByText(/PWD Civil Division/i).first()).toBeVisible();
-    await clickNextWizard(page);
-  });
-
-  await runner.step("Review empty milestone plan", async () => {
-    await expect(page.getByRole("heading", { name: /milestones/i })).toBeVisible();
-    await clickNextWizard(page);
-  });
-
-  await runner.step("Review empty dependencies", async () => {
-    await expect(page.getByRole("heading", { name: /dependencies/i })).toBeVisible();
-    await clickNextWizard(page);
-  });
-
-  await runner.step("Review empty initial tasks", async () => {
-    await expect(page.getByRole("heading", { name: /tasks/i })).toBeVisible();
+    await expect(
+      page.getByText(/every milestone must be assigned/i).first(),
+    ).toBeVisible();
+    await selectLabel(page, /department/, "Public Works Department");
   });
 
   await runner.step("Finish project creation", async () => {
-    await clickFinishWizard(page);
+    await clickNextWizard(page);
+    await expect(
+      page.getByText(/dependencies are optional/i).first(),
+    ).toBeVisible();
+    await clickCreateProjectWizard(page);
     state.projectId = page.url().match(/\/projects\/([0-9a-f-]+)/i)?.[1] ?? "";
     if (!state.projectId) throw new Error(`Project id missing after creation: ${page.url()}`);
     await waitForToast(page, /created|project/i).catch(() => {});
@@ -98,6 +98,27 @@ export async function createProject(
     await openProjectByName(page, state.projectName);
     await expect(page).toHaveURL(new RegExp(`/projects/${state.projectId}`));
   });
+}
+
+/**
+ * Add one milestone through the client2 wizard's Milestones step.
+ *
+ * The step shows a dashed "Add milestone" trigger which swaps for the inline
+ * form (Milestone name / Due date / "What marks this milestone?"); saving
+ * swaps back to the trigger, so the same button name is clicked twice.
+ */
+async function addWizardMilestone(
+  page: Page,
+  name: string,
+  description: string,
+  dueDate: string,
+): Promise<void> {
+  await clickButton(page, /^Add milestone$/);
+  await fillPlaceholder(page, /milestone name/i, name);
+  await fillLabel(page, /due date/i, dueDate);
+  await fillPlaceholder(page, /what marks this milestone/i, description);
+  await clickButton(page, /^Add milestone$/);
+  await expect(page.getByText(name, { exact: true }).first()).toBeVisible();
 }
 
 export async function verifyProjectForUser(

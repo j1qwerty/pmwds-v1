@@ -157,6 +157,41 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+export { escapeRegExp };
+
+/**
+ * Select a task in a target-picker whose option labels carry extra context.
+ *
+ * client2's document upload sheet renders task options as
+ * "Title · Milestone · Project", so an exact-label select never resolves.
+ * Resolve by prefix and select by value instead.
+ */
+export async function selectOptionByPrefix(
+  page: Page,
+  optionPrefix: string,
+): Promise<void> {
+  // Scoped to the open dialog (the upload sheet) so page-level filter selects
+  // can never satisfy the lookup first.
+  const scope = page.locator('[role="dialog"]');
+  const selects = (await scope.count()) > 0 ? scope.locator("select") : page.locator("select");
+  const count = await selects.count();
+  for (let index = 0; index < count; index += 1) {
+    const select = selects.nth(index);
+    const option = select
+      .locator("option")
+      .filter({ hasText: new RegExp(`^${escapeRegExp(optionPrefix)}`) })
+      .first();
+    if ((await option.count()) > 0) {
+      const value = await option.getAttribute("value");
+      if (value !== null && value !== "") {
+        await select.selectOption(value);
+        return;
+      }
+    }
+  }
+  throw new Error(`Select option starting with "${optionPrefix}" not found`);
+}
+
 /**
  * The project card in the projects list.
  *
@@ -200,7 +235,14 @@ export async function clickNextWizard(page: Page): Promise<void> {
   await clickButton(page, /^Next$/);
 }
 
-export async function clickFinishWizard(page: Page): Promise<void> {
-  await clickButton(page, /^Finish$/);
+/**
+ * Finish the client2 New Project wizard.
+ *
+ * The wizard ends on the Dependencies step with a "Create project" button
+ * (not "Finish") and lands on the new project's workspace
+ * (/projects/<id>/milestones when no tasks were added inline).
+ */
+export async function clickCreateProjectWizard(page: Page): Promise<void> {
+  await clickButton(page, /^Create project$/);
   await page.waitForURL(/\/projects\/[0-9a-f-]+/i, { timeout: 60_000 });
 }

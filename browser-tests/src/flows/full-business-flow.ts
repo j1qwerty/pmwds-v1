@@ -127,7 +127,7 @@ export async function runFullBusinessFlow(
       const taskName = "Procurement Review Task";
       await headC.getByText(taskName, { exact: true }).first().click();
       await headC.locator('button[title="Delete task"]').last().click();
-      await headC.getByRole("button", { name: /^Delete Permanently$/ }).last().click();
+      await headC.getByRole("button", { name: /delete permanently/i }).last().click();
       await expect(headC.getByText(taskName, { exact: true })).toHaveCount(0);
     });
 
@@ -137,7 +137,7 @@ export async function runFullBusinessFlow(
         waitUntil: "domcontentloaded",
       });
       await manager.locator('button[title="Edit project"]').click();
-      await fillLabel(manager, /^Description$/, "Updated by Project Manager in browser E2E.");
+      await fillLabel(manager, /description/, "Updated by Project Manager in browser E2E.");
       await manager.getByRole("button", { name: /^Save$/ }).click();
       await expect(manager.getByText("Updated by Project Manager in browser E2E.", { exact: true })).toBeVisible();
     });
@@ -148,10 +148,10 @@ export async function runFullBusinessFlow(
         waitUntil: "domcontentloaded",
       });
       await admin.locator('button[title="Edit project"]').click();
-      await fillLabel(admin, /^Name$/, "Browser E2E Updated");
+      await fillLabel(admin, /name/, "Browser E2E Updated");
       await fillLabel(
         admin,
-        /^Description$/,
+        /description/,
         "Updated through the real project edit modal.",
       );
       await admin.getByRole("button", { name: /^Save$/ }).click();
@@ -164,7 +164,7 @@ export async function runFullBusinessFlow(
         waitUntil: "domcontentloaded",
       });
       await finalAdmin.locator('button[title="Delete project"]').click();
-      await finalAdmin.getByRole("button", { name: /^Delete Permanently$/ }).last().click();
+      await finalAdmin.getByRole("button", { name: /delete permanently/i }).last().click();
       await finalAdmin.waitForURL(/\/projects(\/)?$/, { timeout: 60_000 });
     });
 
