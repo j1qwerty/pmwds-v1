@@ -30,7 +30,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const BROWSER_TESTS = join(ROOT, "browser-tests");
 
-// Kept in step with the pinned dev server port in Client/vite.config.ts.
+// Kept in step with the pinned dev server port in client2/vite.config.ts.
 // "localhost" rather than 127.0.0.1: Vite binds to localhost, which resolves to
 // IPv6 ::1 on Windows, so a literal 127.0.0.1 is refused with ECONNREFUSED.
 const DEFAULT_BASE_URL = "http://localhost:5175";
@@ -146,7 +146,7 @@ async function warnIfClientUnreachable(baseUrl) {
   } catch {
     console.warn(
       `[browser-tests] Warning: ${baseUrl} is not reachable.\n` +
-        "              Start the client (cd Client; npm run dev) and the API before running.\n" +
+        "              Start client2 (cd client2; npm run dev) and the API before running.\n" +
         "              Set E2E_BASE_URL to point somewhere else if it is not on port 5175.",
     );
   }

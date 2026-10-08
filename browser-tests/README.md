@@ -1,18 +1,18 @@
 # PMWDS browser tests
 
-These tests use Playwright and visible/headless Chromium to exercise the application through the real browser UI.
+These tests use Playwright and visible/headless Chromium to exercise client2 through the real browser UI.
 
 ## Setup
 
-Run the client and API first, then:
+Run client2 and the API first, then:
 
 ```powershell
 cd browser-tests
 pnpm install
 pnpm install:browsers
 
-$env:E2E_BASE_URL = "http://127.0.0.1:5175"
-$env:E2E_PASSWORD = "Pmwds@123"
+$env:E2E_BASE_URL = "http://localhost:5175"   # client2 dev server
+$env:E2E_PASSWORD = "Pmwds@123"                # or Seed__DefaultPassword from .env
 ```
 
 ## Commands

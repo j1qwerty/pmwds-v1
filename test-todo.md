@@ -15,8 +15,8 @@ The suite talks to an **already-running** client and API. It starts neither.
 # terminal 1 - API
 dotnet run --project PMWDS.API
 
-# terminal 2 - client
-cd Client; npm run dev
+# terminal 2 - client2 UI under test
+cd client2; npm run dev
 ```
 
 Then, from the repository root:

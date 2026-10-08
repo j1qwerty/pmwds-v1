@@ -3,12 +3,16 @@
 PMWDS is a project management and workflow decision support system. It combines portfolio planning, organization and department management, task and milestone execution, notification workflows, reporting and AI-assisted delivery signals such as task allocation, delay prediction, burnout risk, and project health.
 
 The API entry point is `PMWDS.API`. The frontend lives in `Client`.
+`client2/` is the UI under active development and the target of the browser E2E
+suite and the human demo — see [demo.md](demo.md).
 
 ## Documentation
 
 | File | Purpose |
 |------|---------|
 | [CONFIG.md](CONFIG.md) | Full setup, configuration, build, deployment, and operations guide |
+| [tests.md](tests.md) | All test instructions — .NET integration suite and Playwright browser E2E (client2) |
+| [demo.md](demo.md) | Human demo walkthrough of the client2 UI, step by step |
 | [config-sqlite.md](config-sqlite.md) | Combined SQLite config guide with verified implementation and remediation |
 | [responsive.md](responsive.md) | Responsive design properties by category - layout, breakpoints, and clamp values |
 | [mssql-issue.md](mssql-issue.md) | The 25-second SQL Server latency problem, its root cause, and the fix |
@@ -85,10 +89,10 @@ docker-compose down
 
 Then run the API normally in Development — it falls back to SQLite automatically.
 
-Run the client:
+Run the client (use `client2` — it is the UI under test and the demo UI):
 
 ```powershell
-cd Client
+cd client2
 npm install
 npm run dev -- --host 127.0.0.1 --port 5175
 ```
@@ -96,8 +100,8 @@ npm run dev -- --host 127.0.0.1 --port 5175
 Default URLs:
 
 ```text
-API:    http://localhost:5179
-Client: http://127.0.0.1:5175
+API:     http://localhost:5179
+client2: http://127.0.0.1:5175
 Swagger: http://localhost:5179/swagger
 Scalar:  http://localhost:5179/scalar
 ```
@@ -233,245 +237,14 @@ On first run, the API seeds representative data across the full product surface:
 - When running with Docker SQL Server, EF Core migrations (`database.MigrateAsync`) run automatically on startup.
 - The app auto-detects the database provider in order: SQL Server → SQLite fallback in Development. Run `docker-compose up -d` before starting the API to use SQL Server.
 
-## Running the tests
+## Tests
 
-`PMWDS.Tests` holds xUnit integration tests. They boot the real API in-process through
-`WebApplicationFactory<PMWDS.API.TestHost>` and talk to it over HTTP, so they exercise the
-genuine startup path - database creation, migrations, seeding, authorization - rather than
-mocks.
+All test-related instructions live in [tests.md](tests.md):
 
-```powershell
-# Everything (default)
-dotnet test PMWDS.slnx
+- **.NET integration tests** (`PMWDS.Tests/`) — API controllers, auth, CRUD, cascades, realtime via `WebApplicationFactory`.
+- **Browser E2E tests** (`browser-tests/` + `client2/`) — full seeded-role business lifecycle through the client2 UI in real Chromium: `pnpm btest` (headless) or `pnpm btest:headed` (visible). The client2 UI and API must already be running.
 
-# Just the API suite
-dotnet test PMWDS.Tests\PMWDS.Tests.csproj
-
-# One class
-dotnet test PMWDS.Tests\PMWDS.Tests.csproj --filter "FullyQualifiedName~CascadeTests"
-
-# One test
-dotnet test PMWDS.Tests\PMWDS.Tests.csproj --filter "FullyQualifiedName~RealtimeTests.Deleting_a_task_broadcasts"
-
-# With coverage
-dotnet test PMWDS.Tests\PMWDS.Tests.csproj --collect:"XPlat Code Coverage"
-```
-
-No setup is required. Each run creates a throwaway SQLite database and storage directory
-under `%TEMP%\pmwds-tests\`, seeds it, and deletes both afterwards. **Your
-`App_Data/pmwds-v1.sqlite` is never touched**, and no `.env` or `appsettings` value from
-your machine leaks in - the test host is configured entirely from code.
-
-Tests require the seeded accounts, so run them against a seeded database. The default
-password is `Pmwds@123`.
-
-### Running against a real server
-
-Set `PMWDS_TEST_BASE_URL` to run the same suite against an already-running instance instead
-of the in-process host:
-
-```powershell
-# local
-dotnet run --project .\PMWDS.API
-$env:PMWDS_TEST_BASE_URL = "http://localhost:5179"
-dotnet test PMWDS.Tests\PMWDS.Tests.csproj
-
-# the VPS
-$env:PMWDS_TEST_BASE_URL = "https://pmwds.dharmaatribe.app"
-dotnet test PMWDS.Tests\PMWDS.Tests.csproj
-```
-
-This is the only way to cover the SQL Server and Hangfire branches, since Hangfire is
-registered solely when the provider is SQL Server.
-
-> **Warning:** the suite creates and deletes real data. Never point it at production
-> without a backup.
-
-### What is covered
-
-| Area | File |
-|---|---|
-| Login, tokens, anonymous access, per-role permission sets | `AuthenticationTests.cs` |
-| The full "New Project" wizard flow - project, milestones, dependencies, tasks - in the same order the React wizard issues them | `WizardFlowTests.cs` |
-| Create / read / update / delete for projects, milestones, milestone dependencies, tasks, subtasks, task dependencies, plus validation bounds | `CrudTests.cs` |
-| What deleting a project, milestone or task does to everything below it, including recursive subtask removal and certificate unlinking | `CascadeTests.cs` |
-| Document upload / list / download, utilization certificates, and the certificate-to-task link on task and milestone deletion | `DocumentsAndCertificatesTests.cs` |
-| Departments, users, roles, duplicates, deactivation, and the authorization boundary on each | `OrganizationTests.cs` |
-| The live-update path: every mutation must broadcast `DataChanged`, and rejected or forbidden requests must not | `RealtimeTests.cs` |
-
-`CascadeTests` and `RealtimeTests` are the highest-value suites here. Cascade behaviour had
-no coverage at all before, and the realtime tests immediately found two mutating endpoints
-that never announced themselves.
-
-### Adding a test
-
-Use the helpers in `PMWDS.Tests/Infrastructure`:
-
-- `ApiFixture` - the collection fixture. Exposes a logged-in `Session` per seeded role
-  (`SuperAdmin`, `Admin`, `DepartmentHead`, `ProjectManager`, `TeamMember`, `Viewer`) and
-  `CreateAnonymousClient()` for negative tests. Put your class in
-  `[Collection(ApiCollection.Name)]` so it shares the one booted host.
-- `ApiClient` - typed GET/POST/PUT/PATCH/DELETE that unwraps the `{ success, data, error }`
-  envelope, plus `PostFormAsync` for multipart uploads and `DownloadAsync` for binaries.
-- `WizardBuilder` - reproduces the client wizard's exact call sequence.
-- `TestProject` - creates and disposes a throwaway project so tests cannot collide.
-- `HubListener` - opens a real SignalR connection and waits for `DataChanged` by scope.
-
-**One `HttpClient` per session, never a shared one.** `ApiClient.UseToken` writes to
-`HttpClient.DefaultRequestHeaders`, so sessions that share a client overwrite each other's
-bearer token and every authorization test silently runs as whichever identity logged in
-last. The fixture gives each session its own client for this reason.
-
-
-```powershell
-dotnet build PMWDS.slnx
-dotnet test PMWDS.slnx
-cd Client
-npm run build
-npm run lint
-```
-
-## Browser E2E tests
-
-The browser suite lives in `browser-tests` and uses Playwright with real Chromium. It is separate from the existing .NET API integration tests.
-
-### Quick start
-
-One command from the repository root does everything - it reads the seeded password from `.env`, installs dependencies and Chromium if they are missing, checks the client is reachable, and runs the suite.
-
-```powershell
-cd D:\code\pmwds-v1
-
-# The client and API must already be running (see Local Development above)
-pnpm btest
-```
-
-The password is read from `Seed__DefaultPassword` in the repository `.env` - the same value the database seeder assigns to every seeded account. It is never printed or written anywhere, and `.env` is gitignored. Set `E2E_PASSWORD` in the shell to override it.
-
-| Command | What it does |
-| --- | --- |
-| `pnpm btest` | Run the full business lifecycle, headless |
-| `pnpm btest:headed` | Run it with a visible browser window |
-| `pnpm btest:list` | List the tests without running anything |
-| `pnpm btest:discover` | Read-only UI discovery pass, no writes |
-| `pnpm btest:setup` | Install dependencies and Chromium only |
-| `pnpm btest:report` | Open the last Playwright HTML report |
-
-Extra arguments are forwarded to Playwright:
-
-```powershell
-pnpm btest -- --headed --grep "login"
-```
-
-### Pointing at a different target
-
-The default target is `http://127.0.0.1:5175`, matching the pinned Vite port in `Client/vite.config.ts`. Override it when the client runs elsewhere - this is how the suite is pointed at staging or a deployed environment.
-
-```powershell
-$env:E2E_BASE_URL = "https://your-host"
-pnpm btest
-```
-
-If the client is not reachable the runner warns before launching, rather than failing deep inside Playwright with a navigation timeout.
-
-### Running the runner script directly
-
-The root `pnpm` scripts are a thin wrapper. The underlying script can also be invoked directly, and understands `--dry-run`, which resolves the password and target and then exits without installing anything or launching a browser.
-
-```powershell
-node scripts\run-browser-tests.mjs --dry-run   # verify configuration only
-node scripts\run-browser-tests.mjs --headed     # visible browser
-```
-
-### Existing .NET test suite
-
-The existing `PMWDS.Tests` commands remain the API/integration test commands:
-
-```powershell
-# Everything in the existing .NET test suite
-dotnet test PMWDS.slnx
-
-# API suite only
-dotnet test PMWDS.Tests\PMWDS.Tests.csproj
-
-# One test class
-dotnet test PMWDS.Tests\PMWDS.Tests.csproj --filter "FullyQualifiedName~CascadeTests"
-
-# One test
-dotnet test PMWDS.Tests\PMWDS.Tests.csproj --filter "FullyQualifiedName~RealtimeTests.Deleting_a_task_broadcasts"
-
-# Coverage
-dotnet test PMWDS.Tests\PMWDS.Tests.csproj --collect:"XPlat Code Coverage"
-```
-
-### Browser-test setup
-
-The browser suite connects to an already-running PMWDS client. The API used by the client can therefore be local, staging, or deployed.
-
-```powershell
-cd browser-tests
-pnpm install
-pnpm install:browsers
-```
-
-`pnpm btest:setup` from the repository root performs both steps, but only when `browser-tests/node_modules` is absent.
-
-The current seeded test identities are defined in `browser-tests/src/config.ts`. Do not hard-code a production password into the repository.
-
-### Discover the browser UI
-
-Discovery walks selected authenticated routes, opens the New Project wizard when available, detects visible inputs/buttons/links, groups them by nearby form/dialog/section heading, and writes text inventories under `browser-tests/ui-map`.
-
-```powershell
-# From the repository root (recommended)
-pnpm btest:discover
-```
-
-```powershell
-# Or from browser-tests directly
-cd browser-tests
-
-# Headless discovery
-$env:E2E_BROWSER = "headless"
-pnpm e2e:discover
-
-# Visible Chromium discovery
-$env:E2E_BROWSER = "headed"
-pnpm e2e:discover
-```
-
-Discovery only logs in and reads pages, so it is safe against a real database. Run it first when the full flow fails - it surfaces seed or credential mismatches without writing anything.
-
-The inventories are intended to be consumed by the browser flow runner. They contain semantic attributes such as role, label, placeholder, name, id, type, aria-label, href, and disabled state.
-
-### Browser flow runner
-
-The browser runner has two browser modes and two execution modes.
-
-```powershell
-cd browser-tests
-
-# Interactive mode. It asks for browser visibility and pauses after each logical step.
-pnpm e2e:interactive
-
-# Automatic mode. Select the flows to run at startup.
-pnpm e2e
-```
-
-Browser mode:
-- headless Chromium is the default
-- headed mode opens a real visible Chromium window
-
-In headed mode every logical step records a before/after screenshot and prints the output path. Each run also records network request/response metadata, and failures retain the screenshot/trace/video artifacts.
-
-The full seeded-role business lifecycle is now executable through the runner and Playwright test. It uses isolated browser contexts for each role so login state does not leak between users.
-
-### Browser test artifacts
-
-Browser runs are written below `browser-tests/runs/` and are gitignored. Playwright reports are written below `browser-tests/reports/`.
-
-Never point the destructive full-flow tests at production. The flow creates, edits, uploads to, and finally deletes real application data.
-
+The human demo walkthrough is in [demo.md](demo.md).
 
 ## Future Improvements
 
