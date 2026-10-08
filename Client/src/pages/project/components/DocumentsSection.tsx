@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import type {
   Milestone,
   ProjectDocument,
@@ -43,6 +43,7 @@ export function DocumentsSection({
   const [uploadLevel, setUploadLevel] = useState<UploadLevel>("project");
   const [targetId, setTargetId] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadError, setUploadError] = useState("");
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -131,14 +132,17 @@ export function DocumentsSection({
     setUploadLevel(allowedUploadLevels[0]);
     setTargetId("");
     setUploadFile(null);
+    setUploadError("");
     setUploadOpen(true);
   };
 
-  const handleFileUpload = async () => {
+  const handleFileUpload = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     if (!authToken || !uploadFile) return;
     if ((uploadLevel === "milestone" || uploadLevel === "task") && !targetId) return;
 
     setUploading(true);
+    setUploadError("");
     try {
       await api.uploadProjectDocument(authToken, projectId, uploadFile, {
         milestoneId: uploadLevel === "milestone" ? targetId : null,
@@ -149,6 +153,8 @@ export function DocumentsSection({
       setUploadOpen(false);
       fetchDocuments();
       fetchCapabilities();
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Upload failed. Please try again.");
     } finally {
       setUploading(false);
     }
@@ -227,7 +233,10 @@ export function DocumentsSection({
       ) : canViewDocuments ? (
         <>
           {uploadOpen && (
-            <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-4 space-y-3">
+            <form
+              onSubmit={handleFileUpload}
+              className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-4 space-y-3"
+            >
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-bold text-slate-800">Upload document</p>
@@ -298,23 +307,34 @@ export function DocumentsSection({
                   </span>
                   <input
                     type="file"
-                    onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)}
+                    onChange={(event) => {
+                      setUploadFile(event.target.files?.[0] ?? null);
+                      setUploadError("");
+                    }}
                     className="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs"
                   />
                 </label>
               </div>
 
+              {uploadError && (
+                <p role="alert" className="text-xs text-red-700" aria-live="polite">
+                  {uploadError}
+                </p>
+              )}
+
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setUploadOpen(false)}
+                  onClick={() => {
+                    setUploadOpen(false);
+                    setUploadError("");
+                  }}
                   className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-white"
                 >
                   Cancel
                 </button>
                 <button
-                  type="button"
-                  onClick={handleFileUpload}
+                  type="submit"
                   disabled={
                     !uploadFile ||
                     uploading ||
@@ -325,7 +345,7 @@ export function DocumentsSection({
                   {uploading ? "Uploading..." : "Upload"}
                 </button>
               </div>
-            </div>
+            </form>
           )}
 
           {loading ? (
