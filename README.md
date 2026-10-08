@@ -241,10 +241,51 @@ On first run, the API seeds representative data across the full product surface:
 
 All test-related instructions live in [tests.md](tests.md):
 
-- **.NET integration tests** (`PMWDS.Tests/`) — API controllers, auth, CRUD, cascades, realtime via `WebApplicationFactory`.
-- **Browser E2E tests** (`browser-tests/` + `client2/`) — full seeded-role business lifecycle through the client2 UI in real Chromium: `pnpm btest` (headless) or `pnpm btest:headed` (visible). The client2 UI and API must already be running.
+- **.NET integration tests** (`PMWDS.Tests/`) — API controllers, auth, CRUD, cascades, realtime via `WebApplicationFactory`: `dotnet test PMWDS.slnx`.
+- **Map-driven E2E tests** (`tests/e2e/` + `client2/`, primary UI suite) — 7 core flows through the client2 UI in real Chromium, driven by editable text maps. The API (`:5179`) and client2 (`:5175`) must already be running.
+- **Browser E2E tests** (`browser-tests/` + `client2/`) — full seeded-role business lifecycle: `pnpm btest` (headless) or `pnpm btest:headed` (visible).
 
 The human demo walkthrough is in [demo.md](demo.md).
+
+### E2E quick start (`tests/e2e`)
+
+```powershell
+cd tests/e2e
+npm install
+npx playwright install chromium      # one-time browser download
+npm run smoke                        # offline check: maps parse, keys resolve
+```
+
+```powershell
+npm run e2e                          # interactive: asks display mode + flows, then prompts before each step (Y/n/s/q)
+npm run e2e -- --auto                # automatic: all 7 flows, no step prompts
+npm run e2e:auto:headless            # automatic, headless (no window)
+npm run e2e:auto:visible             # automatic, visible window, screenshot before/after every step
+```
+
+Display mode (asked at startup in both run modes, or passed explicitly):
+
+```powershell
+npm run e2e -- --mode visible        # watch it run (slowed to 250ms, per-step screenshots)
+npm run e2e -- --mode headless       # no window (default, fastest)
+npm run e2e:visible                  # interactive + visible shortcut
+npm run e2e:headless                 # interactive + headless shortcut
+npm run e2e -- --no-shots            # visible window without per-step screenshots
+npm run e2e -- --slowmo 500          # slower actions for watching
+```
+
+Run a subset, point elsewhere, or pre-pick the first user:
+
+```powershell
+npm run e2e -- --auto --flows 1,3             # only flows 1 and 3
+npm run e2e -- --auto --flows project-create  # or by flow id
+npm run e2e -- --url http://localhost:5175    # default target (E2E_BASE_URL also works)
+npm run e2e -- --user pm                      # pre-pick the first user
+```
+
+Screenshots go to `tests/e2e/e2e-artifacts/screenshots` (`NN-<step>-before/after/-FAILED.png`),
+uploads to `tests/e2e/e2e-artifacts/uploads`. Flows build on each other, so run
+flow 1 first (or `--flows all`). Destructive — disposable database only.
 
 ## Future Improvements
 
