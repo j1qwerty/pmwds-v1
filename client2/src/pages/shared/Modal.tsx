@@ -1,11 +1,19 @@
 import { useEffect, useState, type ReactNode, type MouseEvent } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "../../components/ui/Icon";
 
-type ModalSize = "sm" | "md" | "lg" | "xl" | "2xl";
+/** Named sizes. Any raw Tailwind `max-w-*` class string is also accepted. */
+export type ModalSize = "sm" | "md" | "lg" | "xl" | "2xl";
+export type ModalSizeProp = ModalSize | (string & {});
 
 const SIZE_MAP: Record<ModalSize, string> = {
-  sm: "max-w-md",
-  md: "max-w-lg",
+  // NOTE: do NOT use max-w-sm/md/lg/xl here. This project's @theme defines
+  // --spacing-{sm,md,lg,xl}, so Tailwind v4 resolves those max-w names against
+  // the spacing scale (e.g. max-w-lg -> 1.5rem) instead of the container scale,
+  // which squeezes the card into a narrow sliver. Explicit rem values match
+  // the classic container widths (md 28rem, lg 32rem).
+  sm: "max-w-[28rem]",
+  md: "max-w-[32rem]",
   lg: "max-w-2xl",
   xl: "max-w-4xl",
   "2xl": "max-w-6xl",
@@ -17,7 +25,8 @@ interface ModalProps {
   children: ReactNode;
   title?: ReactNode;
   description?: ReactNode;
-  size?: ModalSize;
+  /** Named size ("sm"…"2xl") or a raw Tailwind max-width class (e.g. "max-w-3xl") */
+  size?: ModalSizeProp;
   showCloseButton?: boolean;
   closeOnBackdrop?: boolean;
   hideHeaderBorder?: boolean;
@@ -28,6 +37,8 @@ interface ModalProps {
   accent?: "primary" | "warning" | "danger" | "success" | "info" | "neutral";
   /** If true, content area scrolls (used for tall forms). Default true. */
   scrollable?: boolean;
+  /** Extra classes merged into the content area (padding overrides, etc.) */
+  contentClassName?: string;
 }
 
 const ACCENT_MAP: Record<NonNullable<ModalProps["accent"]>, string> = {
@@ -39,13 +50,33 @@ const ACCENT_MAP: Record<NonNullable<ModalProps["accent"]>, string> = {
   neutral: "bg-slate-100 text-slate-600",
 };
 
+function resolveWidth(size: ModalSizeProp): string {
+  return SIZE_MAP[size as ModalSize] ?? size;
+}
+
+function ModalCloseButton({ onClose }: { onClose: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClose}
+      aria-label="Close"
+      className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+    >
+      <Icon name="close" size={18} />
+    </button>
+  );
+}
+
 /**
- * Snappy, modern modal. Replaces the old ModalOverlay for new UIs.
+ * Snappy, modern modal. Self-contained: one scrim + one white card.
  *
- * - Faster entrance/exit (0.15s/0.10s) than the old 0.2s/0.3s
- * - Built-in header with optional icon + accent
- * - Optional footer slot for action buttons (keeps them visible while content scrolls)
- * - Cleaner backdrop (no double blur), tighter padding
+ * - Rendered through a portal on document.body, so no ancestor transform,
+ *   filter or overflow can clip or resize it
+ * - The close (X) button lives INSIDE the card, top-right — never floating
+ *   outside the card where tall headers can cover it
+ * - Backdrop click (target === currentTarget), Esc, and the X all close
+ * - Fast 0.15s enter / 0.12s exit, body scroll lock while open
+ * - Card is capped at max-h-[90vh]; content scrolls internally by default
  *
  * Usage:
  *   <Modal open={open} onClose={close} title="New User" icon="person_add" accent="primary" size="md" footer={<><CancelButton/><SaveButton/></>}>
@@ -66,6 +97,7 @@ export function Modal({
   icon,
   accent = "primary",
   scrollable = true,
+  contentClassName = "",
 }: ModalProps) {
   const [visible, setVisible] = useState(false);
   const [exiting, setExiting] = useState(false);
@@ -80,7 +112,7 @@ export function Modal({
       const t = setTimeout(() => {
         setVisible(false);
         setExiting(false);
-      }, 100);
+      }, 120); // matches modal-*  0.12s exit animations
       return () => clearTimeout(t);
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -109,7 +141,9 @@ export function Modal({
     if (event.target === event.currentTarget) onClose();
   };
 
-  return (
+  const hasHeader = Boolean(title || description || icon);
+
+  return createPortal(
     <div
       className={`fixed inset-0 z-[1000] flex items-center justify-center p-4 sm:p-6 ${
         exiting ? "modal-backdrop-exit" : "modal-backdrop-enter"
@@ -122,13 +156,13 @@ export function Modal({
       onClick={handleBackdropClick}
     >
       <div
-        className={`relative w-full ${SIZE_MAP[size]} ${
+        className={`relative w-full ${resolveWidth(size)} ${
           exiting ? "modal-content-exit" : "modal-content-enter"
         }`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="bg-white rounded-2xl shadow-2xl shadow-slate-900/10 border border-slate-200/80 overflow-hidden max-h-[90vh] flex flex-col">
-          {(title || showCloseButton) && (
+          {hasHeader ? (
             <div
               className={`flex items-start gap-3 px-5 py-4 ${
                 hideHeaderBorder ? "" : "border-b border-slate-100"
@@ -153,23 +187,19 @@ export function Modal({
                   </p>
                 )}
               </div>
-              {showCloseButton && (
-                <button
-                  type="button"
-                  onClick={onClose}
-                  aria-label="Close"
-                  className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-                >
-                  <Icon name="close" size={18} />
-                </button>
-              )}
+              {showCloseButton && <ModalCloseButton onClose={onClose} />}
             </div>
-          )}
+          ) : showCloseButton ? (
+            // No header content — keep the X inside the card as a compact corner row
+            <div className="flex justify-end px-3 pt-3">
+              <ModalCloseButton onClose={onClose} />
+            </div>
+          ) : null}
 
           <div
-            className={`flex-1 ${
+            className={`flex-1 min-w-0 ${
               scrollable ? "overflow-y-auto" : ""
-            } px-5 py-4`}
+            } px-5 py-4 ${contentClassName}`}
           >
             {children}
           </div>
@@ -181,7 +211,8 @@ export function Modal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

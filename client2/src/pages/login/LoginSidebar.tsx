@@ -66,7 +66,7 @@ export function LoginSidebar() {
               </p>
             </div>
           </div>
-          <p className="text-lg text-indigo-100/90 leading-relaxed max-w-md">
+          <p className="text-lg text-indigo-100/90 leading-relaxed max-w-[28rem]">
             Streamline your project management with intelligent monitoring,
             automated workflows, and real-time collaboration.
           </p>

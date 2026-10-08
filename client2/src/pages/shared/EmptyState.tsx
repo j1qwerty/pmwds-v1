@@ -28,7 +28,7 @@ const ACCENT_MAP: Record<NonNullable<EmptyStateProps["accent"]>, string> = {
  * muted description, optional action button.
  */
 export function EmptyState({
-  icon = "inbox",
+  icon = "hi-inbox",
   title,
   description,
   action,
@@ -36,11 +36,11 @@ export function EmptyState({
   accent = "neutral",
 }: EmptyStateProps) {
   const size = compact ? 36 : 56;
-  const iconSize = compact ? 20 : 32;
+  const iconSize = compact ? 20 : 24;
 
   return (
     <div
-      className={`flex flex-col items-center justify-center text-center ${
+      className={`flex w-full flex-col items-center justify-center text-center ${
         compact ? "py-8 px-4" : "py-16 px-6"
       }`}
     >
@@ -51,7 +51,7 @@ export function EmptyState({
         <Icon name={icon} size={iconSize} />
       </div>
       <h3
-        className={`font-bold text-slate-700 ${
+        className={`font-bold text-slate-800 ${
           compact ? "text-sm" : "text-base"
         }`}
       >
@@ -59,7 +59,7 @@ export function EmptyState({
       </h3>
       {description && (
         <p
-          className={`text-slate-500 mt-1 max-w-sm ${
+          className={`text-slate-500 mt-1 max-w-[24rem] leading-relaxed ${
             compact ? "text-xs" : "text-sm"
           }`}
         >

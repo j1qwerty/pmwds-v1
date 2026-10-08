@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import type { Department, OrganizationRecord, User } from "../../types";
+import { Icon } from "../../components/ui/Icon";
 import { usePermission } from "./RoleGate";
 import { useUserOrganization } from "./useUserOrganization";
 
@@ -22,6 +23,12 @@ type OrganizationDepartmentFilterProps = {
   variant?: "toolbar" | "fields";
   searchPlaceholder?: string;
 };
+
+const SELECT_CLASS =
+  "rounded-lg border border-slate-200 bg-slate-50 text-sm font-medium text-slate-600 outline-none transition-all focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100";
+
+const SEARCH_CLASS =
+  "w-full rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-700 outline-none transition-all focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100";
 
 export function OrganizationDepartmentFilter({
   organizations,
@@ -71,6 +78,21 @@ export function OrganizationDepartmentFilter({
     onDepartmentChange("");
   };
 
+  const searchField = (
+    <div className="relative">
+      <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400">
+        <Icon name="search" size={14} />
+      </span>
+      <input
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+        placeholder={searchPlaceholder}
+        aria-label="Search"
+        className={`${SEARCH_CLASS} h-9 pl-8 pr-3`}
+      />
+    </div>
+  );
+
   // "fields" variant: bare labelled fields so the host can place them inside its
   // own filter grid alongside Project / Status / dates.
   if (variant === "fields") {
@@ -78,13 +100,13 @@ export function OrganizationDepartmentFilter({
       <>
         {showOrganizationFilter && (
           <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+            <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">
               Organization
             </label>
             <select
               value={selectedOrganizationId}
               onChange={(event) => handleOrganizationChange(event.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 bg-white outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+              className={`h-9 w-full px-3 ${SELECT_CLASS}`}
             >
               <option value="">{allOrganizationsLabel}</option>
               {visibleOrganizations.map((organization) => (
@@ -97,13 +119,13 @@ export function OrganizationDepartmentFilter({
         )}
 
         <div>
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+          <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">
             Department
           </label>
           <select
             value={selectedDepartmentId}
             onChange={(event) => onDepartmentChange(event.target.value)}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 bg-white outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+            className={`h-9 w-full px-3 ${SELECT_CLASS}`}
           >
             <option value="">{allDepartmentsLabel}</option>
             {visibleDepartments.map((department) => (
@@ -115,35 +137,23 @@ export function OrganizationDepartmentFilter({
         </div>
 
         <div>
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+          <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">
             Search
           </label>
-          <div className="relative">
-            <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-slate-400">
-              search
-            </span>
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder={searchPlaceholder}
-              className="w-full px-3.5 py-2.5 pl-9 rounded-xl border border-slate-200 text-sm text-slate-700 bg-white outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-            />
-          </div>
+          {searchField}
         </div>
       </>
     );
   }
 
   return (
-    <div className={` ${className}`}>
-      <div className="mb-3 flex flex-wrap items-center gap-3">
-        
-
+    <div className={className}>
+      <div className="flex flex-wrap items-center gap-2.5 p-2.5 bg-white rounded-xl border border-slate-200/70 shadow-sm">
         {showOrganizationFilter && (
           <select
             value={selectedOrganizationId}
             onChange={(event) => handleOrganizationChange(event.target.value)}
-            className="h-10 min-w-[280px] rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+            className={`h-9 min-w-[220px] px-3 ${SELECT_CLASS}`}
           >
             <option value="">{allOrganizationsLabel}</option>
             {visibleOrganizations.map((organization) => (
@@ -157,7 +167,7 @@ export function OrganizationDepartmentFilter({
         <select
           value={selectedDepartmentId}
           onChange={(event) => onDepartmentChange(event.target.value)}
-          className="h-10 min-w-[220px] rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+          className={`h-9 min-w-[200px] px-3 ${SELECT_CLASS}`}
         >
           <option value="">{allDepartmentsLabel}</option>
           {visibleDepartments.map((department) => (
@@ -167,15 +177,16 @@ export function OrganizationDepartmentFilter({
           ))}
         </select>
 
-        <div className="relative min-w-[260px] flex-1 max-w-150">
-          <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-slate-400">
-            search
+        <div className="relative min-w-[220px] flex-1 max-w-[28rem]">
+          <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400">
+            <Icon name="search" size={14} />
           </span>
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder={searchPlaceholder}
-            className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+            aria-label="Search"
+            className={`${SEARCH_CLASS} h-9 pl-8 pr-3`}
           />
         </div>
 
