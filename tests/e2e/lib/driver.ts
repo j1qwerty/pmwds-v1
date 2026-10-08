@@ -44,7 +44,7 @@ export class Driver {
     public maps: MapFile[],
     private opts: DriverOptions = {},
   ) {
-    this.baseUrl = opts.baseUrl ?? "http://localhost:5173";
+    this.baseUrl = opts.baseUrl ?? "http://localhost:5175";
   }
 
   // ---------------------------------------------------------------- locator

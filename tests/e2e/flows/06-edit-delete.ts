@@ -1,11 +1,14 @@
 import type { Flow, FlowApi, Step } from "./types.js";
 
 /**
- * Flow 6 - a department head edits and then deletes one milestone and one
- * task on their own project, confirming the delete confirmation modal.
+ * Flow 6 - the Director edits and then deletes one milestone and the project
+ * manager deletes one task, confirming the delete confirmation modal.
+ *
+ * Milestone management in client2 is SuperAdmin/Director-only, so both
+ * milestone steps run as the Director (admin), not a department head.
  */
 
-const HEAD = "head-civil";
+const HEAD = "admin";
 
 const editMilestone: Step = {
   id: "edit-milestone",
@@ -15,8 +18,8 @@ const editMilestone: Step = {
     const d = await api.as(HEAD);
     const project = api.ctx.latestProject();
     const milestones = api.ctx.milestones[project.id] ?? [];
-    // Pick the milestone this head owns, else the last one.
-    const target = milestones.find((m) => m.departmentId === HEAD) ?? milestones[milestones.length - 1];
+    // Pick the Procurement milestone added in flow 2, else the last one.
+    const target = milestones.find((m) => m.departmentId === "head-ops") ?? milestones[milestones.length - 1];
     if (!target) {
       api.report.warn("no milestone to edit");
       return;
@@ -37,7 +40,7 @@ const editMilestone: Step = {
     const due = new Date();
     due.setDate(due.getDate() + 50);
     await d.fill("dueDate", due.toISOString().slice(0, 10), "milestone-form", { nth: "0,1" });
-    await d.click("save", "milestone-form", { nth: "0,1" });
+    await d.click("saveChanges", "milestone-form", { nth: "0,1" });
     await d.page.waitForTimeout(1500);
 
     target.name = newName;
@@ -57,7 +60,7 @@ const deleteMilestone: Step = {
     const d = await api.as(HEAD);
     const project = api.ctx.latestProject();
     const milestones = api.ctx.milestones[project.id] ?? [];
-    const target = milestones.find((m) => m.departmentId === HEAD) ?? milestones[milestones.length - 1];
+    const target = milestones.find((m) => m.departmentId === "head-ops") ?? milestones[milestones.length - 1];
     if (!target) {
       api.report.warn("no milestone to delete");
       return;
@@ -71,6 +74,7 @@ const deleteMilestone: Step = {
     }
 
     // Open the detail modal (which owns the Delete button), then delete.
+    // The modal's actions are plain "Edit"/"Delete" text buttons.
     await card.hover();
     await d.click("viewMilestone", "milestone-card", { nth: "0" });
     await d.page.waitForTimeout(600);
@@ -134,9 +138,9 @@ const deleteTask: Step = {
 
 export const editDeleteFlow: Flow = {
   id: "edit-delete",
-  title: "6. Department head edits and deletes a milestone and a task",
+  title: "6. Director edits and deletes a milestone and a task",
   description:
-    "The head edits a milestone's name and due date, then deletes one milestone. The " +
+    "The Director edits a milestone's name and due date, then deletes one milestone. The " +
     "project manager removes one test task before the final project teardown.",
   users: [HEAD, "pm"],
   steps: [editMilestone, deleteMilestone, deleteTask],

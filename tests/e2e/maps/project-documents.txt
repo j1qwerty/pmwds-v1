@@ -1,47 +1,32 @@
 # ============================================================================
 # project-documents.txt - /projects/:id/documents
-# DocumentsSection renders an UploadMenu of one <label> per permitted level
-# (Project / Milestone / Task), each wrapping a hidden single-file input.
-# After picking a file an UploadPreview panel appears with a Cancel/Upload pair.
+# DocumentsSection renders level chips (All/Project/Milestone/Task/UC) and an
+# "Upload document" button that opens a Sheet: Document level select, target
+# select ("Select milestone"/"Select task"), dashed file label, Upload submit.
+# Uploads POST one endpoint with milestoneId/taskId params - no success toast,
+# so flows assert on the absence of API failures instead.
 # ============================================================================
 
 @page documents route=/projects/:id/documents desc="Documents + utilization certificates" requires=auth
 
-@group docs-levels type=form page=documents
+@group docs-levels type=form page=documents desc="FilterBar level chips (label + count)"
 
-field levelTabs css="button:has-text('documents')"
-button projectTab text="Project documents" nth=0
-button milestoneTab text="Milestone documents" nth=0
-button taskTab text="Task documents" nth=0
-assert projectEmpty text="No project-level documents"
-assert milestoneEmpty text="No milestone-level documents"
-assert taskEmpty text="No task-level documents"
+button allTab css="button.chip-pop:has-text('All')" nth=0
+button projectTab css="button.chip-pop:has-text('Project')" nth=0
+button milestoneTab css="button.chip-pop:has-text('Milestone')" nth=0
+button taskTab css="button.chip-pop:has-text('Task')" nth=0
+button ucTab css="button.chip-pop:has-text('UC')" nth=0
+assert docsEmpty text="No documents in this section"
 @end
 
-@group docs-upload type=form page=documents desc="Each label is the level name; input[type=file] is hidden"
+@group docs-upload type=modal page=documents desc="Upload document sheet"
 
-field fileProject css="label:has-text('Project') input[type='file']"
-field fileMilestone css="label:has-text('Milestone') input[type='file']"
-field fileTask css="label:has-text('Task') input[type='file']"
-field uploadLabelProject text="Project"
-field uploadLabelMilestone text="Milestone"
-field uploadLabelTask text="Task"
-@end
-
-@group docs-preview type=modal page=documents desc="Confirmation panel after choosing a file"
-
-field selectMilestone css="select" nth=0 required=1 hint="shown for Milestone level, first option Select a milestone…"
-field selectTask css="select" nth=0 required=1 hint="shown for Task level, first option Select a task…"
-button cancel text="Cancel"
-button upload text="Upload"
-button uploading text="Uploading…"
-field errorNoMilestones css="text=/no milestones yet, so there is nothing to file/"
-field errorNoTasks css="text=/no tasks yet, so there is nothing to file/"
-field errorFallback text="Upload failed."
-api   upload method=POST path=/documents
-api   capabilities method=GET path=/upload-capabilities
-api   listDocs method=GET path=/documents
-api   deleteDoc method=DELETE path=/documents
+button openUpload text="Upload document" nth=0
+field uploadLevel byLabel="Document level"
+field uploadTarget css="select" nth=1 hint="second select in the sheet: the level target"
+field uploadFile css="input[type='file']" hint="inside the dashed file label"
+button uploadSubmit text="Upload" nth=0
+button uploading text="Uploading..."
 @end
 
 @group docs-table type=list page=documents
@@ -68,8 +53,8 @@ field ucAmountClaimed byLabel="Amount Claimed" required=1
 field ucAmountUtilized byLabel="Amount Utilized" required=1
 field ucPeriodStart byLabel="Period Start" required=1
 field ucPeriodEnd byLabel="Period End" required=1
-field ucCertifies css="select" hint="Not linked / A milestone / A task"
-field ucSelect css="select" hint="first option Select…"
+field ucCertifies byLabel="UC document level" hint="Project / Milestone / Task"
+field ucSelect byLabel="Link to work item" hint="first option Select…"
 field ucPurpose byLabel="Purpose of the spend"
 field ucTitle placeholder="Defaults to the uploaded file name"
 button saveDraft text="Save as draft"

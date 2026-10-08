@@ -1,9 +1,9 @@
 # PMWDS end-to-end tests
 
-Real-browser tests for the PMWDS core flows. They drive the actual UI through
-Playwright using **text map files** that describe every page, form, modal and
-button, so the page definitions live in plain text you can read and edit
-without touching test code.
+Real-browser tests for the PMWDS core flows against the **client2** UI. They
+drive the actual UI through Playwright using **text map files** that describe
+every page, form, modal and button, so the page definitions live in plain text
+you can read and edit without touching test code.
 
 ## Quick start
 
@@ -13,12 +13,16 @@ npm install
 npx playwright install chromium      # one-time browser download
 npm run smoke                        # offline check: maps parse, keys resolve
 
-# then start the app (API on :5177, client on :5173) and:
+# then start the app (API on :5179, client2 on :5175) and:
 npm run e2e                          # interactive
 npm run e2e -- --auto                # automatic
 npm run e2e:auto:headless             # automatic, headless
 npm run e2e:auto:visible              # automatic, visible
 ```
+
+The suite targets `http://localhost:5175` by default (override with
+`E2E_BASE_URL` or `--url`). Only one of `Client/` / `client2/` can hold port
+5175 at a time - stop the other client first.
 
 ## The two display modes
 
@@ -78,12 +82,12 @@ npm run e2e -- --auto --flows project-create   # or by flow id
 
 | # | Flow | Users | What it does |
 |---|---|---|---|
-| 1 | `project-create` | `pm` | Project manager runs the 4-step wizard: details + document, two milestones, one department per milestone, a dependency, Finish |
-| 2 | `head-milestones` | `head-civil` | The head of the project's primary department adds a milestone; both assigned department heads participate in later task flows |
+| 1 | `project-create` | `pm` | Project manager runs the 4-step wizard: details + document, two milestones, one department per milestone, a dependency, Create project |
+| 2 | `head-milestones` | `admin` | The Director adds a Procurement milestone; milestone management is Director/SuperAdmin-only in client2 |
 | 3 | `tasks-subtasks` | `head-civil` | The primary department head creates two tasks and adds subtasks |
 | 4 | `member-progress` | `member` | A member reads the tasks, raises subtask progress, and moves one to In Progress with a comment |
 | 5 | `documents` | `pm` | Uploads a generated dummy txt at project, milestone and task level, plus a dummy PDF utilization certificate |
-| 6 | `edit-delete` | `head-civil`, `pm` | Head edits and deletes a milestone; the PM deletes a test task |
+| 6 | `edit-delete` | `admin`, `pm` | Director edits and deletes a milestone; the PM deletes a test task |
 | 7 | `project-edit-delete` | `pm` | PM edits the project, then deletes it as the final step |
 
 Flows 2–7 read state produced by flow 1, so run `1` first (or use `--flows all`).
@@ -110,7 +114,10 @@ genuinely signed in at the same time, as in a real multi-user test.
 | `sewerage` | Sewerage | `ramesh.yadav@up.gov.in` |
 | `superadmin` | Super Admin | `superadmin@org1.com` |
 
-Password for all seeded accounts is `Pmwds@123`.
+Password for all seeded accounts is `Pmwds@123` by default. The runner
+resolves it as `E2E_PASSWORD` from the environment, then `Seed__DefaultPassword`
+from the repository-root `.env` (the same value the seeder assigns), then the
+default. It is never printed.
 
 ## The map files
 
@@ -171,18 +178,21 @@ tells you exactly which line to edit.
 | `project-overview.txt` | `/projects/:id` overview |
 | `project-edit-delete.txt` | project edit form and delete confirmation |
 
-## Notes on the app that shaped the maps
+## Notes on the app that shaped the maps (client2)
 
 - The creation wizard has **no route and no deep link to a step**, so flow 1
-  opens it from `/projects` and clicks Next four times.
-- The client has **no `data-testid` attributes** and almost no `id`s — the only
+  opens it from `/projects` and clicks Next three times, then Create project.
+- client2 has **no `data-testid` attributes** and almost no `id`s — the only
   `id` is `#login-form`. Icon-only buttons carry `title`, so the maps address
-  them by title.
+  them by title. Sheet (right slide-in) close buttons read "Close panel".
+- Only SuperAdmin and Director manage milestones; the task sheet has no
+  estimated-hours field; subtasks on the milestones tab use an inline form
+  while the tasks tab uses the "New subtask" sheet.
 - Task progress is auto-calculated once subtasks exist, so flow 4 drives
   **subtask** progress rather than the parent task.
-- Delete confirmations are `ConfirmDeleteModal` ("Delete Permanently"), except
-  task and subtask deletes which use a native `confirm()` dialog — those are
-  accepted via a `dialog` handler.
+- Project/milestone deletes confirm through `ConfirmDeleteModal`
+  ("Delete permanently"); task and subtask deletes in the edit sheets use a
+  native `confirm()` dialog — those are accepted via a `dialog` handler.
 
 ## Layout
 

@@ -23,28 +23,22 @@ function uploadAt(level: "project" | "milestone" | "task"): Step {
       await d.goto(`/projects/${project.id}/documents`);
       await d.page.waitForTimeout(800);
 
-      // DocumentsSection switches the level via the tab buttons.
-      if (level === "milestone") await d.click("milestoneTab", "docs-levels", { nth: "0,1,2" }).catch(() => undefined);
-      if (level === "task") await d.click("taskTab", "docs-levels", { nth: "0,1,2" }).catch(() => undefined);
+      // The upload sheet sets the level itself - no need to touch the tabs.
+      await d.click("openUpload", "docs-upload");
+      await d.upload("uploadFile", [file], "docs-upload");
+      const levelLabel = level === "project" ? "Project" : level === "milestone" ? "Milestone" : "Task";
+      await d.select("uploadLevel", levelLabel, "docs-upload");
 
-      const fileKey = level === "project" ? "fileProject" : level === "milestone" ? "fileMilestone" : "fileTask";
-      await d.upload(fileKey, [file], "docs-upload");
-
-      // Milestone/Task levels need a target picked in the preview panel.
-      if (level === "milestone") {
-        const sel = d.page.locator("select").filter({ hasText: /Select a milestone/ }).first();
-        if ((await sel.count()) > 0) {
-          await sel.selectOption({ index: 1 }).catch((e: unknown) => api.report.warn(String(e).split("\n")[0]));
-        }
-      }
-      if (level === "task") {
-        const sel = d.page.locator("select").filter({ hasText: /Select a task/ }).first();
-        if ((await sel.count()) > 0) {
-          await sel.selectOption({ index: 1 }).catch((e: unknown) => api.report.warn(String(e).split("\n")[0]));
+      // Milestone/Task levels need a target: first real option of the sheet's
+      // second select ("Select milestone"/"Select task" is index 0).
+      if (level !== "project") {
+        const target = d.page.locator('[role="dialog"] select').nth(1);
+        if ((await target.count()) > 0) {
+          await target.selectOption({ index: 1 }).catch((e: unknown) => api.report.warn(String(e).split("\n")[0]));
         }
       }
 
-      await d.click("upload", "docs-preview", { nth: "0,1" }).catch(async (err: unknown) => {
+      await d.click("uploadSubmit", "docs-upload").catch(async (err: unknown) => {
         api.report.warn(`Upload not clickable: ${String(err).split("\n")[0]}`);
       });
       await d.page.waitForTimeout(2000);
@@ -98,7 +92,7 @@ const uploadCertificate: Step = {
     } else {
       api.report.ok("utilization certificate submitted as draft");
     }
-    await d.click("closeModal", "modal-shell").catch(() => undefined);
+    await d.click("closeOverlay", "modal-shell").catch(() => undefined);
   },
 };
 

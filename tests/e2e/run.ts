@@ -21,7 +21,7 @@
  *   npm run e2e -- --mode visible     skip the display question, watch it run
  *   npm run e2e -- --mode headless    skip the display question, no window
  *   npm run e2e -- --user pm          pre-pick the first user
- *   npm run e2e -- --url http://localhost:5173
+ *   npm run e2e -- --url http://localhost:5175
  *   npm run e2e -- --slowmo 500       slow each action (visible mode default 250)
  *   npm run e2e -- --no-shots         visible mode without per-step screenshots
  */
@@ -126,7 +126,7 @@ PMWDS end-to-end runner
   npm run e2e -- --mode headless    No browser window (default)
   npm run e2e -- --no-shots         Visible mode without per-step screenshots
   npm run e2e -- --user pm          Pre-pick the first user
-  npm run e2e -- --url http://localhost:5173
+  npm run e2e -- --url http://localhost:5175
 
 Users:
 ${ACCOUNTS.map((a) => `  ${a.id.padEnd(16)} ${a.label} (${a.email})`).join("\n")}
@@ -199,7 +199,7 @@ async function main() {
     report.ok(`Connected. ${ACCOUNTS.find((a) => a.id === firstUser)?.label} signed in.`);
   } catch (err) {
     report.fail(`Could not sign in as ${firstUser}: ${err instanceof Error ? err.message : String(err)}`);
-    report.info("Is the API running on :5177 and the client on :5173? See tests/e2e/README.md.");
+    report.info("Is the API running on :5179 and client2 on :5175? See tests/e2e/README.md.");
     await hub.close();
     process.exitCode = 1;
     return;

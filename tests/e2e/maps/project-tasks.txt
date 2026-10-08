@@ -50,14 +50,14 @@ nav openTaskInBoard route=/projects/{id}/tasks?task={taskId}
 
 field title byLabel="Title" required=1
 field description byLabel="Description"
-field start byLabel="Start"
-field due byLabel="Due"
-field estimatedHours byLabel="Est. hours"
+field start byLabel="Start date"
+field due byLabel="Due date"
 field priority css="select" hint="Low/Medium/High/Critical"
 field project css="select" hint="first option Select project"
 field milestone css="select" hint="first option None, superadmin/director only"
 field assignees label="Assignees"
-button save text="Save"
+button save text="Create task"
+button saveChanges text="Save changes"
 button saving text="Saving..."
 button cancel text="Cancel"
 api   createTask method=POST path=/api/v1/tasks

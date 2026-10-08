@@ -7,7 +7,7 @@
 #
 # The visible steps are:
 #   1 Project Details  2 Milestones  3 Assign Departments  4 Dependencies
-# (step 4 shows both Next and Finish; Next is inert, Finish submits.)
+# (step 4 ends in Back + "Create project", which submits. There is no Finish.)
 # ============================================================================
 
 @page projects route=/projects desc="Projects list, hosts the creation wizard" requires=auth
@@ -27,7 +27,7 @@ assert onDependencies text="Step 4 of 4"
 button back role=button name="Back"
 button skip role=button name="Skip"
 button next role=button name="Next"
-button finish role=button name="Finish" exact=1
+button finish text="Create project"
 button creating role=button name="Creating..."
 api   createProject method=POST path=/api/v1/projects
 api   createMilestone method=POST path=/api/v1/milestones
@@ -55,13 +55,13 @@ button next role=button name="Next"
 # ---------------------------------------------------------------- step 2 ----
 @group step-milestones type=wizard page=projects desc="Step 2 of 4: Milestones list + inline add form"
 
-button addMilestoneOpen text="Add Milestone"
+button addMilestoneOpen text="Add milestone"
 field milestoneName placeholder="Milestone name" required=1
 field milestoneDescription placeholder="What marks this milestone?"
-field milestoneDueDate byLabel="Due Date" required=1
+field milestoneDueDate byLabel="Due date" required=1
 field milestoneCritical css="input[type='checkbox']" nth=0
-button milestoneSave text="Add Milestone" nth=0 hint="the form replaces the dashed trigger, so this is the only match"
-button milestoneUpdate text="Update Milestone"
+button milestoneSave text="Add milestone" nth=0 hint="the form replaces the dashed trigger, so this is the only match"
+button milestoneUpdate text="Update milestone"
 button milestoneCancel text="Cancel"
 button milestoneEdit title="Edit milestone" nth=0 hover=1
 button milestoneRemove title="Remove milestone" nth=0 hover=1
@@ -85,14 +85,14 @@ api   departmentsLoad method=GET path=/api/v1/departments
 # ---------------------------------------------------------------- step 4 ----
 @group step-dependencies type=wizard page=projects desc="Step 4 of 4: Dependencies, optional"
 
-button addDependencyOpen text="Add Dependency"
+button addDependencyOpen text="Add dependency"
 field depPrerequisite css="select" nth=0 required=1
 field depDependent css="select" nth=1 required=1
 field depMustComplete css="input[name='depType'][value='CompletionBased']"
 field depReachPercent css="input[name='depType'][value='ProgressThreshold']"
 field depThreshold css="input[type='range']"
-button dependencySave text="Add Dependency" nth=0 hint="the form replaces the dashed trigger"
-button dependencyUpdate text="Update Dependency"
+button dependencySave text="Add dependency" nth=0 hint="the form replaces the dashed trigger"
+button dependencyUpdate text="Update dependency"
 button dependencyCancel text="Cancel"
 button dependencyEdit title="Edit dependency" nth=0 hover=1
 button dependencyRemove title="Remove dependency" nth=0 hover=1
@@ -101,5 +101,5 @@ field depErrorSelf text="A milestone cannot depend on itself"
 field depErrorCircular text="Circular dependency detected"
 assert depsEmpty text="No dependencies yet"
 assert depsFirst text="Add milestones first"
-button finish role=button name="Finish" exact=1
+button finish text="Create project"
 @end

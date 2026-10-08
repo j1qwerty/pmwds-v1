@@ -18,9 +18,10 @@
 #   hover=1   hover the row first (for group-hover-only buttons)
 # ============================================================================
 
-@group modal-shell type=modal page=* desc="Chrome on every modal overlay"
+@group modal-shell type=modal page=* desc="Chrome on every modal overlay (Sheet close reads Close panel)"
 
-button closeModal aria="Close modal"
+button closeModal aria="Close panel"
+button closeOverlay aria="Close"
 api    closeWait method=GET path=/api/v1/workspace
 @end
 

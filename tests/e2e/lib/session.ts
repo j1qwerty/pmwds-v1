@@ -1,4 +1,7 @@
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Driver } from "./driver.js";
 import type { MapFile } from "./mapfile.js";
 
@@ -11,7 +14,7 @@ export interface Account {
   role: string;
 }
 
-export const BASE_URL = process.env.E2E_BASE_URL ?? "http://localhost:5173";
+export const BASE_URL = process.env.E2E_BASE_URL ?? "http://localhost:5175";
 
 /** Lets the runner apply a --url override; call before starting a hub. */
 let baseUrl = BASE_URL;
@@ -22,22 +25,61 @@ export function getBaseUrl(): string {
   return baseUrl;
 }
 
+/**
+ * Password shared by every seeded account.
+ *
+ * Resolution order: explicit `E2E_PASSWORD` in the environment, then
+ * `Seed__DefaultPassword` from the repository-root `.env` (the same value the
+ * database seeder assigns), then the documented default. It is never printed.
+ */
+function resolvePassword(): string {
+  if (process.env.E2E_PASSWORD) return process.env.E2E_PASSWORD;
+  try {
+    const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+    for (const file of [".env", ".env.local"]) {
+      const path = join(root, file);
+      if (!existsSync(path)) continue;
+      for (const rawLine of readFileSync(path, "utf8").split(/\r?\n/)) {
+        const line = rawLine.trim();
+        if (!line || line.startsWith("#")) continue;
+        const sep = line.indexOf("=");
+        if (sep <= 0) continue;
+        const key = line.slice(0, sep).trim();
+        if (key !== "Seed__DefaultPassword" && key !== "E2E_PASSWORD") continue;
+        let value = line.slice(sep + 1).trim();
+        if (
+          (value.startsWith('"') && value.endsWith('"')) ||
+          (value.startsWith("'") && value.endsWith("'"))
+        ) {
+          value = value.slice(1, -1);
+        }
+        if (value) return value;
+      }
+    }
+  } catch {
+    // Fall through to the documented default below.
+  }
+  return "Pmwds@123";
+}
+
+const SEED_PASSWORD = resolvePassword();
+
 /** Seeded accounts, from the login page's demo list and the API seeder. */
 export const ACCOUNTS: Account[] = [
-  { id: "admin", label: "Admin / Director", email: "admin@org1.com", password: "Pmwds@123", role: "director" },
-  { id: "pm", label: "Project Manager", email: "manager@org1.com", password: "Pmwds@123", role: "project-manager" },
-  { id: "head-civil", label: "Head - Civil Division", email: "head.eng@org1.com", password: "Pmwds@123", role: "department-head" },
-  { id: "head-pmo", label: "Head - PWD Coordination", email: "head.pmo@org1.com", password: "Pmwds@123", role: "department-head" },
-  { id: "head-ops", label: "Head - Procurement", email: "head.ops@org1.com", password: "Pmwds@123", role: "department-head" },
-  { id: "head-revenue", label: "Head - Revenue Dept", email: "head.bstr@org1.com", password: "Pmwds@123", role: "department-head" },
-  { id: "head-qa", label: "Head - Quality Assurance", email: "head.csv@org1.com", password: "Pmwds@123", role: "department-head" },
-  { id: "head-tehsildar", label: "Head - Tehsildar", email: "sunil.yadav@up.gov.in", password: "Pmwds@123", role: "department-head" },
-  { id: "member", label: "Team Member", email: "member@org1.com", password: "Pmwds@123", role: "team-member" },
-  { id: "viewer", label: "Viewer", email: "viewer@org1.com", password: "Pmwds@123", role: "viewer" },
-  { id: "ee", label: "Executive Engineer", email: "dinesh.kumar@pwd.up.gov.in", password: "Pmwds@123", role: "team-member" },
-  { id: "electrical", label: "Electrical", email: "suresh.pandey@up.gov.in", password: "Pmwds@123", role: "team-member" },
-  { id: "sewerage", label: "Sewerage", email: "ramesh.yadav@up.gov.in", password: "Pmwds@123", role: "team-member" },
-  { id: "superadmin", label: "Super Admin", email: "superadmin@org1.com", password: "Pmwds@123", role: "superadmin" },
+  { id: "admin", label: "Admin / Director", email: "admin@org1.com", password: SEED_PASSWORD, role: "director" },
+  { id: "pm", label: "Project Manager", email: "manager@org1.com", password: SEED_PASSWORD, role: "project-manager" },
+  { id: "head-civil", label: "Head - Civil Division", email: "head.eng@org1.com", password: SEED_PASSWORD, role: "department-head" },
+  { id: "head-pmo", label: "Head - PWD Coordination", email: "head.pmo@org1.com", password: SEED_PASSWORD, role: "department-head" },
+  { id: "head-ops", label: "Head - Procurement", email: "head.ops@org1.com", password: SEED_PASSWORD, role: "department-head" },
+  { id: "head-revenue", label: "Head - Revenue Dept", email: "head.bstr@org1.com", password: SEED_PASSWORD, role: "department-head" },
+  { id: "head-qa", label: "Head - Quality Assurance", email: "head.csv@org1.com", password: SEED_PASSWORD, role: "department-head" },
+  { id: "head-tehsildar", label: "Head - Tehsildar", email: "sunil.yadav@up.gov.in", password: SEED_PASSWORD, role: "department-head" },
+  { id: "member", label: "Team Member", email: "member@org1.com", password: SEED_PASSWORD, role: "team-member" },
+  { id: "viewer", label: "Viewer", email: "viewer@org1.com", password: SEED_PASSWORD, role: "viewer" },
+  { id: "ee", label: "Executive Engineer", email: "dinesh.kumar@pwd.up.gov.in", password: SEED_PASSWORD, role: "team-member" },
+  { id: "electrical", label: "Electrical", email: "suresh.pandey@up.gov.in", password: SEED_PASSWORD, role: "team-member" },
+  { id: "sewerage", label: "Sewerage", email: "ramesh.yadav@up.gov.in", password: SEED_PASSWORD, role: "team-member" },
+  { id: "superadmin", label: "Super Admin", email: "superadmin@org1.com", password: SEED_PASSWORD, role: "superadmin" },
 ];
 
 export function accountById(id: string): Account {

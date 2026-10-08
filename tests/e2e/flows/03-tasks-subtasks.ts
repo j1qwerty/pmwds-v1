@@ -53,7 +53,7 @@ function makeTaskStep(head: string): Step {
         await d.fill("description", `Task created by ${head} during e2e run.`, "task-form");
         await d.fill("start", today(), "task-form");
         await d.fill("due", inDays(14 + i * 7), "task-form");
-        await d.fill("estimatedHours", "16", "task-form");
+        // client2's task sheet has no estimated-hours field (defaults apply).
         await d.select("priority", i === 0 ? "High" : "Medium", "task-form");
 
         // Milestone assignment is manager-only in the task form. Heads can

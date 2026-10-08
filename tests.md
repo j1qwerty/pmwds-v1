@@ -2,12 +2,13 @@
 
 All test-related instructions live here. `README.md` only links to this file.
 
-There are two suites:
+There are three suites:
 
 | Suite | Where | What it covers |
 |---|---|---|
 | .NET integration tests | `PMWDS.Tests/` | API controllers, auth, CRUD, cascades, realtime — in-process via `WebApplicationFactory` |
-| Browser E2E tests | `browser-tests/` (Playwright + real Chromium) | Full business lifecycle through the **client2** UI in a real browser |
+| Map-driven E2E tests (**primary UI suite**) | `tests/e2e/` (Playwright, text maps) | Core flows through the **client2** UI: wizard, milestones, tasks, subtasks, documents, edits, teardown |
+| Browser E2E tests | `browser-tests/` (Playwright + real Chromium) | Full business lifecycle through the **client2** UI |
 
 ## 1. .NET integration tests (`PMWDS.Tests`)
 
@@ -106,7 +107,45 @@ npm run build
 npm run lint
 ```
 
-## 2. Browser E2E tests (`browser-tests/` + `client2/`)
+## 2. Map-driven E2E tests (`tests/e2e/` + `client2/`)
+
+This is the primary UI suite. It drives client2 through real Chromium using
+**text map files** (`tests/e2e/maps/*.txt`) that describe every page, form,
+modal and button, so page definitions live in plain text — a broken selector
+means editing one map line, not test code. Full instructions live in
+`tests/e2e/README.md`.
+
+Start the app first (same URLs as below):
+
+```powershell
+# terminal 1 - API (required)
+dotnet run --project PMWDS.API --urls http://localhost:5179
+
+# terminal 2 - client2 UI under test (required)
+cd client2
+npm install
+npm run dev -- --host 127.0.0.1 --port 5175
+```
+
+```powershell
+cd tests/e2e
+npm install
+npx playwright install chromium      # one-time browser download
+npm run smoke                        # offline check: maps parse, keys resolve
+
+npm run e2e                          # interactive (asks before each step)
+npm run e2e -- --auto                # automatic, all 7 flows
+npm run e2e:auto:headless            # automatic, headless
+npm run e2e:auto:visible             # automatic, visible window
+```
+
+Defaults: target `http://localhost:5175` (override with `E2E_BASE_URL` or
+`--url`), password from `E2E_PASSWORD` → root `.env` `Seed__DefaultPassword` →
+`Pmwds@123`. The 7 flows (wizard create → milestones → tasks/subtasks →
+member progress → documents → edit/delete → teardown) build on each other, so
+run flow 1 first or use `--flows all`. Destructive — disposable database only.
+
+## 3. Browser E2E tests (`browser-tests/` + `client2/`)
 
 The browser suite lives in `browser-tests` and uses Playwright with real
 Chromium. It is separate from the .NET API integration tests above.

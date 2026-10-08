@@ -37,7 +37,8 @@ field dueDate byLabel="Due Date" required=1
 field organization css="select" nth=0 hint="superadmin only"
 field department css="select" hint="first option None"
 field critical css="input[type='checkbox']"
-button save text="Save"
+button save text="Create milestone"
+button saveChanges text="Save changes"
 button saving text="Saving..."
 button cancel text="Cancel"
 api   createMilestone method=POST path=/api/v1/milestones
@@ -47,10 +48,10 @@ field progressReadonly css="text=Progress is calculated from tasks"
 field dueWarning css="text=/Due date exceeds project end date/"
 @end
 
-@group milestone-detail type=modal page=milestones desc="MilestoneDetailModal - status buttons are raw codes"
+@group milestone-detail type=modal page=milestones desc="MilestoneDetailModal - status buttons are raw codes, actions are Edit/Delete text buttons"
 
-button editMilestone title="Edit milestone"
-button deleteMilestone title="Delete milestone"
+button editMilestone text="Edit" nth=0
+button deleteMilestone text="Delete" nth=0
 button confirm text="Delete Permanently"
 button statusPending text="Pending"
 button statusInProgress text="InProgress"

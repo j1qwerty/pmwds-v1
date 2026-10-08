@@ -149,7 +149,8 @@ function statusStep(member: string): Step {
       }
       await dropdown.click();
       await d.page.waitForTimeout(300);
-      const option = d.page.getByRole("button", { name: "In Progress", exact: true }).last();
+      // StatusDropdown renders its options with role=option, not as buttons.
+      const option = d.page.getByRole("option", { name: "In Progress", exact: true }).last();
       if ((await option.count()) > 0) {
         await option.click();
         api.report.ok(`${member} moved "${target.title}" to In Progress`);

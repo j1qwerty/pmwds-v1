@@ -12,8 +12,8 @@ field name byLabel="Name" required=1
 field description byLabel="Description"
 field priority css="select"
 field budget css="input[role='spinbutton'], input[type='number']" placeholder="0"
-field start label="Start"
-field end label="End"
+field start byLabel="Start"
+field end byLabel="End"
 field organization css="select" hint="superadmin only"
 field assignedDepartments css="input[type='checkbox']" nth=0
 field projectManagerToggle css="button:has-text('Project Manager')"
@@ -30,7 +30,7 @@ button confirm text="Delete Permanently"
 button deleting text="Deleting..."
 button cancel text="Cancel"
 field warning css="text=/milestones and tasks under this project may be affected/"
-assert confirmHeading text="Confirm Deletion"
+assert confirmHeading text="Confirm deletion"
 api   deleteProject method=DELETE path=/api/v1/projects
 @end
 
