@@ -616,8 +616,8 @@ public class ProjectsController : BaseApiController
                 PermissionCodes.DocumentAllEdit,
                 PermissionCodes.DocumentOwnManage,
                 PermissionCodes.DocumentAllManage),
-            await _scope.CanModifyProjectDocumentAsync(
-                id, null, null, ct,
+            await _scope.HasAnyPermissionAsync(
+                ct,
                 PermissionCodes.DocumentOwnDelete,
                 PermissionCodes.DocumentAllDelete,
                 PermissionCodes.DocumentOwnManage,
@@ -817,10 +817,11 @@ public class ProjectsController : BaseApiController
     }
 
     [HttpGet("{id:guid}/documents/{docId:guid}/download")]
-    [Authorize(Policy = AuthorizationPolicies.DocumentsView)]
+    [Authorize]
     public async Task<IActionResult> DownloadDocument(Guid id, Guid docId, CancellationToken ct)
     {
         var doc = await _db.ProjectDocuments
+            .IgnoreQueryFilters()
             .AsNoTracking()
             .Include(document => document.Milestone)
             .Include(document => document.Task)
@@ -829,6 +830,15 @@ public class ProjectsController : BaseApiController
 
         if (doc == null)
             return NotFound();
+
+        if (doc.IsDeleted && !_scope.IsSuperAdmin)
+            return NotFound();
+
+        if (doc.IsDeleted)
+        {
+            var archivedStream = await _localFiles.DownloadFileAsync(doc.FilePath, ct);
+            return File(archivedStream, doc.ContentType, doc.Title);
+        }
 
         if (!await _scope.CanAccessProjectDocumentAsync(
             id,
@@ -845,12 +855,32 @@ public class ProjectsController : BaseApiController
         return File(stream, doc.ContentType, doc.Title);
     }
 
+    [HttpGet("{id:guid}/documents/archive")]
+    [Authorize(Policy = AuthorizationPolicies.SuperAdmin)]
+    public async Task<IActionResult> GetArchivedDocuments(Guid id, CancellationToken ct)
+    {
+        var project = await _uow.Projects.GetByIdAsync(id, ct);
+        if (project == null)
+            return NotFound();
+
+        var docs = await _db.ProjectDocuments
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Include(document => document.Milestone)
+            .Include(document => document.Task)
+                .ThenInclude(task => task!.Milestone)
+            .Where(document => document.ProjectId == id && document.IsDeleted)
+            .OrderByDescending(document => document.DeletedDate)
+            .ToListAsync(ct);
+
+        return Ok(docs.Select(document => MapDocument(document, project.Name)));
+    }
+
     [HttpDelete("{id:guid}/documents/{docId:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.DocumentsDelete)]
+    [Authorize]
     public async Task<IActionResult> DeleteDocument(Guid id, Guid docId, CancellationToken ct)
     {
         var doc = await _db.ProjectDocuments
-            .AsNoTracking()
             .Include(document => document.Milestone)
             .Include(document => document.Task)
                 .ThenInclude(task => task!.Milestone)
@@ -859,7 +889,10 @@ public class ProjectsController : BaseApiController
         if (doc == null)
             return NotFound();
 
-        if (!await _scope.CanModifyProjectDocumentAsync(
+        if (doc.IsUtilizationCertificate())
+            return BadRequest(new { message = "Delete this document through its utilization certificate workflow." });
+
+        var canManageDelete = await _scope.CanModifyProjectDocumentAsync(
             id,
             doc.MilestoneId,
             doc.TaskId,
@@ -867,12 +900,13 @@ public class ProjectsController : BaseApiController
             PermissionCodes.DocumentOwnDelete,
             PermissionCodes.DocumentAllDelete,
             PermissionCodes.DocumentOwnManage,
-            PermissionCodes.DocumentAllManage))
+            PermissionCodes.DocumentAllManage);
+        var isUploader = string.Equals(doc.UploadedByUserId, _currentUser.UserId, StringComparison.OrdinalIgnoreCase);
+        if (!isUploader && !canManageDelete)
             return Forbid();
 
-        await _uow.ProjectDocuments.DeleteAsync(doc.Id, ct);
-        await _uow.SaveChangesAsync(ct);
-        await _localFiles.DeleteFileAsync(doc.FilePath, ct);
+        doc.Archive(_currentUser.UserId ?? "system");
+        await _db.SaveChangesAsync(ct);
         await _changes.NotifyAsync(DataChangeScopes.Documents, doc.Id.ToString(), id, ct);
         return NoContent();
     }
@@ -950,7 +984,8 @@ public class ProjectsController : BaseApiController
             document.Description,
             document.Version,
             document.Category,
-            document.CreatedDate);
+            document.CreatedDate,
+            document.DeletedDate);
 
     private async Task<bool> AreDepartmentsInScopeAsync(IReadOnlyCollection<Guid> departmentIds, CancellationToken ct)
     {

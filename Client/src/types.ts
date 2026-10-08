@@ -949,6 +949,7 @@ export interface ProjectDocument {
   version: string;
   category?: DocumentCategory;
   createdDate: string;
+  deletedDate?: string | null;
 }
 
 export type UtilizationCertificateStatus =

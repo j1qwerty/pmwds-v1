@@ -6,6 +6,7 @@ import type {
   Task,
 } from "../../../types";
 import { api } from "../../../api";
+import { useAuth } from "../../../auth";
 import { Permission, usePermission } from "../../shared/RoleGate";
 import { onDataChanged } from "../../../realtime";
 import { DOCUMENT_SCOPES } from "../../../realtimeScopes";
@@ -18,7 +19,7 @@ interface DocumentsSectionProps {
   tasks?: Task[];
 }
 
-type DocumentTab = "all" | "project" | "milestone" | "task" | "uc";
+type DocumentTab = "all" | "project" | "milestone" | "task" | "uc" | "archive";
 type UploadLevel = "project" | "milestone" | "task";
 
 const TABS: Array<{ id: DocumentTab; label: string; icon: string }> = [
@@ -27,6 +28,7 @@ const TABS: Array<{ id: DocumentTab; label: string; icon: string }> = [
   { id: "milestone", label: "Milestone", icon: "flag" },
   { id: "task", label: "Task", icon: "task" },
   { id: "uc", label: "UC", icon: "workspace_premium" },
+  { id: "archive", label: "Archive", icon: "archive" },
 ];
 
 export function DocumentsSection({
@@ -35,8 +37,10 @@ export function DocumentsSection({
   milestones = [],
   tasks = [],
 }: DocumentsSectionProps) {
+  const { auth } = useAuth();
   const perm = usePermission();
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
+  const [archivedDocuments, setArchivedDocuments] = useState<ProjectDocument[]>([]);
   const [capabilities, setCapabilities] = useState<ProjectDocumentCapabilities | null>(null);
   const [activeTab, setActiveTab] = useState<DocumentTab>("all");
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -47,12 +51,15 @@ export function DocumentsSection({
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [documentActionError, setDocumentActionError] = useState("");
 
   const canViewDocuments =
     perm.has(Permission.DocumentOwnView) || perm.has(Permission.DocumentAllView);
   const canViewUc =
     perm.has(Permission.UtilizationCertificateOwnView) ||
     perm.has(Permission.UtilizationCertificateAllView);
+  const isSuperAdmin = perm.has(Permission.SystemAdmin);
 
   const fetchDocuments = useCallback(() => {
     if (!authToken || !projectId || !canViewDocuments) {
@@ -79,10 +86,18 @@ export function DocumentsSection({
       .catch(() => setCapabilities(null));
   }, [authToken, projectId, canViewDocuments]);
 
+  const fetchArchivedDocuments = useCallback(() => {
+    if (!authToken || !projectId || !isSuperAdmin) return;
+    api.getProjectDocumentArchive(authToken, projectId)
+      .then(setArchivedDocuments)
+      .catch(() => setArchivedDocuments([]));
+  }, [authToken, projectId, isSuperAdmin]);
+
   useEffect(() => {
     fetchDocuments();
     fetchCapabilities();
-  }, [fetchDocuments, fetchCapabilities]);
+    if (activeTab === "archive") fetchArchivedDocuments();
+  }, [fetchDocuments, fetchCapabilities, fetchArchivedDocuments, activeTab]);
 
   useEffect(() => {
     let debounceTimer: number | undefined;
@@ -94,6 +109,7 @@ export function DocumentsSection({
         debounceTimer = undefined;
         fetchDocuments();
         fetchCapabilities();
+        if (isSuperAdmin) fetchArchivedDocuments();
       }, 250);
     });
 
@@ -101,7 +117,7 @@ export function DocumentsSection({
       if (debounceTimer !== undefined) window.clearTimeout(debounceTimer);
       stopListening();
     };
-  }, [projectId, fetchDocuments, fetchCapabilities]);
+  }, [projectId, fetchDocuments, fetchCapabilities, fetchArchivedDocuments, isSuperAdmin]);
 
   const allowedUploadLevels = useMemo<UploadLevel[]>(() => {
     if (!capabilities) return [];
@@ -120,12 +136,13 @@ export function DocumentsSection({
   }, [allowedUploadLevels, uploadLevel]);
 
   const visibleDocuments = useMemo(() => {
+    if (activeTab === "archive") return archivedDocuments;
     const normal = documents.filter((doc) => doc.category !== "UtilizationCertificate");
     if (activeTab === "project") return normal.filter((doc) => doc.level === "Project");
     if (activeTab === "milestone") return normal.filter((doc) => doc.level === "Milestone");
     if (activeTab === "task") return normal.filter((doc) => doc.level === "Task");
     return normal;
-  }, [activeTab, documents]);
+  }, [activeTab, documents, archivedDocuments]);
 
   const handleOpenUpload = () => {
     if (allowedUploadLevels.length === 0) return;
@@ -178,6 +195,21 @@ export function DocumentsSection({
     }
   };
 
+  const handleDeleteDocument = async (doc: ProjectDocument) => {
+    if (!authToken || !window.confirm("Move “" + doc.title + "” to the document archive?")) return;
+    setDeletingId(doc.id);
+    setDocumentActionError("");
+    try {
+      await api.deleteProjectDocument(authToken, projectId, doc.id);
+      fetchDocuments();
+      fetchCapabilities();
+    } catch (error) {
+      setDocumentActionError(error instanceof Error ? error.message : "Could not archive this document.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -211,7 +243,10 @@ export function DocumentsSection({
       </div>
 
       <div className="flex flex-wrap gap-1 border-b border-slate-200">
-        {TABS.filter((tab) => tab.id !== "uc" || canViewUc).map((tab) => (
+        {TABS.filter((tab) =>
+          (tab.id !== "uc" || canViewUc) &&
+          (tab.id !== "archive" || isSuperAdmin)
+        ).map((tab) => (
           <button
             key={tab.id}
             type="button"
@@ -230,6 +265,40 @@ export function DocumentsSection({
 
       {activeTab === "uc" && canViewUc ? (
         <UtilizationCertificates projectId={projectId} milestones={milestones} tasks={tasks} />
+      ) : activeTab === "archive" && isSuperAdmin ? (
+        loading ? (
+          <div className="flex items-center justify-center py-8">
+            <span className="material-symbols-outlined text-slate-400 animate-spin">progress_activity</span>
+          </div>
+        ) : visibleDocuments.length > 0 ? (
+          <div className="space-y-2">
+            <p className="text-xs text-slate-500">Archived documents are permanently removed after the configured retention period.</p>
+            {visibleDocuments.map((doc) => (
+              <div key={doc.id} className="flex items-start justify-between gap-3 bg-amber-50 border border-amber-100 rounded-xl p-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-slate-800 truncate">{doc.title}</p>
+                  <p className="mt-1 text-[10px] text-slate-500">
+                    {doc.level}{doc.deletedDate ? " · Archived " + new Date(doc.deletedDate).toLocaleDateString() : ""}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleDownload(doc)}
+                  disabled={downloadingId === doc.id}
+                  className="size-9 rounded-lg flex items-center justify-center border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 shrink-0"
+                  title="Download archived document"
+                >
+                  <span className="material-symbols-outlined text-indigo-600 text-[18px]">download</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <span className="material-symbols-outlined text-slate-400 text-3xl mb-2">inventory_2</span>
+            <p className="text-sm font-medium text-slate-500">Archive is empty</p>
+          </div>
+        )
       ) : canViewDocuments ? (
         <>
           {uploadOpen && (
@@ -348,6 +417,9 @@ export function DocumentsSection({
             </form>
           )}
 
+          {documentActionError && (
+            <p role="alert" className="text-xs text-red-700" aria-live="polite">{documentActionError}</p>
+          )}
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <span className="material-symbols-outlined text-slate-400 animate-spin">progress_activity</span>
@@ -376,17 +448,30 @@ export function DocumentsSection({
                       </div>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleDownload(doc)}
-                    disabled={downloadingId === doc.id}
-                    className="size-9 rounded-lg flex items-center justify-center border border-slate-200 hover:bg-white transition-colors disabled:opacity-50 shrink-0"
-                    title="Download"
-                  >
-                    <span className="material-symbols-outlined text-indigo-600 text-[18px]">
-                      {downloadingId === doc.id ? "hourglass_top" : "download"}
-                    </span>
-                  </button>
+                  <div className="flex gap-1 shrink-0">
+                    {capabilities?.canDelete || doc.uploadedByUserId === auth?.userId ? (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteDocument(doc)}
+                        disabled={deletingId === doc.id}
+                        className="size-9 rounded-lg flex items-center justify-center border border-rose-200 text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-50"
+                        title="Move to archive"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">delete</span>
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => handleDownload(doc)}
+                      disabled={downloadingId === doc.id}
+                      className="size-9 rounded-lg flex items-center justify-center border border-slate-200 hover:bg-white transition-colors disabled:opacity-50"
+                      title="Download"
+                    >
+                      <span className="material-symbols-outlined text-indigo-600 text-[18px]">
+                        {downloadingId === doc.id ? "hourglass_top" : "download"}
+                      </span>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

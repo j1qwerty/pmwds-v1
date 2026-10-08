@@ -767,6 +767,21 @@ WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = @tableName AND COLUMN_NAME = @column
                 await ExecuteSqliteAsync(connection, "CREATE INDEX IF NOT EXISTS \"IX_ProjectDocuments_TaskId\" ON \"ProjectDocuments\" (\"TaskId\")", ct);
             }
 
+            if (!await HasSqliteColumnAsync(connection, "ProjectDocuments", "DeletedDate", ct))
+            {
+                await ExecuteSqliteAsync(connection, "ALTER TABLE \"ProjectDocuments\" ADD COLUMN \"DeletedDate\" TEXT NULL", ct);
+            }
+
+            if (!await HasSqliteColumnAsync(connection, "AIGlobalSettings", "DocumentArchiveRetentionDays", ct))
+            {
+                await ExecuteSqliteAsync(connection, "ALTER TABLE \"AIGlobalSettings\" ADD COLUMN \"DocumentArchiveRetentionDays\" INTEGER NOT NULL DEFAULT 30", ct);
+            }
+
+            await ExecuteSqliteAsync(
+                connection,
+                "UPDATE \"ProjectDocuments\" SET \"DeletedDate\" = COALESCE(\"ModifiedDate\", \"CreatedDate\") WHERE \"IsDeleted\" = 1 AND \"DeletedDate\" IS NULL",
+                ct);
+
             await NormalizeSqliteNullableGuidColumnsAsync(connection, ct);
         }
         finally

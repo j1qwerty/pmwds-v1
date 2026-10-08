@@ -14,6 +14,7 @@ import {
 import { ProfileSettings } from "./ProfileSettings";
 import { AISettings } from "./AISettings";
 import { DatabaseStatusSection } from "./DatabaseStatusSection";
+import { DocumentArchiveSettings } from "./DocumentArchiveSettings";
 
 export function SettingsPage() {
   const { logout, auth } = useAuth();
@@ -21,7 +22,7 @@ export function SettingsPage() {
   const canManageSystem = perm.has(PERMISSION_GROUPS.system.manage);
 
   const { addToast } = useToast();
-  const [activeTab, setActiveTab] = useState<"profile" | "ai" | "database" | "background">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "ai" | "database" | "background" | "documents">("profile");
   const [databaseStatus, setDatabaseStatus] = useState<DatabaseStatus | null>(null);
   const [databaseLoading, setDatabaseLoading] = useState(false);
   const [databaseError, setDatabaseError] = useState("");
@@ -86,6 +87,12 @@ export function SettingsPage() {
                 icon="wallpaper"
                 label="Background"
               />
+              <TabButton
+                active={activeTab === "documents"}
+                onClick={() => setActiveTab("documents")}
+                icon="archive"
+                label="Documents"
+              />
             </>
           )}
         </div>
@@ -119,6 +126,9 @@ export function SettingsPage() {
 
         {activeTab === "background" && (
           <BgControls />
+        )}
+        {activeTab === "documents" && canManageSystem && (
+          <DocumentArchiveSettings auth={auth} onSaved={addToast} />
         )}
       </div>
     </div>

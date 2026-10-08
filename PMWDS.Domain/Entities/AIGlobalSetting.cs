@@ -9,4 +9,5 @@ public class AIGlobalSetting : BaseEntity
     public double RiskThreshold { get; set; } = 0.7;
     public bool UseLocalModel { get; set; } = false;
     public string MLModelPath { get; set; } = "";
+    public int DocumentArchiveRetentionDays { get; set; } = 30;
 }

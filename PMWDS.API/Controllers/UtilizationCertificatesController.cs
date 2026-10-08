@@ -410,7 +410,7 @@ public class UtilizationCertificatesController : ControllerBase
         // Soft-deletes both rows; the underlying file is left on disk so the
         // audit trail stays intact.
         await _uow.UtilizationCertificates.DeleteAsync(id, ct);
-        await _uow.ProjectDocuments.DeleteAsync(certificate.DocumentId, ct);
+        loaded.Document.Archive(_currentUser.UserId ?? "system");
         await _uow.SaveChangesAsync(ct);
 
         await _changes.NotifyAsync(DataChangeScopes.UtilizationCertificates, certificate.Id.ToString(), certificate.ProjectId, ct);

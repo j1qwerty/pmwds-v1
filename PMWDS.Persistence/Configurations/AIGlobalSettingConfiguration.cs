@@ -14,6 +14,7 @@ public class AIGlobalSettingConfiguration : IEntityTypeConfiguration<AIGlobalSet
         b.Property(e => e.DefaultProvider).HasMaxLength(80).IsRequired();
         b.Property(e => e.DefaultModel).HasMaxLength(200);
         b.Property(e => e.MLModelPath).HasMaxLength(500);
+        b.Property(e => e.DocumentArchiveRetentionDays).HasDefaultValue(30);
 
         b.HasIndex(e => e.DefaultProvider);
     }

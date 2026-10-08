@@ -19,7 +19,8 @@ public record ProjectDocumentDto(
     string? Description,
     string Version,
     DocumentCategory Category,
-    DateTime CreatedDate);
+    DateTime CreatedDate,
+    DateTime? DeletedDate);
 
 public record UpdateProjectDocumentDto(
     string Title,

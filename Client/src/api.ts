@@ -291,6 +291,19 @@ export const api = {
   getProjectDocuments(token: string, id: string) {
     return request<ProjectDocument[]>(`projects/${id}/documents`, { token });
   },
+  getProjectDocumentArchive(token: string, id: string) {
+    return request<ProjectDocument[]>(`projects/${id}/documents/archive`, { token });
+  },
+  getDocumentArchiveSettings(token: string) {
+    return request<{ retentionDays: number }>("documentarchive/settings", { token });
+  },
+  updateDocumentArchiveSettings(token: string, retentionDays: number) {
+    return request<{ retentionDays: number }>("documentarchive/settings", {
+      token,
+      method: "PUT",
+      body: { retentionDays },
+    });
+  },
   updateProjectDocument(token: string, id: string, docId: string, payload: { title: string; description?: string | null; category: string }) {
     return request<ProjectDocument>(`projects/${id}/documents/${docId}`, {
       token,

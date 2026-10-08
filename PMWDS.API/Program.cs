@@ -167,6 +167,7 @@ builder.Services.AddScoped<PMWDS.Application.Interfaces.Repositories.ITaskReposi
 builder.Services.AddScoped<PMWDS.Application.Interfaces.Repositories.IUserRepository, UserRepository>();
 builder.Services.AddScoped<PMWDS.Application.Interfaces.Services.ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<RoleScopeService>();
+builder.Services.AddHostedService<DocumentArchiveCleanupService>();
 
 // Builds the role-scoped data dossier attached to each chat question. Scoped
 // because it depends on the scoped ApplicationDbContext, RoleScopeService and the

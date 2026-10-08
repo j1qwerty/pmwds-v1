@@ -455,9 +455,9 @@ public class RoleScopeService
         {
             return await _db.Tasks
                 .Where(task => task.Id == taskId.Value && task.ProjectId == projectId)
-                .Select(task => task.Milestone != null
+                .Select(task => task.Milestone != null && task.Milestone.DepartmentId.HasValue
                     ? task.Milestone.DepartmentId
-                    : (Guid?)null)
+                    : (Guid?)task.Project!.DepartmentId)
                 .FirstOrDefaultAsync(ct);
         }
 

@@ -370,6 +370,7 @@ internal static class RolesAndPermissionsSeeder
             PermissionCodes.KnowledgeOwnEdit,
             PermissionCodes.DocumentOwnCreate,
             PermissionCodes.DocumentOwnEdit,
+            PermissionCodes.DocumentOwnDelete,
             PermissionCodes.DocumentOwnMilestoneUpload,
             PermissionCodes.DocumentOwnTaskUpload,
             PermissionCodes.UtilizationCertificateOwnView,

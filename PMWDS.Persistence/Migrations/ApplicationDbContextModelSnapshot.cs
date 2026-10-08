@@ -45,6 +45,10 @@ namespace PMWDS.Persistence.Migrations
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("DocumentArchiveRetentionDays")
+                        .HasDefaultValue(30)
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("DefaultModel")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -1889,6 +1893,9 @@ namespace PMWDS.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DeletedDate")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Description")

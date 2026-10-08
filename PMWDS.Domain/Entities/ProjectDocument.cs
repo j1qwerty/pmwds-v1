@@ -13,6 +13,7 @@ public class ProjectDocument : BaseEntity
     public string ContentType { get; private set; } = string.Empty;
     public long FileSizeBytes { get; private set; }
     public string UploadedByUserId { get; private set; } = string.Empty;
+    public DateTime? DeletedDate { get; private set; }
     public string? Description { get; private set; }
     public Project? Project { get; private set; }
     public Milestone? Milestone { get; private set; }
@@ -126,4 +127,10 @@ public class ProjectDocument : BaseEntity
 
     public void BumpVersion(string newVersion)
     => Version = newVersion;
+
+    public void Archive(string userId)
+    {
+        DeletedDate ??= DateTime.UtcNow;
+        SoftDelete(userId);
+    }
 }
