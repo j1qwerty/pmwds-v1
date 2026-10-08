@@ -1,0 +1,105 @@
+# ============================================================================
+# project-wizard.txt - project creation wizard (4 steps)
+#
+# The wizard is NOT routable. It opens in a modal from /projects or the
+# dashboard via the "New Project" button in the nav header. There is no deep
+# link and no URL state, so a test must open it and click Next four times.
+#
+# The visible steps are:
+#   1 Project Details  2 Milestones  3 Assign Departments  4 Dependencies
+# (step 4 shows both Next and Finish; Next is inert, Finish submits.)
+# ============================================================================
+
+@page projects route=/projects desc="Projects list, hosts the creation wizard" requires=auth
+
+@group wizardOpen type=page page=projects desc="How to reach the wizard"
+
+button newProject text="New Project"
+assert wizardVisible text="Step 1 of 4"
+assert onDetails text="Step 1 of 4"
+assert onMilestones text="Step 2 of 4"
+assert onDepartments text="Step 3 of 4"
+assert onDependencies text="Step 4 of 4"
+@end
+
+@group wizard-nav type=nav page=projects desc="Wizard footer, present on every step"
+
+button back role=button name="Back"
+button skip role=button name="Skip"
+button next role=button name="Next"
+button finish role=button name="Finish" exact=1
+button creating role=button name="Creating..."
+api   createProject method=POST path=/api/v1/projects
+api   createMilestone method=POST path=/api/v1/milestones
+api   createDependency method=POST path=/api/v1/milestones/dependencies
+api   uploadDocument method=POST path=/documents
+assert created text="Project created successfully!"
+@end
+
+# ---------------------------------------------------------------- step 1 ----
+@group step-details type=wizard page=projects desc="Step 1 of 4: Project Details"
+
+field projectName placeholder="Enter project name" required=1
+field primaryDepartment css="select" nth=0 hint="only rendered for superadmin/director"
+field description placeholder="Brief description of the project"
+field priority byLabel="Priority"
+field budget placeholder="0"
+field startDate byLabel="Start Date" required=1
+field endDate byLabel="End Date" required=1
+field projectDocs css="input[type='file']" hint="hidden input, set via setInputFiles; only when permitted"
+button removeDoc title="Remove"
+field dateOrderError text="End date must be on or after the start date"
+button next role=button name="Next"
+@end
+
+# ---------------------------------------------------------------- step 2 ----
+@group step-milestones type=wizard page=projects desc="Step 2 of 4: Milestones list + inline add form"
+
+button addMilestoneOpen text="Add Milestone"
+field milestoneName placeholder="Milestone name" required=1
+field milestoneDescription placeholder="What marks this milestone?"
+field milestoneDueDate byLabel="Due Date" required=1
+field milestoneCritical css="input[type='checkbox']" nth=0
+button milestoneSave text="Add Milestone" nth=0 hint="the form replaces the dashed trigger, so this is the only match"
+button milestoneUpdate text="Update Milestone"
+button milestoneCancel text="Cancel"
+button milestoneEdit title="Edit milestone" nth=0 hover=1
+button milestoneRemove title="Remove milestone" nth=0 hover=1
+assert milestonesEmpty text="No milestones yet"
+field milestoneDueWarning css="text=/Due date exceeds project end date/"
+button next role=button name="Next"
+@end
+
+# ---------------------------------------------------------------- step 3 ----
+@group step-departments type=wizard page=projects desc="Step 3 of 4: one required Department select per milestone"
+
+field milestoneDepartment css="select" required=1 nth=0,1,2,3,4 hint="repeat until every milestone has a department"
+assert deptsRequired text="Every milestone must be assigned a department"
+assert deptsFirst text="Create milestones first"
+assert deptsEmpty text="No departments available"
+assert deptsLoading text="Loading departments..."
+button next role=button name="Next"
+api   departmentsLoad method=GET path=/api/v1/departments
+@end
+
+# ---------------------------------------------------------------- step 4 ----
+@group step-dependencies type=wizard page=projects desc="Step 4 of 4: Dependencies, optional"
+
+button addDependencyOpen text="Add Dependency"
+field depPrerequisite css="select" nth=0 required=1
+field depDependent css="select" nth=1 required=1
+field depMustComplete css="input[name='depType'][value='CompletionBased']"
+field depReachPercent css="input[name='depType'][value='ProgressThreshold']"
+field depThreshold css="input[type='range']"
+button dependencySave text="Add Dependency" nth=0 hint="the form replaces the dashed trigger"
+button dependencyUpdate text="Update Dependency"
+button dependencyCancel text="Cancel"
+button dependencyEdit title="Edit dependency" nth=0 hover=1
+button dependencyRemove title="Remove dependency" nth=0 hover=1
+field depErrorBoth text="Please select both milestones"
+field depErrorSelf text="A milestone cannot depend on itself"
+field depErrorCircular text="Circular dependency detected"
+assert depsEmpty text="No dependencies yet"
+assert depsFirst text="Add milestones first"
+button finish role=button name="Finish" exact=1
+@end

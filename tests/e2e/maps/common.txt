@@ -1,0 +1,80 @@
+# ============================================================================
+# common.txt - elements shared by every page
+#
+# Shared modal chrome, toasts, nav, and control patterns. Page maps reference
+# these group ids instead of repeating the selectors.
+#
+# Selector attributes the driver understands, in priority order:
+#   css=      raw selector, wins over everything
+#   testid=   data-testid
+#   aria=     aria-label
+#   title=    title attribute (most icon-only buttons use only this)
+#   placeholder=
+#   role= + name=
+#   label=
+#   text=
+#   root=     scope the search, e.g. root=.modal
+#   nth=      comma list of indexes to try, e.g. nth=0,1
+#   hover=1   hover the row first (for group-hover-only buttons)
+# ============================================================================
+
+@group modal-shell type=modal page=* desc="Chrome on every modal overlay"
+
+button closeModal aria="Close modal"
+api    closeWait method=GET path=/api/v1/workspace
+@end
+
+@group toast type=page page=* desc="Toast notifications, fixed top-right, auto-dismiss after 3s"
+
+field toastText css="body > div.fixed.top-4.right-4"
+@end
+
+@group app-nav type=nav page=* desc="Primary navigation targets (prefer direct routes in scripts)"
+
+nav projects route=/projects
+nav dashboard route=/
+nav notifications route=/notificationsPage
+nav ai route=/ai
+nav reports route=/reports
+nav users route=/users
+nav departments route=/departmentsPage
+nav roles route=/roles
+nav activityLogs route=/activity-logs
+nav settings route=/settings
+nav profiles route=/profiles
+@end
+
+@group progress type=form page=* desc="Progress + status controls shared by task and subtask editors"
+
+field percent css="input[inputmode='numeric']"
+field slider aria="Progress"
+field statusDropdown css="button:has(> span.rounded-full)"
+button statusOption text="In Progress" nth=0
+button statusOptionText text="In Progress" nth=0,1,2
+field comment placeholder="Add a comment with this update..."
+@end
+
+@group status-options type=list page=* desc="Exact labels used by StatusDropdown"
+
+field optNotStarted text="Not Started"
+field optInProgress text="In Progress"
+field optCompleted text="Completed"
+field optOnHold text="On Hold"
+field optCancelled text="Cancelled"
+@end
+
+@group priority-options type=list page=* desc="Exact option labels for priority selects"
+
+field optLow text="Low"
+field optMedium text="Medium"
+field optHigh text="High"
+field optCritical text="Critical"
+@end
+
+@group milestone-status type=form page=* desc="MilestoneDetailModal status buttons use raw status codes"
+
+button msPending text="Pending"
+button msInProgress text="InProgress"
+button msCompleted text="Completed"
+button msDelayed text="Delayed"
+@end

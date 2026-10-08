@@ -1,0 +1,80 @@
+# ============================================================================
+# project-milestones.txt - /projects/:id/milestones
+# Left column = MilestonesPanel (list + filter). Right column = DependenciesPanel.
+# Centre = tasks for the selected milestone.
+# Nearly all row actions are icon-only, addressed by title.
+# ============================================================================
+
+@page milestones route=/projects/:id/milestones desc="Milestone list, detail, tasks" requires=auth
+
+@group milestones-list type=list page=milestones desc="MilestonesPanel"
+
+field search placeholder="Filter milestones..."
+button showMore css="button:has-text('more (')"
+button showLess text="Show less"
+button jumpBack title="Back to previous position"
+assert empty text="No milestones match filters"
+assert selectPrompt text="Select a Milestone"
+assert statTotal text="Total Milestones"
+assert statCritical text="Critical"
+assert statAvgProgress text="Avg Progress"
+@end
+
+@group milestone-card type=form page=milestones desc="Per-milestone card and its hover actions"
+
+field card css="div[role='button']"
+button viewMilestone title="View milestone" nth=0 hover=1
+button editMilestone title="Edit milestone" nth=0 hover=1
+field deptUnassigned title="No department assigned"
+field pinnedBadge text="Pinned"
+@end
+
+@group milestone-form type=modal page=milestones desc="MilestoneFormModal - also used by the delete/edit tests"
+
+field name byLabel="Name" required=1
+field description byLabel="Description"
+field dueDate byLabel="Due Date" required=1
+field organization css="select" nth=0 hint="superadmin only"
+field department css="select" hint="first option None"
+field critical css="input[type='checkbox']"
+button save text="Save"
+button saving text="Saving..."
+button cancel text="Cancel"
+api   createMilestone method=POST path=/api/v1/milestones
+field errName text="Name is required"
+field errDueDate text="Due date is required"
+field progressReadonly css="text=Progress is calculated from tasks"
+field dueWarning css="text=/Due date exceeds project end date/"
+@end
+
+@group milestone-detail type=modal page=milestones desc="MilestoneDetailModal - status buttons are raw codes"
+
+button editMilestone title="Edit milestone"
+button deleteMilestone title="Delete milestone"
+button confirm text="Delete Permanently"
+button statusPending text="Pending"
+button statusInProgress text="InProgress"
+button statusCompleted text="Completed"
+button statusDelayed text="Delayed"
+field chipDepartment css="text=/Department:/"
+field chipDue css="text=/Due:/"
+field chipTasks css="text=/Tasks:/"
+field blockedPill text="Blocked"
+field progressNote text="Progress is auto-calculated from associated tasks."
+assert noTasks text="No tasks yet for this milestone."
+api   setMilestoneStatus method=PATCH path=/api/v1/milestones
+api   completeMilestone method=POST path=/complete
+api   deleteMilestone method=DELETE path=/api/v1/milestones
+@end
+
+@group milestone-tasks type=list page=milestones desc="Centre column: tasks for the selected milestone"
+
+field sectionTitle css="text=/Tasks for /"
+button newTaskForMilestone text="New task" nth=0
+button createFirstTask text="Create first task"
+assert noTasks text="No tasks yet"
+field blockedBanner css="text=/Milestone blocked:/"
+field forceCompleteHeading text="Incomplete tasks detected"
+button forceCompleteYes text="Yes, complete all"
+button forceCompleteNo text="Cancel"
+@end

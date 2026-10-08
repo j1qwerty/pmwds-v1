@@ -1,0 +1,133 @@
+# ============================================================================
+# project-tasks.txt - /projects/:id/tasks
+# Tasks grouped by milestone, rendered as a status board or a list. Subtasks
+# live inside each task card, expandable via the "Subtasks" expander.
+# ============================================================================
+
+@page tasks route=/projects/:id/tasks desc="Task board, subtasks, progress" requires=auth
+
+@group tasks-page type=page page=tasks
+
+assert empty text="No tasks yet"
+field emptyHint css="text=/Click 'New task' above|Tasks for this project will appear here./"
+field unassignedSection css="text=/Tasks without a milestone/"
+button boardSettings title="Board Settings"
+field visibleBoards css="text=Visible Boards"
+button boardNotStarted text="Not Started"
+button boardInProgress text="In Progress"
+button boardCompleted text="Completed"
+button boardDelayed text="Delayed"
+button boardOnHold text="On Hold"
+button boardCancelled text="Cancelled"
+field emptyCell text="No tasks"
+@end
+
+@group task-card type=form page=tasks desc="Per-task card. Bottom row has title-only icon buttons."
+
+button addTaskToMilestone title="Add task to this milestone" nth=0 hover=1
+button editTask title="Edit task" nth=0 hover=1
+button escalateTask title="Escalate task" nth=0 hover=1
+button addSubtask title="Add subtask" nth=0 hover=1
+button expandSubtasks aria="Expand subtasks"
+button collapseSubtasks aria="Collapse subtasks"
+button deleteSubtask title="Delete subtask" nth=0 hover=1
+field card css="div[role='button']"
+field progressText css="text=/Progress .*%/"
+field subtasksLabel css="text=/Subtasks/"
+
+# Inline subtask add inside the expanded card
+field inlineSubtaskTitle placeholder="Subtask title"
+button inlineSubtaskAdd text="Add"
+button inlineSubtaskCancel text="Cancel"
+field inlineSubtaskComment placeholder="Add a comment..."
+button inlineSubtaskPost text="Post"
+
+# Deep link to a single task
+nav openTaskInBoard route=/projects/{id}/tasks?task={taskId}
+@end
+
+@group task-form type=modal page=tasks desc="TaskFormModal - New/Edit Task"
+
+field title byLabel="Title" required=1
+field description byLabel="Description"
+field start byLabel="Start"
+field due byLabel="Due"
+field estimatedHours byLabel="Est. hours"
+field priority css="select" hint="Low/Medium/High/Critical"
+field project css="select" hint="first option Select project"
+field milestone css="select" hint="first option None, superadmin/director only"
+field assignees label="Assignees"
+button save text="Save"
+button saving text="Saving..."
+button cancel text="Cancel"
+api   createTask method=POST path=/api/v1/tasks
+field errTitle text="Title is required"
+field errStart text="Start date is required"
+field errDue text="Due date is required"
+field errDueOrder text="Due date must be after start date"
+field errHours text="Must be at least 1 hour"
+field dueWarning css="text=/Due date exceeds milestone due date/"
+@end
+
+@group subtask-form type=modal page=tasks desc="SubtaskFormModal - create from the card"
+
+field title byLabel="Title" required=1
+field description byLabel="Description"
+field due byLabel="Due"
+field priority css="select"
+field assignee label="Assignee"
+button createSubtask text="Create Subtask"
+button saving text="Saving..."
+button cancel text="Cancel"
+assert subtaskCreated text="Subtask added"
+api   createSubtask method=POST path=/api/v1/tasks/
+api   deleteSubtask method=DELETE path=/api/v1/tasks/
+@end
+
+@group task-progress type=modal page=tasks desc="TaskEditModal - progress/status/comment, then Update"
+
+field percent css="input[inputmode='numeric']"
+field slider aria="Progress"
+field statusButton css="button:has-text('Not Started'), button:has-text('In Progress'), button:has-text('Completed')"
+field priority css="select" nth=0
+field comment placeholder="Add a comment with this update..."
+button update text="Update"
+button updating text="Updating..."
+button cancel text="Cancel"
+field autoProgressNote text="Progress is auto-calculated from subtasks and cannot be edited directly."
+field reduceWarning css="text=/is completed. Reducing progress will change status to InProgress./"
+button reduceContinue text="Continue"
+button reduceCancel text="Cancel"
+assert updated text="Task updated."
+api   updateProgress method=PATCH path=/api/v1/tasks
+@end
+
+@group subtask-progress type=modal page=tasks desc="SubtaskEditModal"
+
+field percent css="input[inputmode='numeric']"
+field slider aria="Progress"
+field statusButton css="button:has-text('Not Started'), button:has-text('In Progress'), button:has-text('Completed')"
+field priority css="select" nth=0
+field comment placeholder="Add a comment with this update..."
+button update text="Update"
+button cancel text="Cancel"
+button deleteSubtask aria="Delete subtask"
+assert updated text="Subtask updated."
+api   updateSubtaskProgress method=PATCH path=/api/v1/tasks/subtasks
+@end
+
+@group task-details type=modal page=tasks desc="TaskSubtaskDetailsModal - alternative progress path"
+
+field progressLabel css="text=/Progress/"
+button updateProgress text="Update Progress ({n}%)"
+field resetWarning css="text=/This will reset progress to 0%/"
+button resetYes text="Yes, reset"
+button resetNo text="Cancel"
+field subtasksHeading css="text=/Subtasks/"
+assert noSubtasks text="No subtasks yet."
+field checkboxCompleted css="input[type='checkbox']"
+field escalatedBanner text="Escalated"
+button escalate title="Escalate"
+button deleteTask title="Delete task"
+api   deleteTask method=DELETE path=/api/v1/tasks
+@end

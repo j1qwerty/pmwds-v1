@@ -1,0 +1,34 @@
+# ============================================================================
+# login.txt - /login
+# One <form id="login-form"> with two fields. Labels have no htmlFor, so the
+# fields are addressed by placeholder. "Sign In" is the only submit button.
+# ============================================================================
+
+@page login route=/login desc="Sign in / sign up / forgot password" requires=anon
+
+@group loginForm type=form page=login desc="Credential form"
+
+field email type=email placeholder="you@example.com" required=1
+field password type=password placeholder="Enter your password" required=1
+button signIn text="Sign In"
+button forgot text="Forgot password?"
+button togglePassword aria="Toggle password visibility"
+button createAccount text="Create New Account"
+api   signIn method=POST path=/api/v1/auth/login
+assert signedIn css="text=/Step 1 of 4|Signed in|Projects/"
+@end
+
+# The Dev Quick Login panel is rendered twice (desktop + mobile). Scope to the
+# visible one with nth and pick by the account's button name.
+@group quickLogin type=form page=login desc="Dev-only account shortcuts, both mobile+desktop copies"
+
+button quickAdmin text="Admin" nth=0,1
+button quickManager text="Manager" nth=0,1
+button quickMember text="Team Member" nth=0,1
+@end
+
+@group auth-error type=page page=login desc="Failure panel"
+
+field errorHeading text="Authentication Failed"
+field errorMessage css="form ~ div p"
+@end

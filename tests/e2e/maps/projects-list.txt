@@ -1,0 +1,52 @@
+# ============================================================================
+# projects-list.txt - /projects
+# Card grid, not a table. Custom dropdown filters render as buttons showing the
+# current label, with the options as sibling buttons underneath.
+# ============================================================================
+
+@page projects route=/projects desc="Projects list + filters + cards" requires=auth
+
+@group projects-search type=page page=projects
+
+field search placeholder="Search by name, code, description, department or manager..."
+button clearSearch title="Clear search"
+button toggleFilters text="Filters"
+button clearAllFilters title="Clear all filters"
+button filtersDone text="Done"
+button filtersReset text="Reset these"
+@end
+
+@group projects-filters type=form page=projects desc="Custom dropdowns: button shows current label"
+
+field filterDepartments text="All Departments"
+field filterStatuses text="All Statuses"
+field filterPriorities text="All Priorities"
+field filterOrganizations text="All Organizations"
+field filterSort text="Sort"
+field filterDateField text="Date field"
+field fromDate aria="From date"
+field toDate aria="To date"
+button presetAllDates text="All dates"
+button presetEndsThisMonth text="Ends this month"
+button presetNext30 text="Next 30 days"
+button presetCreatedThisMonth text="Created this month"
+button presetOverdue text="Overdue only"
+api   loadProjects method=GET path=/api/v1/projects
+@end
+
+@group projects-list type=list page=projects
+
+field card css="button[title]:has(h3), button[title]"
+field cardByName css="button[title='{name}']"
+assert empty text="No projects match your filters"
+assert count css="text=/Showing .* of .* projects/"
+field loading text="Loading projects..."
+@end
+
+@group project-card type=form page=projects desc="Actions shown when a project is opened"
+
+button viewProject title="View project"
+button editProject title="Edit project"
+button deleteProject title="Delete project"
+api   deleteProject method=DELETE path=/api/v1/projects
+@end

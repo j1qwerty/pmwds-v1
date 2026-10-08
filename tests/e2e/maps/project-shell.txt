@@ -1,0 +1,40 @@
+# ============================================================================
+# project-shell.txt - /projects/:id and /projects/:id/:tab
+# Valid tab slugs: overview milestones tasks documents dependencies
+# The active tab is the only button[aria-current="page"].
+# ============================================================================
+
+@page project route=/projects/:id desc="Project workspace shell" requires=auth
+
+@group shell-tabs type=nav page=project
+
+nav tabOverview text="Overview" route=/projects/{id}
+nav tabMilestones text="Milestones" route=/projects/{id}/milestones
+nav tabTasks text="Tasks" route=/projects/{id}/tasks
+nav tabDocuments text="Documents" route=/projects/{id}/documents
+nav tabDependencies text="Dependencies" route=/projects/{id}/dependencies
+field activeTab css="button[aria-current='page']"
+button backToProjects text="Back to Projects"
+api   loadProject method=GET path=/api/v1/projects
+@end
+
+@group shell-actions type=page page=project desc="Nav-header action buttons, per tab"
+
+button newMilestone text="New milestone" nth=0
+button newTask text="New task" nth=0
+button dependenciesAction text="Dependencies"
+assert milestoneCreated text="Milestone created"
+assert taskCreated text="Task created"
+api   createMilestone method=POST path=/api/v1/milestones
+api   createTask method=POST path=/api/v1/tasks
+api   updateMilestone method=PUT path=/api/v1/milestones
+api   updateTask method=PUT path=/api/v1/tasks
+@end
+
+@group shell-info type=page page=project desc="ProjectInfoCard icon buttons, overview/milestones/tasks tabs"
+
+button viewProject title="View project"
+button editProject title="Edit project"
+button deleteProject title="Delete project"
+field progressRing aria="Project progress: {n}%"
+@end

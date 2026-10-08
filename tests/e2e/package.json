@@ -1,0 +1,24 @@
+{
+  "name": "pmwds-e2e",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "User-assisted + automated end-to-end tests for PMWDS core flows",
+  "scripts": {
+    "e2e": "tsx run.ts",
+    "e2e:visible": "tsx run.ts --mode visible",
+    "e2e:headless": "tsx run.ts --mode headless",
+    "e2e:auto": "tsx run.ts --auto",
+    "e2e:auto:headless": "tsx run.ts --auto --mode headless",
+    "e2e:auto:visible": "tsx run.ts --auto --mode visible",
+    "e2e:install": "playwright install chromium",
+    "smoke": "tsx smoke.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^26.6.4",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

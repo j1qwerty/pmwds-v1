@@ -1,0 +1,90 @@
+# ============================================================================
+# project-documents.txt - /projects/:id/documents
+# DocumentsSection renders an UploadMenu of one <label> per permitted level
+# (Project / Milestone / Task), each wrapping a hidden single-file input.
+# After picking a file an UploadPreview panel appears with a Cancel/Upload pair.
+# ============================================================================
+
+@page documents route=/projects/:id/documents desc="Documents + utilization certificates" requires=auth
+
+@group docs-levels type=form page=documents
+
+field levelTabs css="button:has-text('documents')"
+button projectTab text="Project documents" nth=0
+button milestoneTab text="Milestone documents" nth=0
+button taskTab text="Task documents" nth=0
+assert projectEmpty text="No project-level documents"
+assert milestoneEmpty text="No milestone-level documents"
+assert taskEmpty text="No task-level documents"
+@end
+
+@group docs-upload type=form page=documents desc="Each label is the level name; input[type=file] is hidden"
+
+field fileProject css="label:has-text('Project') input[type='file']"
+field fileMilestone css="label:has-text('Milestone') input[type='file']"
+field fileTask css="label:has-text('Task') input[type='file']"
+field uploadLabelProject text="Project"
+field uploadLabelMilestone text="Milestone"
+field uploadLabelTask text="Task"
+@end
+
+@group docs-preview type=modal page=documents desc="Confirmation panel after choosing a file"
+
+field selectMilestone css="select" nth=0 required=1 hint="shown for Milestone level, first option Select a milestone…"
+field selectTask css="select" nth=0 required=1 hint="shown for Task level, first option Select a task…"
+button cancel text="Cancel"
+button upload text="Upload"
+button uploading text="Uploading…"
+field errorNoMilestones css="text=/no milestones yet, so there is nothing to file/"
+field errorNoTasks css="text=/no tasks yet, so there is nothing to file/"
+field errorFallback text="Upload failed."
+api   upload method=POST path=/documents
+api   capabilities method=GET path=/upload-capabilities
+api   listDocs method=GET path=/documents
+api   deleteDoc method=DELETE path=/documents
+@end
+
+@group docs-table type=list page=documents
+
+button download title="Download"
+button deleteDocument title="Delete document"
+field row css="tr"
+field sizeCell css="td"
+assert uploaded css="text=/\\.txt|\\.pdf|\\.csv|\\.md/"
+@end
+
+@group docs-uc type=modal page=documents desc="Utilization certificates - submit + review"
+
+button submitUc text="Submit UC"
+button sendForReview text="Send for review"
+button review text="Review"
+button deleteUc text="Delete"
+button downloadUc title="Download certificate"
+field ucHelp aria="What is a Utilization Certificate?"
+field ucFile css="input[type='file']" accept=.pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx
+field ucNumber placeholder="e.g. UC-2026-0042" required=1
+field ucFundingSource placeholder="e.g. Government Grant / Client retainer" required=1
+field ucAmountClaimed byLabel="Amount Claimed" required=1
+field ucAmountUtilized byLabel="Amount Utilized" required=1
+field ucPeriodStart byLabel="Period Start" required=1
+field ucPeriodEnd byLabel="Period End" required=1
+field ucCertifies css="select" hint="Not linked / A milestone / A task"
+field ucSelect css="select" hint="first option Select…"
+field ucPurpose byLabel="Purpose of the spend"
+field ucTitle placeholder="Defaults to the uploaded file name"
+button saveDraft text="Save as draft"
+button saveUc text="Save as draft"
+button approve text="Approve"
+button reject text="Reject"
+button approveCert text="Approve certificate"
+button rejectCert text="Reject certificate"
+field ucNotes byLabel="Notes (optional)"
+field ucReason byLabel="Reason for rejection"
+field ucSizeHint css="text=/PDF, Word, Excel or image. Max 10 MB./"
+field ucErrFile text="Attach the signed utilization certificate file."
+field ucErrNumber text="Certificate number is required."
+field ucErrUtilized text="Amount utilized cannot exceed the amount claimed."
+field ucErrPeriod text="Period end cannot be before period start."
+assert ucSubmitted text="Utilization certificate submitted as a draft"
+api   submitUc method=POST path=/api/v1/utilization-certificates
+@end

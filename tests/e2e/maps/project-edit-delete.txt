@@ -1,0 +1,46 @@
+# ============================================================================
+# project-edit-delete.txt - ProjectFormModal + ConfirmDeleteModal
+# Reached from the "Edit project" / "Delete project" icon buttons on the
+# project workspace (ProjectInfoCard) or from a project card.
+# ============================================================================
+
+@page project route=/projects/:id desc="Edit and delete a project" requires=auth
+
+@group project-form type=modal page=project desc="ProjectFormModal - heading Edit Project, submit Save"
+
+field name byLabel="Name" required=1
+field description byLabel="Description"
+field priority css="select"
+field budget css="input[role='spinbutton'], input[type='number']" placeholder="0"
+field start label="Start"
+field end label="End"
+field organization css="select" hint="superadmin only"
+field assignedDepartments css="input[type='checkbox']" nth=0
+field projectManagerToggle css="button:has-text('Project Manager')"
+button save text="Save"
+button saving text="Saving..."
+button cancel text="Cancel"
+api   updateProject method=PUT path=/api/v1/projects
+assert saved text="Project updated"
+@end
+
+@group project-delete type=modal page=project desc="ConfirmDeleteModal"
+
+button confirm text="Delete Permanently"
+button deleting text="Deleting..."
+button cancel text="Cancel"
+field warning css="text=/milestones and tasks under this project may be affected/"
+assert confirmHeading text="Confirm Deletion"
+api   deleteProject method=DELETE path=/api/v1/projects
+@end
+
+@group project-detail type=modal page=project desc="ProjectDetailModal - in-modal tabs"
+
+field tabs aria="Tabs"
+button tabAi text="AI Insights"
+button tabDependencies text="Dependencies"
+button tabDocuments text="Documents"
+field statusSelect css="select" hint="NotStarted/InProgress/OnHold/Completed/Cancelled/Delayed"
+field forceCompleteHeading css="text=/Incomplete milestones detected/"
+button forceCompleteYes text="Yes, complete all"
+@end

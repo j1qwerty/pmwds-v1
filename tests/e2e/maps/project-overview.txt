@@ -1,0 +1,24 @@
+# ============================================================================
+# project-overview.txt - /projects/:id
+# Read-mostly. Compact DocumentsSection is embedded here too, so uploads can
+# also be exercised from the overview tab.
+# ============================================================================
+
+@page overview route=/projects/:id desc="Project overview" requires=auth
+
+@group overview type=page page=overview
+
+field progress aria="Project progress: {n}%"
+field detailsTab css="button:has-text('Overview')"
+button viewProject title="View project"
+button editProject title="Edit project"
+button deleteProject title="Delete project"
+button jumpBack title="Back to previous position"
+@end
+
+@group overview-docs type=form page=overview desc="Compact documents block, same as the documents tab"
+
+field fileProject css="label:has-text('Project') input[type='file']"
+button upload text="Upload"
+field levelTabs css="button:has-text('documents')"
+@end
