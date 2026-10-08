@@ -1,0 +1,439 @@
+@import "@fontsource-variable/inter/wght.css";
+
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme" layer(theme);
+@import "tailwindcss/preflight" layer(base);
+@import "tailwindcss/utilities" layer(utilities);
+
+@theme {
+  /* Primary */
+  --color-primary: #4648d4;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #6063ee;
+  --color-on-primary-container: #fffbff;
+  --color-primary-fixed: #e1e0ff;
+  --color-primary-fixed-dim: #c0c1ff;
+  --color-on-primary-fixed: #07006c;
+  --color-on-primary-fixed-variant: #2f2ebe;
+
+  /* Secondary */
+  --color-secondary: #8127cf;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #9c48ea;
+  --color-on-secondary-container: #fffbff;
+  --color-secondary-fixed: #f0dbff;
+  --color-secondary-fixed-dim: #ddb7ff;
+  --color-on-secondary-fixed: #2c0051;
+  --color-on-secondary-fixed-variant: #6900b3;
+
+  /* Tertiary */
+  --color-tertiary: #545c72;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #6c748b;
+  --color-on-tertiary-container: #fefcff;
+  --color-tertiary-fixed: #dae2fd;
+  --color-tertiary-fixed-dim: #bec6e0;
+  --color-on-tertiary-fixed: #131b2e;
+  --color-on-tertiary-fixed-variant: #3f465c;
+
+  /* Error */
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+
+  /* Background & Surfaces */
+  --color-background: #f7f9fb;
+  --color-on-background: #191c1e;
+  --color-surface: #f7f9fb;
+  --color-on-surface: #191c1e;
+  --color-surface-variant: #e0e3e5;
+  --color-on-surface-variant: #464554;
+  --color-surface-dim: #d8dadc;
+  --color-surface-bright: #f7f9fb;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f2f4f6;
+  --color-surface-container: #eceef0;
+  --color-surface-container-high: #e6e8ea;
+  --color-surface-container-highest: #e0e3e5;
+
+  /* Outline */
+  --color-outline: #767586;
+  --color-outline-variant: #c7c4d7;
+  --color-inverse-surface: #2d3133;
+  --color-inverse-on-surface: #eff1f3;
+  --color-inverse-primary: #c0c1ff;
+  --color-surface-tint: #494bd6;
+
+  /* Status Colors */
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --success-bg: #dcfce7;
+  --warning-bg: #fef9c3;
+
+  /* Font */
+  --font-sans: "Inter Variable", "Inter", "Manrope", "Aptos", "Segoe UI", sans-serif;
+
+  /* Font Sizes */
+  --text-h1: 2rem;
+  --text-display: 3rem;
+  --text-h2: 1.5rem;
+  --text-body-md: 0.9375rem;
+  --text-numeric: 0.875rem;
+  --text-label-caps: 0.75rem;
+  --text-body-lg: 1.125rem;
+
+  --font-h1: 2rem;
+  --font-display: 3rem;
+  --font-h2: 1.5rem;
+  --font-body-md: 0.9375rem;
+  --font-numeric: 0.875rem;
+  --font-label-caps: 0.75rem;
+  --font-body-lg: 1.125rem;
+
+  /* Spacing */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-base: 0.25rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2.5rem;
+  --spacing-column-gutter: 1.25rem;
+  --spacing-container-margin: 2rem;
+  --radius-default: 0.5rem;
+  --breakpoint-3xl: 1792px;
+}
+
+html {
+  background: #f7f9fb;
+  font-family: "Inter Variable", "Inter", "Manrope", "Aptos", "Segoe UI", sans-serif;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background: #f7f9fb;
+  color: #191c1e;
+  font-family: "Inter Variable", "Inter", sans-serif;
+  overflow-x: hidden;
+}
+
+html, body {
+  max-width: 100vw;
+}
+
+/* Demo Background — 3-layer gradient: top-left blue spotlight, top-right sky-blue spotlight, vertical fade */
+.demo-bg {
+  background:
+    radial-gradient(circle at top left, rgba(37,99,235,.18), transparent 35%),
+    radial-gradient(circle at top right, rgba(14,165,233,.18), transparent 32%),
+    linear-gradient(180deg, #f8fafc 0%, #eef6ff 48%, #f8fafc 100%);
+}
+
+/* Glass Panel Effect */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+/* Gradient Button */
+.gradient-btn {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  letter-spacing: 0.5px;
+}
+
+/* Primary Gradient for Progress Bars */
+.primary-gradient {
+  background: linear-gradient(90deg, #4648d4 0%, #8127cf 100%);
+}
+
+/* Status Pulse Animation */
+.status-pulse {
+  box-shadow: 0 0 0 4px rgba(186, 26, 26, 0.4);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(186, 26, 26, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(186, 26, 26, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(186, 26, 26, 0); }
+}
+
+/* Ambient Glow Shadow for Cards */
+.ambient-glow {
+  box-shadow: 0 10px 30px -10px rgba(70, 72, 212, 0.08);
+}
+
+/* ============================================================
+   MODAL ANIMATIONS — snappy, fast, modern
+   ============================================================ */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInFast {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes slideUpSnappy {
+  from { opacity: 0; transform: translateY(6px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes scaleInFast {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes modalSlideOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(6px) scale(0.98); }
+}
+
+@keyframes backdropFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes slideInRight {
+  0% { transform: translateX(100%); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+/* ============================================================
+   SHEET (right side panel) — fast, 0.18s in / 0.12s out
+   ============================================================ */
+@keyframes sheetScrimIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes sheetScrimOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes sheetPanelIn {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes sheetPanelOut {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(24px); opacity: 0; }
+}
+.sheet-scrim-enter { animation: sheetScrimIn 0.15s ease-out forwards; }
+.sheet-scrim-exit { animation: sheetScrimOut 0.12s ease-in forwards; }
+.sheet-panel-enter { animation: sheetPanelIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.sheet-panel-exit { animation: sheetPanelOut 0.12s ease-in forwards; }
+
+/* ============================================================
+   COMMAND PALETTE (Cmd+K)
+   ============================================================ */
+@keyframes cmdkBackdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes cmdkPanelIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes cmdkBackdropOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes cmdkPanelOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-6px) scale(0.98); }
+}
+.cmdk-backdrop-enter { animation: cmdkBackdropIn 0.15s ease-out forwards; }
+.cmdk-panel-enter { animation: cmdkPanelIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.cmdk-backdrop-exit { animation: cmdkBackdropOut 0.12s ease-in forwards; }
+.cmdk-panel-exit { animation: cmdkPanelOut 0.12s ease-in forwards; }
+
+/* Slightly taller default text input height token used by cmdk input */
+.h-13 { height: 3.25rem; }
+.h-5\.5 { height: 1.375rem; }
+.h-4\.5 { height: 1.125rem; }
+
+/* Modal animation utilities — 0.15s enter / 0.12s exit */
+.modal-backdrop-enter {
+  animation: fadeIn 0.15s ease-out forwards;
+}
+.modal-backdrop-exit {
+  animation: backdropFadeOut 0.12s ease-in forwards;
+}
+.modal-content-enter {
+  animation: slideUpSnappy 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.modal-content-exit {
+  animation: modalSlideOut 0.12s ease-in forwards;
+}
+
+/* ============================================================
+   DROPDOWN MENU (FilterDropdown / SortDropdown portal menus)
+   ============================================================ */
+@keyframes dropdownMenuIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.dropdown-menu-enter {
+  animation: dropdownMenuIn 0.12s ease-out forwards;
+}
+
+/* Card stagger entrance */
+@keyframes cardFadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.card-stagger {
+  animation: cardFadeUp 0.35s ease-out both;
+}
+
+/* View transition */
+@keyframes viewFade {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.view-fade {
+  animation: viewFade 0.18s ease-out forwards;
+}
+
+/* Filter chip pop */
+@keyframes chipPop {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+.chip-pop {
+  animation: chipPop 0.12s ease-out forwards;
+}
+
+/* ============================================================
+   SCROLLBARS
+   ============================================================ */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-primary) !important;
+  border-radius: 3px;
+  opacity: 0.7;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-secondary) !important;
+  opacity: 1;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--color-primary) !important;
+  border-radius: 10px;
+  opacity: 0.9;
+}
+
+/* ============================================================
+   BADGE STYLES
+   ============================================================ */
+.badge-success {
+  background-color: var(--success-bg);
+  color: var(--success);
+}
+
+.badge-error {
+  background-color: var(--error-container);
+  color: var(--on-error-container);
+}
+
+.badge-warning {
+  background-color: var(--warning-bg);
+  color: var(--warning);
+}
+
+/* ============================================================
+   SKELETON LOADING
+   ============================================================ */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-container-high) 0%,
+    var(--surface-container-low) 50%,
+    var(--surface-container-high) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-default);
+}
+
+/* ============================================================
+   RESPONSIVE LAYOUT
+   ============================================================ */
+@media (min-width: 2560px) {
+  .layout-max-width {
+    max-width: 2320px;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .container-margin {
+    padding: 0 var(--spacing-lg);
+  }
+}
+
+@media (max-width: 480px) {
+  .container-margin {
+    padding: 0 var(--spacing-md);
+  }
+}
+
+/* Perf: skip layout/paint work for off-screen content blocks, and honour reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
