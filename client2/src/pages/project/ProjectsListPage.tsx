@@ -30,7 +30,7 @@ import {
   getDepartmentColor,
 } from "../shared/index";
 import { useUserOrganization } from "../shared/useUserOrganization";
-import { NewProjectPage } from "../NewProject/NewProjectPage";
+import { LazyNewProjectPage, WizardBoundary, useWarmWizard, preloadWizard } from "../NewProject/lazyWizard";
 import { Icon } from "../../components/ui/Icon";
 import { formatLakhs } from "../../lib/formatters";
 import {
@@ -145,6 +145,7 @@ export function ProjectsListPage() {
   const [sortKey, setSortKey] = useState<SortKey>("newest");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [newProjectWizardOpen, setNewProjectWizardOpen] = useState(false);
+  useWarmWizard();
   const [viewMode, setViewMode] = useState<ViewMode>("card");
 
   // Card/row quick actions (HoverActions): quick-view detail sheet, edit sheet, delete confirm.
@@ -692,13 +693,13 @@ export function ProjectsListPage() {
           scrollable
           bare
         >
-          <NewProjectPage
+          <WizardBoundary><LazyNewProjectPage
             onClose={() => {
               setNewProjectWizardOpen(false);
               void loadProjects();
               void refreshAppData();
             }}
-          />
+          /></WizardBoundary>
         </Modal>
       )}
 
@@ -758,7 +759,7 @@ export function ProjectsListPage() {
 function ProjectsSkeleton({ view }: { view: ViewMode }) {
   if (view === "list") {
     return (
-      <div className="rounded-2xl border border-slate-200/60 bg-white/90 backdrop-blur-xl shadow-sm p-2">
+      <div className="rounded-2xl border border-slate-200/60 bg-white/97  shadow-sm p-2">
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="flex items-center gap-4 px-4 py-3.5">
             <Skeleton className="w-2.5 h-2.5 rounded-full shrink-0" />
@@ -779,7 +780,7 @@ function ProjectsSkeleton({ view }: { view: ViewMode }) {
       {Array.from({ length: 6 }).map((_, i) => (
         <div
           key={i}
-          className="rounded-2xl border border-slate-200/60 bg-white/90 backdrop-blur-xl shadow-sm p-4 space-y-3"
+          className="rounded-2xl border border-slate-200/60 bg-white/97  shadow-sm p-4 space-y-3"
         >
           <div className="flex items-start gap-3">
             <Skeleton className="size-12 rounded-full" />
@@ -869,7 +870,7 @@ function ProjectSummaryCard({
           onOpen();
         }
       }}
-      className={`group flex flex-col text-left h-full rounded-2xl border border-slate-200/60 bg-white/90 backdrop-blur-xl shadow-sm overflow-hidden transition-all duration-200 hover:shadow-xl ${status.shadowHoverColor}/10 hover:border-slate-300 hover:-translate-y-0.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40`}
+      className={`group flex flex-col text-left h-full rounded-2xl border border-slate-200/60 bg-white/97  shadow-sm overflow-hidden transition-all duration-200 hover:shadow-xl ${status.shadowHoverColor}/10 hover:border-slate-300 hover:-translate-y-0.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40`}
     >
       {/* Status-colored top accent */}
       <div className={`h-1 w-full ${status.dot} opacity-70`} />
@@ -1047,7 +1048,7 @@ function ProjectListView({
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200/60 bg-white/90 backdrop-blur-xl shadow-sm overflow-hidden divide-y divide-slate-100">
+    <div className="rounded-2xl border border-slate-200/60 bg-white/97  shadow-sm overflow-hidden divide-y divide-slate-100">
       {projects.map((project, idx) => {
         const progress = Math.min(Math.round(project.progressPercentage || 0), 100);
         const status = getStatusColor(project.status);

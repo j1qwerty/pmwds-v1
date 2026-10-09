@@ -107,7 +107,7 @@ export function SettingsPage() {
           </div>
 
           {/* Desktop: vertical rail */}
-          <div className="hidden lg:flex flex-col gap-1 p-2 bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-2xl shadow-sm">
+          <div className="hidden lg:flex flex-col gap-1 p-2 bg-white/97  border border-slate-200/60 rounded-2xl shadow-sm">
             {tabs.map((tab) => {
               const active = activeTab === tab.id;
               return (

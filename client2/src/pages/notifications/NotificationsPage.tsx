@@ -37,7 +37,13 @@ export function NotificationsPage() {
   const { auth } = useAuth();
   const navigate = useNavigate();
   const perm = usePermission();
-  const canConfigure = perm.isSuperAdmin;
+  const canConfigure =
+    perm.isSuperAdmin ||
+    perm.hasAny(
+      PERMISSION_GROUPS.notification.manage,
+      PERMISSION_GROUPS.notification.template,
+      PERMISSION_GROUPS.notification.rule,
+    );
   const canBroadcast = perm.has(PERMISSION_GROUPS.notification.broadcast);
   const { addToast } = useToast();
   const { setNavHeader } = useNavHeader();

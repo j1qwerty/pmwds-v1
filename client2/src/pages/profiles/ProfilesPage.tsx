@@ -513,7 +513,7 @@ function ProfileCard({
           onSelect(user);
         }
       }}
-      className={`group text-left w-full h-full cursor-pointer rounded-2xl p-4 flex flex-col transition-all duration-200 hover:shadow-lg hover:shadow-indigo-500/5 hover:border-indigo-200 hover:-translate-y-0.5 border bg-white/90 backdrop-blur-xl shadow-sm ${
+      className={`group text-left w-full h-full cursor-pointer rounded-2xl p-4 flex flex-col transition-all duration-200 hover:shadow-lg hover:shadow-indigo-500/5 hover:border-indigo-200 hover:-translate-y-0.5 border bg-white/97  shadow-sm ${
         selected ? "border-indigo-300 ring-2 ring-indigo-100" : "border-slate-200/60"
       }`}
     >

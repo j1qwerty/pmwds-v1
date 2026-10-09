@@ -68,7 +68,7 @@ interface SectionCardProps {
 /**
  * White card with optional title bar — used for grouping related
  * content within a page. Visually identical to the AI page cards
- * (white/90 backdrop-blur-xl border-slate-200/60 rounded-2xl shadow-sm).
+ * (white/90 border-slate-200/60 rounded-2xl shadow-sm).
  */
 export function SectionCard({
   title,
@@ -82,7 +82,7 @@ export function SectionCard({
 }: SectionCardProps) {
   return (
     <div
-      className={`bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-2xl shadow-sm transition-all duration-200 ${className}`}
+      className={`bg-white/97  border border-slate-200/60 rounded-2xl shadow-sm transition-all duration-200 ${className}`}
     >
       {(title || actions) && (
         <div className="flex items-start gap-2 px-5 py-3.5 border-b border-slate-100">

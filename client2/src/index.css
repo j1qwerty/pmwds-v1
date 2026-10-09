@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import "@fontsource-variable/inter/wght.css";
 
 @layer theme, base, components, utilities;
 @import "tailwindcss/theme" layer(theme);
@@ -72,7 +72,7 @@
   --warning-bg: #fef9c3;
 
   /* Font */
-  --font-sans: "Inter", "Manrope", "Aptos", "Segoe UI", sans-serif;
+  --font-sans: "Inter Variable", "Inter", "Manrope", "Aptos", "Segoe UI", sans-serif;
 
   /* Font Sizes */
   --text-h1: 2rem;
@@ -106,7 +106,7 @@
 
 html {
   background: #f7f9fb;
-  font-family: "Inter", "Manrope", "Aptos", "Segoe UI", sans-serif;
+  font-family: "Inter Variable", "Inter", "Manrope", "Aptos", "Segoe UI", sans-serif;
 }
 
 body {
@@ -115,7 +115,7 @@ body {
   margin: 0;
   background: #f7f9fb;
   color: #191c1e;
-  font-family: "Inter", sans-serif;
+  font-family: "Inter Variable", "Inter", sans-serif;
   overflow-x: hidden;
 }
 
@@ -133,9 +133,7 @@ html, body {
 
 /* Glass Panel Effect */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
@@ -427,5 +425,15 @@ html, body {
 @media (max-width: 480px) {
   .container-margin {
     padding: 0 var(--spacing-md);
+  }
+}
+
+/* Perf: skip layout/paint work for off-screen content blocks, and honour reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

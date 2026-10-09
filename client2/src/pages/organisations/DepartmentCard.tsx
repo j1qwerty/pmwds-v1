@@ -48,7 +48,7 @@ export function DepartmentCard({
 
   return (
     <div
-      className="card-stagger group h-full p-4 rounded-2xl bg-white/90 backdrop-blur-xl border border-slate-200/60 shadow-sm hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-500/5 hover:-translate-y-0.5 transition-all duration-200 flex flex-col"
+      className="card-stagger group h-full p-4 rounded-2xl bg-white/97  border border-slate-200/60 shadow-sm hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-500/5 hover:-translate-y-0.5 transition-all duration-200 flex flex-col"
       style={{ animationDelay: `${Math.min(index * 30, 300)}ms` }}
     >
       {/* Header */}

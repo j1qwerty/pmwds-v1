@@ -1,4 +1,6 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { Suspense, useState, useMemo, useEffect, useRef } from "react";
+import { lazyPage, whenIdle } from "../../lib/lazyPage";
+import { ProjectDetailsStep } from "./steps/ProjectDetailsStep"; // first step: ships with the wizard chunk
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
@@ -13,13 +15,23 @@ import {
 import { Icon } from "../../components/ui/Icon";
 import { Permission, RoleKey, hasRoleKey } from "../../permissions";
 import { useUserOrganization } from "../shared/useUserOrganization";
-import { ProjectDetailsStep } from "./steps/ProjectDetailsStep";
-import { DepartmentsStep } from "./steps/DepartmentsStep";
-import { MilestonesStep } from "./steps/MilestonesStep";
-import { MilestoneDepartmentsStep } from "./steps/MilestoneDepartmentsStep";
-import { DependenciesStep } from "./steps/DependenciesStep";
-import { TasksStep } from "./steps/TasksStep";
-import { UsersStep } from "./steps/UsersStep";
+
+const DepartmentsStep = lazyPage(() => import("./steps/DepartmentsStep").then((m) => ({ default: m.DepartmentsStep })));
+const MilestonesStep = lazyPage(() => import("./steps/MilestonesStep").then((m) => ({ default: m.MilestonesStep })));
+const MilestoneDepartmentsStep = lazyPage(() => import("./steps/MilestoneDepartmentsStep").then((m) => ({ default: m.MilestoneDepartmentsStep })));
+const DependenciesStep = lazyPage(() => import("./steps/DependenciesStep").then((m) => ({ default: m.DependenciesStep })));
+const TasksStep = lazyPage(() => import("./steps/TasksStep").then((m) => ({ default: m.TasksStep })));
+const UsersStep = lazyPage(() => import("./steps/UsersStep").then((m) => ({ default: m.UsersStep })));
+
+// Details renders immediately; the other steps are prefetched one ahead (see effect below).
+const STEP_COMPONENTS: Record<string, { preload: () => Promise<unknown> }> = {
+  departments: DepartmentsStep,
+  users: UsersStep,
+  milestones: MilestonesStep,
+  milestoneDepartments: MilestoneDepartmentsStep,
+  dependencies: DependenciesStep,
+  tasks: TasksStep,
+};
 
 interface MilestoneEntry {
   id: string;
@@ -246,6 +258,14 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const canUploadProjectDocument = perm.has(Permission.DocumentOwnProjectUpload) || perm.has(Permission.DocumentAllProjectUpload);
   const steps = PROJECT_WIZARD_STEPS;
   const currentStepKey = steps[currentStep]?.key ?? "details";
+
+  // Warm every other step as soon as the browser is idle after the wizard opens,
+  // so moving to the next step never waits on the network.
+  useEffect(() => {
+    whenIdle(() => {
+      Object.values(STEP_COMPONENTS).forEach((c) => void c.preload());
+    }, 800);
+  }, []);
 
   const dependenciesStepIndex = steps.findIndex((step) => step.key === "dependencies");
   const visibleSteps = steps.slice(0, dependenciesStepIndex + 1);
@@ -661,6 +681,7 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
 
         {/* Step body */}
         <div key={currentStepKey} className="min-h-[200px] view-fade">
+          <Suspense fallback={<div className="min-h-[200px]" aria-busy="true" />}>
           {currentStepKey === "details" && (
             <ProjectDetailsStep
               name={name}
@@ -730,10 +751,11 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
               users={departmentUsers}
             />
           )}
+          </Suspense>
         </div>
 
         {/* Bottom action bar — sticky to the card bottom */}
-        <div className="sticky bottom-0 -mx-4 md:-mx-5 -mb-4 md:-mb-5 mt-4 px-4 md:px-5 py-3 border-t border-slate-100 bg-white/90 backdrop-blur flex items-center justify-between rounded-b-2xl">
+        <div className="sticky bottom-0 -mx-4 md:-mx-5 -mb-4 md:-mb-5 mt-4 px-4 md:px-5 py-3 border-t border-slate-100 bg-white/97  flex items-center justify-between rounded-b-2xl">
           <div>
             {currentStep > 0 && (
               <button

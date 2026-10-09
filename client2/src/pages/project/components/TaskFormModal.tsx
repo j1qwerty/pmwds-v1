@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, type FormEvent } from "react";
 import type { Department, Milestone, Project, Task, User } from "../../../types";
 import { RoleKey, hasAnyRoleKey } from "../../../permissions";
 import { priorities } from "../../constants";
-import { Sheet, ModalCancelButton, ModalPrimaryButton, AvatarStack, ScopedUserSelect, getProjectDepartmentIds } from "../../shared/index";
+import { Sheet, ModalCancelButton, ModalPrimaryButton, AvatarStack, ScopedUserSelect, getProjectDepartmentIds, usePermission, PERMISSION_GROUPS } from "../../shared/index";
 import { Icon } from "../../../components/ui/Icon";
 
 const getToday = () => new Date().toISOString().slice(0, 10);
@@ -114,7 +114,14 @@ export function TaskFormModal({
   }, [form.assignedToUserIds, users]);
 
   // Sheet handles open/closed internally (stays mounted so the exit animation plays)
-  const canAssignMilestone = hasAnyRoleKey(roles, [RoleKey.SuperAdmin, RoleKey.Director]);
+  const perm = usePermission();
+  const canAssignMilestone =
+    hasAnyRoleKey(roles, [RoleKey.SuperAdmin, RoleKey.Director]) ||
+    perm.hasAny(
+      PERMISSION_GROUPS.task.manage,
+      PERMISSION_GROUPS.task.create,
+      PERMISSION_GROUPS.task.edit,
+    );
   const projectMilestones = milestones.filter((m) => m.projectId === form.projectId);
   const selectedProject = projects.find((p) => p.id === form.projectId);
   const selectedDepartment = selectedProject

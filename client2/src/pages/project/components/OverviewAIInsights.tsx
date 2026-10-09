@@ -81,7 +81,7 @@ export function OverviewAIInsights({ ws }: { ws: { project: { aiHealthScore?: nu
     ws.project.aiBudgetRiskScore != null;
 
   return (
-    <section className="bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-2xl shadow-sm overflow-hidden">
+    <section className="bg-white/97  border border-slate-200/60 rounded-2xl shadow-sm overflow-hidden">
       {/* Soft indigo→violet AI banner header */}
       <div className="px-5 py-3.5 border-b border-slate-100 bg-gradient-to-r from-indigo-50/80 via-violet-50/60 to-transparent">
         <div className="flex items-center gap-2.5">

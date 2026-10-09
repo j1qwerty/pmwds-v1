@@ -33,7 +33,7 @@ export function DependenciesPanel({
   const blockingCount = dependencies.length - metCount;
 
   return (
-    <div className="bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-2xl shadow-sm p-4 h-full flex flex-col">
+    <div className="bg-white/97  border border-slate-200/60 rounded-2xl shadow-sm p-4 h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2 min-w-0">

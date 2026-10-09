@@ -349,7 +349,7 @@ export function NotificationInbox({
           ))}
         </div>
       ) : (
-        <div className="view-fade overflow-hidden rounded-2xl border border-slate-200/60 bg-white/90 shadow-sm backdrop-blur-xl">
+        <div className="view-fade overflow-hidden rounded-2xl border border-slate-200/60 bg-white/97 shadow-sm">
           <div className="divide-y divide-slate-100">
             {filtered.map((item, idx) => (
               <div

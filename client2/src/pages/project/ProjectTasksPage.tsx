@@ -34,7 +34,15 @@ export function ProjectTasksPage() {
   const { addToast } = useToast();
   const perm = usePermission();
   const { userOrganizationId } = useUserOrganization(appData.users, appData.departments);
-  const canManageMilestones = perm.isSuperAdmin || hasRoleKey(perm.roleKeys, RoleKey.Director);
+  const canManageMilestones =
+    perm.isSuperAdmin ||
+    hasRoleKey(perm.roleKeys, RoleKey.Director) ||
+    perm.hasAny(
+      PERMISSION_GROUPS.milestone.manage,
+      PERMISSION_GROUPS.milestone.create,
+      PERMISSION_GROUPS.milestone.edit,
+      PERMISSION_GROUPS.milestone.delete,
+    );
   const canManageTasks = perm.has(PERMISSION_GROUPS.task.manage);
   const canManageProjects = perm.has(PERMISSION_GROUPS.project.manage);
 

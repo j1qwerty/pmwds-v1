@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
-import { RoleKey, hasRoleKey } from "../../permissions";
+import { RoleKey, hasRoleKey, PERMISSION_GROUPS } from "../../permissions";
 import {
   LoadingPage,
   useNavHeader,
@@ -19,7 +19,15 @@ export function ProjectDependenciesPage() {
   const { setNavHeader } = useNavHeader();
   const { addToast } = useToast();
 
-  const canManage = perm.isSuperAdmin || hasRoleKey(perm.roleKeys, RoleKey.Director);
+  const canManage =
+    perm.isSuperAdmin ||
+    hasRoleKey(perm.roleKeys, RoleKey.Director) ||
+    perm.hasAny(
+      PERMISSION_GROUPS.milestone.manage,
+      PERMISSION_GROUPS.milestone.create,
+      PERMISSION_GROUPS.milestone.edit,
+      PERMISSION_GROUPS.milestone.delete,
+    );
   const [newRequestKey, setNewRequestKey] = useState(0);
 
   useEffect(() => {

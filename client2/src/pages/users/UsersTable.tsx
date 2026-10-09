@@ -47,7 +47,7 @@ export function UsersTable({
     <GlassCard className="overflow-hidden view-fade">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-slate-100">
+          <thead className="sticky top-0 z-10 bg-white/97  border-b border-slate-100">
             <tr>
               {headers.map((header) => (
                 <th

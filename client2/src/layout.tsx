@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "./auth";
+import { preloadRoute } from "./lib/routePreload";
 import { useAppData } from "./appData";
 import { onStatusChanged, type RealtimeStatus } from "./realtime";
 import { Avatar, NavHeaderProvider, NavHeader, NavActionButton, usePermission, BgRenderer, CommandPaletteProvider, useCommandPalette } from "./pages/shared";
@@ -264,22 +265,25 @@ function Layout({ children }: { children: React.ReactNode }) {
     [data.notifications],
   );
 
-  // Responsive breakpoint detection
+  // Responsive breakpoint detection. matchMedia only fires when a breakpoint is
+  // actually crossed, unlike a window "resize" listener that fires every frame
+  // of a drag.
   useEffect(() => {
-    const handleResize = () => {
-      const width = window.innerWidth;
-      setIsMobile(width < 768);
-      setIsTablet(width >= 768 && width < 1024);
-
+    const mobileQuery = window.matchMedia("(max-width: 767px)");
+    const tabletQuery = window.matchMedia("(min-width: 768px) and (max-width: 1023px)");
+    const apply = () => {
+      setIsMobile(mobileQuery.matches);
+      setIsTablet(tabletQuery.matches);
       // Auto-collapse sidebar on tablet
-      if (width >= 768 && width < 1024) {
-        setSidebarCompact(true);
-      }
+      if (tabletQuery.matches) setSidebarCompact(true);
     };
-
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    apply();
+    mobileQuery.addEventListener("change", apply);
+    tabletQuery.addEventListener("change", apply);
+    return () => {
+      mobileQuery.removeEventListener("change", apply);
+      tabletQuery.removeEventListener("change", apply);
+    };
   }, []);
 
   const navGroups: Array<{
@@ -340,7 +344,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         {/* Mobile overlay backdrop */}
         {mobileSidebarOpen && (
           <div
-            className="fixed inset-0 z-[90] bg-black/50 backdrop-blur-sm md:hidden transition-opacity duration-300"
+            className="fixed inset-0 z-[90] bg-black/50 md:hidden transition-opacity duration-300"
             onClick={() => setMobileSidebarOpen(false)}
           />
         )}
@@ -349,7 +353,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         <nav
           className={classNames(
             "fixed left-0 top-0 z-50 h-full flex flex-col transition-all duration-300",
-            "bg-surface-container-lowest/95 backdrop-blur-3xl shadow-[8px_0_40px_rgba(0,0,0,0.05)]",
+            "bg-surface-container-lowest/97  shadow-[8px_0_40px_rgba(0,0,0,0.05)]",
             // Mobile: overlay with smooth slide
             "max-md:z-[100]",
             mobileSidebarOpen
@@ -459,6 +463,8 @@ function Layout({ children }: { children: React.ReactNode }) {
                 return (
                   <Link
                     to="/projects"
+                    onMouseEnter={() => preloadRoute("/projects")}
+                    onFocus={() => preloadRoute("/projects")}
                     onClick={() => setMobileSidebarOpen(false)}
                     className={classNames(
                       "relative flex items-center rounded-md transition-all duration-200 group",
@@ -578,6 +584,8 @@ function Layout({ children }: { children: React.ReactNode }) {
                         <Link
                           key={item.path}
                           to={item.path}
+                          onMouseEnter={() => preloadRoute(item.path)}
+                          onFocus={() => preloadRoute(item.path)}
                           onClick={() => setMobileSidebarOpen(false)}
                           className={classNames(
                             "relative flex items-center rounded-md transition-all duration-200 group",
@@ -681,7 +689,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         >
           {/* Topbar */}
           <header
-            className="sticky top-0 z-40 bg-surface-container-lowest/90 backdrop-blur-2xl border-b border-surface-variant"
+            className="sticky top-0 z-40 bg-surface-container-lowest/97  border-b border-surface-variant"
             style={{ height: 'clamp(48px,6vw,56px)' }}
           >
             <div className="flex h-full items-center justify-between" style={{ padding: '0 clamp(8px,3vw,24px)' }}>

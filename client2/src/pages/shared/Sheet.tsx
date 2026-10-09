@@ -116,8 +116,6 @@ export function Sheet({
       className={`fixed inset-0 z-[1000] flex justify-end ${exiting ? "sheet-scrim-exit" : "sheet-scrim-enter"}`}
       style={{
         background: "rgba(15, 23, 42, 0.35)",
-        backdropFilter: "blur(3px)",
-        WebkitBackdropFilter: "blur(3px)",
       }}
       onClick={handleScrimClick}
       role="dialog"

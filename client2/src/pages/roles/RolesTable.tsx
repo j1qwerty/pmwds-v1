@@ -19,7 +19,7 @@ interface RolesTableProps {
 export function RolesTable({ roles, onEdit, onDelete, isAdmin, userCounts }: RolesTableProps) {
   const showUsers = userCounts !== undefined;
   return (
-    <div className="bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-2xl shadow-sm overflow-hidden view-fade min-w-0">
+    <div className="bg-white/97  border border-slate-200/60 rounded-2xl shadow-sm overflow-hidden view-fade min-w-0">
       {/* min-w-0 + overflow-x-auto: on narrow screens the table scrolls inside
           the card — the page itself never clips a column off-screen. */}
       <div className="overflow-x-auto min-w-0">

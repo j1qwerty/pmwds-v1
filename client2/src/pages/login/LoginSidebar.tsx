@@ -54,7 +54,7 @@ export function LoginSidebar() {
         {/* Branding */}
         <div className="mb-10">
           <div className="inline-flex items-center gap-3 mb-5">
-            <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg shadow-indigo-900/20">
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shadow-lg shadow-indigo-900/20">
               <Icon name="rocket_launch" size={24} className="text-white" />
             </div>
             <div>
@@ -77,7 +77,7 @@ export function LoginSidebar() {
           {features.map((feature, index) => (
             <div
               key={index}
-              className="group bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:bg-white/15 transition-all duration-300 hover:scale-[1.03] hover:border-white/20"
+              className="group bg-white/10 rounded-xl p-4 border border-white/10 hover:bg-white/15 transition-all duration-300 hover:scale-[1.03] hover:border-white/20"
             >
               <div className="w-9 h-9 rounded-lg bg-white/15 flex items-center justify-center mb-2.5">
                 <Icon name={feature.icon} size={18} className="text-white" />

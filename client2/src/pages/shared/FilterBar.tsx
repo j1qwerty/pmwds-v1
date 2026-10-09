@@ -57,7 +57,7 @@ export function FilterBar({
 }: FilterBarProps) {
   return (
     <div
-      className={`flex flex-wrap items-center gap-2.5 p-2.5 bg-white/90 backdrop-blur-xl rounded-xl border border-slate-200/70 shadow-sm ${className}`}
+      className={`flex flex-wrap items-center gap-2.5 p-2.5 bg-white/97  rounded-xl border border-slate-200/70 shadow-sm ${className}`}
     >
       {onSearchChange && (
         <div className="relative flex-1 min-w-[220px]">

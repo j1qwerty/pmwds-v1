@@ -10,7 +10,7 @@ import type { ActivityLogRecord, NotificationItem, Project, ProjectDashboardData
 import { NotificationList } from "../shared/NotificationList";
 import { PageSkeleton, useNavHeader, useToast } from "../shared";
 import { PERMISSION_GROUPS, usePermission } from "../shared";
-import { NewProjectPage } from "../NewProject/NewProjectPage";
+import { LazyNewProjectPage, WizardBoundary, useWarmWizard, preloadWizard } from "../NewProject/lazyWizard";
 import TaskStats from "../shared/dash/TaskStats";
 import TaskPerformanceTable, { type TaskPerformanceQuery } from "../shared/dash/TaskPerformanceTable";
 import { TaskEditModal } from "../shared/modals/TaskEditModal";
@@ -54,6 +54,7 @@ export function DashboardPage() {
   const [error, setError] = useState("");
   const [selectedActivityFilter, setSelectedActivityFilter] = useState("All Tasks");
   const [newProjectWizardOpen, setNewProjectWizardOpen] = useState(false);
+  useWarmWizard();
 
   useEffect(() => {
     setNavHeader({
@@ -453,7 +454,7 @@ export function DashboardPage() {
 
       {newProjectWizardOpen && (
         <ModalOverlay onClose={() => setNewProjectWizardOpen(false)} widthClassName="max-w-4xl" bare>
-          <NewProjectPage onClose={() => setNewProjectWizardOpen(false)} />
+          <WizardBoundary><LazyNewProjectPage onClose={() => setNewProjectWizardOpen(false)} /></WizardBoundary>
         </ModalOverlay>
       )}
     </div>

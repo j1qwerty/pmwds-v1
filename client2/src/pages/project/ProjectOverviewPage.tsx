@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
-import { RoleKey, hasRoleKey } from "../../permissions";
+import { RoleKey, hasRoleKey, Permission } from "../../permissions";
 import type { Milestone, MilestoneDependency, ProjectDocument } from "../../types";
 import {
   SectionCard,
@@ -88,7 +88,11 @@ export function ProjectOverviewPage() {
       (assignment) => assignment.departmentId === currentDepartmentId && assignment.isPrimary,
     ),
   );
-  const canUploadProjectDocs = perm.isSuperAdmin || hasRoleKey(perm.roleKeys, RoleKey.Director) || isPrimaryDept;
+  const canUploadProjectDocs =
+    perm.isSuperAdmin ||
+    hasRoleKey(perm.roleKeys, RoleKey.Director) ||
+    isPrimaryDept ||
+    perm.hasAny(Permission.DocumentOwnProjectUpload, Permission.DocumentAllProjectUpload);
 
   useEffect(() => {
     if (!ws.project || !auth) return;

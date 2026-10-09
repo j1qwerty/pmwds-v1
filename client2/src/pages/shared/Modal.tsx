@@ -158,9 +158,7 @@ export function Modal({
         exiting ? "modal-backdrop-exit" : "modal-backdrop-enter"
       }`}
       style={{
-        background: "rgba(15, 23, 42, 0.45)",
-        backdropFilter: "blur(6px)",
-        WebkitBackdropFilter: "blur(6px)",
+        background: "rgba(15, 23, 42, 0.5)",
       }}
       onClick={handleBackdropClick}
     >

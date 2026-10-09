@@ -469,7 +469,7 @@ export function LoginPage() {
             {/* Heading */}
             <div className="mb-6">
               <div className="inline-flex items-center gap-3 mb-4">
-                <div className="w-11 h-11 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
                   <Icon name="rocket_launch" size={22} className="text-white" />
                 </div>
                 <div>
@@ -502,7 +502,7 @@ export function LoginPage() {
                         key={account.email}
                         onClick={() => handleDemoLogin(account.email)}
                         disabled={loading}
-                        className="flex items-center gap-2.5 p-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 hover:bg-white/20 hover:border-white/30 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-2.5 p-3 rounded-xl bg-white/10 border border-white/10 hover:bg-white/20 hover:border-white/30 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <div className={`w-8 h-8 rounded-lg ${account.color} flex items-center justify-center shrink-0 shadow-sm`}>
                           <Icon name={account.icon} size={15} className="text-white" />

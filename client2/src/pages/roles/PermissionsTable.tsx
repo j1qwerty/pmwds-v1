@@ -193,7 +193,7 @@ export function PermissionsTable({ permissions, onEdit, onDelete, onCreate, isAd
           ))}
         </div>
       ) : (
-        <div className="bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-2xl shadow-sm overflow-hidden pb-6 view-fade min-w-0">
+        <div className="bg-white/97  border border-slate-200/60 rounded-2xl shadow-sm overflow-hidden pb-6 view-fade min-w-0">
           {/* min-w-0 + overflow-x-auto: the table may scroll horizontally INSIDE
               the card on narrow screens — the page itself never clips it. */}
           <div className="overflow-x-auto min-w-0">

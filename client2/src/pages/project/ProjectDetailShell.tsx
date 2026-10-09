@@ -1,17 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { lazyPage } from "../../lib/lazyPage";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import { useNavHeader } from "../shared";
 import { useProjectWorkspace } from "./useProjectWorkspace";
 import { Icon } from "../../components/ui/Icon";
-import { ProjectOverviewPage } from "./ProjectOverviewPage";
-import { ProjectMilestonesPage } from "./ProjectMilestonesPage";
-import { ProjectTasksPage } from "./ProjectTasksPage";
-import { ProjectDocumentsPage } from "./ProjectDocumentsPage";
-import { ProjectDependenciesPage } from "./ProjectDependenciesPage";
 import { ProjectNotFound } from "./ProjectNotFound";
 
+const ProjectOverviewPage = lazyPage(() => import("./ProjectOverviewPage").then((m) => ({ default: m.ProjectOverviewPage })));
+const ProjectMilestonesPage = lazyPage(() => import("./ProjectMilestonesPage").then((m) => ({ default: m.ProjectMilestonesPage })));
+const ProjectTasksPage = lazyPage(() => import("./ProjectTasksPage").then((m) => ({ default: m.ProjectTasksPage })));
+const ProjectDocumentsPage = lazyPage(() => import("./ProjectDocumentsPage").then((m) => ({ default: m.ProjectDocumentsPage })));
+const ProjectDependenciesPage = lazyPage(() => import("./ProjectDependenciesPage").then((m) => ({ default: m.ProjectDependenciesPage })));
 const TABS = [
   { key: "overview", label: "Overview", icon: "home" },
   { key: "milestones", label: "Milestones", icon: "hi-flag" },
@@ -41,6 +42,14 @@ function isTabKey(value: string | undefined): value is TabKey {
  *
  * URL shape: /projects/:projectId/:tab  (tab defaults to "overview")
  */
+const TAB_PRELOAD: Record<string, () => Promise<unknown>> = {
+  overview: ProjectOverviewPage.preload,
+  milestones: ProjectMilestonesPage.preload,
+  tasks: ProjectTasksPage.preload,
+  documents: ProjectDocumentsPage.preload,
+  dependencies: ProjectDependenciesPage.preload,
+};
+
 const BACK_TO = "/projects";
 const BACK_LABEL = "Projects";
 
@@ -124,7 +133,7 @@ export function ProjectDetailShell() {
         <div
           role="tablist"
           aria-label="Project sections"
-          className="inline-flex max-w-full items-stretch gap-1 overflow-x-auto rounded-xl border border-slate-200/60 bg-white/95 p-1 shadow-sm backdrop-blur-xl"
+          className="inline-flex max-w-full items-stretch gap-1 overflow-x-auto rounded-xl border border-slate-200/60 bg-white/97 p-1 shadow-sm"
         >
           {TABS.map((t) => {
             const active = t.key === activeTab;
@@ -137,6 +146,8 @@ export function ProjectDetailShell() {
                 aria-selected={active}
                 aria-current={active ? "page" : undefined}
                 onClick={() => goToTab(t.key)}
+                onMouseEnter={() => void TAB_PRELOAD[t.key]?.()}
+                onFocus={() => void TAB_PRELOAD[t.key]?.()}
                 className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3.5 py-2 text-sm outline-none transition-all focus-visible:ring-2 focus-visible:ring-indigo-200 ${
                   active
                     ? "bg-indigo-50 font-bold text-indigo-700 shadow-sm ring-1 ring-indigo-100"
@@ -165,11 +176,13 @@ export function ProjectDetailShell() {
       </div>
 
       {/* Tab content — each branch mounts the existing project page component. */}
+      <Suspense fallback={<div className="min-h-[320px]" aria-busy="true" />}>
       {activeTab === "overview" && <ProjectOverviewPage />}
       {activeTab === "milestones" && <ProjectMilestonesPage />}
       {activeTab === "tasks" && <ProjectTasksPage />}
       {activeTab === "documents" && <ProjectDocumentsPage />}
       {activeTab === "dependencies" && <ProjectDependenciesPage />}
+      </Suspense>
     </div>
   );
 }

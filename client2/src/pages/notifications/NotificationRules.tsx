@@ -110,7 +110,7 @@ function IconAction({
 
 function ListSkeleton() {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white/90 shadow-sm backdrop-blur-xl">
+    <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white/97 shadow-sm">
       <div className="divide-y divide-slate-100">
         {[0, 1, 2, 3, 4].map((i) => (
           <div key={i} className="flex items-center gap-3 px-4 py-4">
@@ -276,7 +276,7 @@ export function NotificationRules({
           ))}
         </div>
       ) : (
-        <div className="view-fade overflow-hidden rounded-2xl border border-slate-200/60 bg-white/90 shadow-sm backdrop-blur-xl">
+        <div className="view-fade overflow-hidden rounded-2xl border border-slate-200/60 bg-white/97 shadow-sm">
           <div className="divide-y divide-slate-100">
             {filtered.map((rule, idx) => (
               <div

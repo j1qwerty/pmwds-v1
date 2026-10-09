@@ -13,7 +13,7 @@ const colorMap: Record<string, { bg: string; text: string; dot: string }> = {
 /**
  * Shared stat card, restyled to match the dashboard's stat card language
  * (pages/dashboard/dashboardStats.tsx → MetricStatCard):
- *   - glass card: bg-white/90 backdrop-blur-xl, rounded-2xl, border-slate-200/60
+ *   - glass card: bg-white/97 , rounded-2xl, border-slate-200/60
  *   - micro-caps label (text-[10px] font-bold uppercase tracking-wider)
  *   - big bold number (text-2xl font-bold text-slate-800, tabular)
  *   - icon in a soft tinted tile (the `color` prop drives the tile)
@@ -37,7 +37,7 @@ export function StatCard({
   const c = colorMap[color] || colorMap.indigo;
 
   return (
-    <div className="h-full min-w-0 bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-2xl p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:border-slate-300/60">
+    <div className="h-full min-w-0 bg-white/97  border border-slate-200/60 rounded-2xl p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:border-slate-300/60">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">

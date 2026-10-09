@@ -67,7 +67,7 @@ function MetricStat({ metric }: { metric: AiReportResponse["metrics"][number] })
   const icon = resolveMetricIcon(metric.icon, metric.label);
   return (
     <div className="relative group min-w-0">
-      <div className="relative bg-white/90 backdrop-blur-xl rounded-2xl border border-slate-200/60 p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-slate-300/60">
+      <div className="relative bg-white/97  rounded-2xl border border-slate-200/60 p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-slate-300/60">
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className={`w-10 h-10 shrink-0 rounded-xl ${c.bg} flex items-center justify-center ring-1 ${c.ring}`}>
             <span className={`material-symbols-outlined text-xl leading-none ${c.text}`}>{icon}</span>
@@ -99,7 +99,7 @@ function SectionTimelineCard({ section }: { section: AiReportResponse["sections"
       <div className={`absolute left-0 top-1.5 w-[23px] h-[23px] rounded-full ${s.light} border-2 ${s.border} flex items-center justify-center`}>
         <div className={`w-2.5 h-2.5 rounded-full ${s.dot}`} />
       </div>
-      <div className="bg-white/90 backdrop-blur-xl rounded-xl border border-slate-200/60 p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-slate-300/60">
+      <div className="bg-white/97  rounded-xl border border-slate-200/60 p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-slate-300/60">
         <div className="flex items-center gap-3 mb-2">
           <Icon name={s.icon} size={18} className={s.color} />
           <h3 className="font-semibold text-slate-900">{section.title}</h3>
@@ -248,7 +248,7 @@ export function ReportViewPage() {
       <AnimatedBackground />
 
       {/* Sticky header */}
-      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/60">
+      <div className="sticky top-0 z-30 bg-white/80 border-b border-slate-200/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <button
@@ -299,7 +299,7 @@ export function ReportViewPage() {
                 <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
                 <div className="relative">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
                       <Icon name="auto_awesome" size={20} className="text-white" />
                     </div>
                     <p className="text-[11px] font-semibold text-indigo-200 uppercase tracking-wider">Executive summary</p>
@@ -457,7 +457,7 @@ export function ReportViewPage() {
                   {report.insights.map((insight, i) => (
                     <div
                       key={i}
-                      className="group relative bg-white/90 backdrop-blur-xl rounded-xl border border-amber-200/60 p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-amber-300/80"
+                      className="group relative bg-white/97  rounded-xl border border-amber-200/60 p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-amber-300/80"
                     >
                       <div className="absolute top-0 left-0 w-1 h-full bg-amber-400 rounded-l-xl opacity-0 group-hover:opacity-100 transition-opacity" />
                       <div className="flex items-start gap-3">
@@ -489,7 +489,7 @@ export function ReportViewPage() {
                   {report.recommendations.map((rec, i) => (
                     <div
                       key={i}
-                      className="group relative bg-white/90 backdrop-blur-xl rounded-xl border border-slate-200/60 p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-emerald-200/80 hover:bg-emerald-50/20"
+                      className="group relative bg-white/97  rounded-xl border border-slate-200/60 p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-emerald-200/80 hover:bg-emerald-50/20"
                     >
                       <div className="flex items-start gap-4">
                         <div className="w-9 h-9 rounded-full bg-emerald-100 border-2 border-emerald-200 flex items-center justify-center flex-shrink-0 mt-0.5">
