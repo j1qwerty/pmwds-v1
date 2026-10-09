@@ -287,6 +287,10 @@ Screenshots go to `tests/e2e/e2e-artifacts/screenshots` (`NN-<step>-before/after
 uploads to `tests/e2e/e2e-artifacts/uploads`. Flows build on each other, so run
 flow 1 first (or `--flows all`). Destructive — disposable database only.
 
+> Serving `client2-optmz/` instead of `client2/`? It is a performance-only
+> build of the same UI on the same port (`:5175`), so every command above
+> applies unchanged — just start that folder as the web app.
+
 ## Future Improvements
 
 - Replace development password hashing with ASP.NET Core Identity password hashing or another production-grade password hasher.
