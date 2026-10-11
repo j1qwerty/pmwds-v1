@@ -1,0 +1,37 @@
+@host = http://localhost:5179
+# Paste a JWT from POST /api/v1/auth/login. Test with several roles (SuperAdmin, Director,
+# Department Head, Project Manager, Team Member) and compare against the older endpoints
+# noted next to each request.
+@token = PASTE_ACCESS_TOKEN_HERE
+
+### 1. Dashboard summary (replaces 6 calls). Compare totals with GET /projects/dashboard and GET /tasks/dashboard-summary
+GET {{host}}/api/v1/dashboard/summary
+Authorization: Bearer {{token}}
+
+### 1b. Same, limited to one department (must be 403 for a department the user cannot access)
+GET {{host}}/api/v1/dashboard/summary?departmentId=00000000-0000-0000-0000-000000000000&topProjects=5&escalations=5&activityDays=14
+Authorization: Bearer {{token}}
+
+### 2. Projects ranked by urgency (delayed first, then AI delay risk)
+GET {{host}}/api/v1/projects/urgency?limit=8
+Authorization: Bearer {{token}}
+
+### 3. My work. utcOffsetMinutes=330 is India (UTC+5:30)
+GET {{host}}/api/v1/me/work?utcOffsetMinutes=330&horizonDays=7
+Authorization: Bearer {{token}}
+
+### 4. Project health timeline (12 weeks). Replace the id with a project you can access
+GET {{host}}/api/v1/projects/00000000-0000-0000-0000-000000000000/health-timeline?weeks=12
+Authorization: Bearer {{token}}
+
+### 5. Global search (needs 2+ characters; sections you lack permission for come back empty)
+GET {{host}}/api/v1/search?q=road&limit=5
+Authorization: Bearer {{token}}
+
+### 6. Mark all notifications read (already existed; the UI just did not call it yet)
+PATCH {{host}}/api/v1/notifications/read-all
+Authorization: Bearer {{token}}
+
+### 7. Team activity summary (zero-filled days). Compare with GET /activitylogs/team
+GET {{host}}/api/v1/activitylogs/team/summary?days=7
+Authorization: Bearer {{token}}
