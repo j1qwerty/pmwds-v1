@@ -69,7 +69,7 @@ export function MilestoneFormModal({ open, projectId, initialData, departments, 
   const hasTasks = initialData?.hasTasks ?? false;
   const isEditMode = !!initialData;
 
-  const handleSubmit = (e?: FormEvent) => {
+  const handleSubmit = async (e?: FormEvent) => {
     e?.preventDefault();
     if (submitting) return;
     setValidationError("");
@@ -93,7 +93,13 @@ export function MilestoneFormModal({ open, projectId, initialData, departments, 
       projectId,
     };
     payload.progressPercentage = 0;
-    onSubmit(payload);
+    // Awaited + reset in finally: previously a slow or failing save left the
+    // footer button stuck on "Saving..." because `submitting` was never reset.
+    try {
+      await onSubmit(payload);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // Inline presentation of the existing single validation error (logic unchanged)

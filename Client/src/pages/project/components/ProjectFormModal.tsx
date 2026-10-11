@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import type { Department, OrganizationRecord, User } from "../../../types";
 import { priorities } from "../../constants";
 import { Sheet, ModalCancelButton, ModalPrimaryButton, ScopedUserSelect } from "../../shared/index";
@@ -92,12 +92,24 @@ export function ProjectFormModal({
     });
   };
 
-  const handleSubmit = (e?: FormEvent) => {
+  const handleSubmit = async (e?: FormEvent) => {
     e?.preventDefault();
     if (submitting) return;
     setSubmitting(true);
-    onSubmit(e as FormEvent);
+    // Awaited + reset in finally so a slow/failing save can't wedge the
+    // footer button on its loading state (same bug as MilestoneFormModal).
+    // NOTE: the footer button must go through formRef.requestSubmit() (real
+    // submit event). Both parents' onSubmit do e.preventDefault()
+    // unconditionally, so calling onSubmit() with no event throws TypeError
+    // and the save silently never fires.
+    try {
+      await onSubmit(e as FormEvent);
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  const formRef = useRef<HTMLFormElement | null>(null);
 
   return (
     <Sheet
@@ -112,7 +124,7 @@ export function ProjectFormModal({
         <>
           <ModalCancelButton onClick={onClose} />
           <ModalPrimaryButton
-            onClick={() => handleSubmit()}
+            onClick={() => formRef.current?.requestSubmit()}
             loading={submitting}
             label={submitting ? "Saving..." : submitLabel}
             icon="check-circle"
@@ -120,7 +132,7 @@ export function ProjectFormModal({
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
         <Field label="Name" required>
           <input
             type="text"

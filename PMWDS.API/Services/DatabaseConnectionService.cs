@@ -726,6 +726,17 @@ WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = @tableName AND COLUMN_NAME = @column
                 await ExecuteSqliteAsync(connection, "ALTER TABLE \"Skills\" ADD COLUMN \"OrganizationId\" TEXT NULL", ct);
             }
 
+            // ProjectDepartment.MarkedForDeletion: set when a department is
+            // unassigned from a project so the save can DELETE the join row
+            // instead of leaving it tracked and emitting an UPDATE that fails its
+            // RowVersion concurrency check (HTTP 500 on any project edit that
+            // changes the department list). See
+            // 20261011120000_AddProjectDepartmentMarkedForDeletion.
+            if (!await HasSqliteColumnAsync(connection, "ProjectDepartments", "MarkedForDeletion", ct))
+            {
+                await ExecuteSqliteAsync(connection, "ALTER TABLE \"ProjectDepartments\" ADD COLUMN \"MarkedForDeletion\" INTEGER NOT NULL DEFAULT 0", ct);
+            }
+
             if (!await HasSqliteColumnAsync(connection, "Roles", "Key", ct))
             {
                 await ExecuteSqliteAsync(connection, "ALTER TABLE \"Roles\" ADD COLUMN \"Key\" TEXT NOT NULL DEFAULT ''", ct);

@@ -46,6 +46,7 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<AllocationRecommendation> AllocationRecommendations { get; }
     public IRepository<DelayPrediction> DelayPredictions { get; }
     public IRepository<ProjectDocument> ProjectDocuments { get; }
+    public IRepository<ProjectDepartment> ProjectDepartments { get; }
     public IRepository<UtilizationCertificate> UtilizationCertificates { get; }
     public IRepository<UserSkill> UserSkills { get; }
     public IRepository<TaskAssignment> TaskAssignments { get; }
@@ -90,6 +91,7 @@ public class UnitOfWork : IUnitOfWork
         AllocationRecommendations = new EfRepository<AllocationRecommendation>(context);
         DelayPredictions = new EfRepository<DelayPrediction>(context);
         ProjectDocuments = new EfRepository<ProjectDocument>(context);
+    ProjectDepartments = new EfRepository<ProjectDepartment>(context);
         UtilizationCertificates = new EfRepository<UtilizationCertificate>(context);
         UserSkills = new EfRepository<UserSkill>(context);
         TaskAssignments = new EfRepository<TaskAssignment>(context);

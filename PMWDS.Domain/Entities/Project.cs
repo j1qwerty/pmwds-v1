@@ -149,7 +149,26 @@ public class Project : AuditableEntity, IHasDomainEvents
          DepartmentId = primary;
       }
 
-      _projectDepartments.RemoveAll(assignment => !requested.Contains(assignment.DepartmentId));
+      // Unassigned departments are flagged and removed from this backing list.
+      // ApplicationDbContext turns the flag into a real DELETE on save.
+      //
+      // Removing them from the collection alone is not enough: EF keeps the
+      // entity tracked and Unchanged, then issues an UPDATE for a row that is no
+      // longer wanted. That UPDATE misses its RowVersion concurrency check and
+      // the whole save fails with DbUpdateConcurrencyException ("expected to
+      // affect 1 row(s), but actually affected 0") - which is exactly why
+      // editing a project to add a second department returned 500 while editing
+      // it to the same single department worked.
+      foreach (var assignment in _projectDepartments
+                  .Where(a => !requested.Contains(a.DepartmentId))
+                  .ToList())
+      {
+         // Flag before removing: once it leaves the tracked collection EF
+         // detaches it and the persistence layer never sees the flag.
+         assignment.MarkForDeletion();
+         _projectDepartments.Remove(assignment);
+      }
+
       foreach (var assignment in _projectDepartments)
       {
          if (hasPrimaryDepartment && assignment.DepartmentId == DepartmentId)
@@ -163,6 +182,7 @@ public class Project : AuditableEntity, IHasDomainEvents
          _projectDepartments.Add(ProjectDepartment.Create(Id, departmentId, hasPrimaryDepartment && departmentId == DepartmentId));
       }
    }
+
    public void UpdateStatus(ProjectStatus newStatus)
    {
       switch (newStatus)

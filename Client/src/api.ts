@@ -75,6 +75,13 @@ type ApiOptions = {
   responseType?: 'json' | 'blob';
 };
 
+/**
+ * Deadline for writes. Reads already race a 45s deadline inside the request
+ * coordinator; without this, a POST/PUT/DELETE that never settles would hang
+ * the awaiting form forever.
+ */
+const WRITE_TIMEOUT_MS = 60_000;
+
 export type PaginatedResponse<T> = {
   items: T[];
   page: number;
@@ -138,11 +145,18 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
 
   const method = (options.method ?? "GET").toUpperCase();
   const execute = async () => {
-    const response = await fetch(url.toString(), {
-      method,
-      headers,
-      body,
-    });
+    // Reads are deadline-guarded by the request coordinator; writes get the
+    // same protection here so a never-settling request can't wedge a form's
+    // submitting state forever (the "stuck Saving..." failure mode).
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), WRITE_TIMEOUT_MS);
+    try {
+      const response = await fetch(url.toString(), {
+        method,
+        headers,
+        body,
+        signal: controller.signal,
+      });
 
     if (!response.ok) {
       const responseText = await response.text();
@@ -176,6 +190,14 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
     }
 
     return (await response.blob()) as T;
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") {
+        throw new ApiError(`Request timed out after ${WRITE_TIMEOUT_MS / 1000}s.`, 0);
+      }
+      throw e;
+    } finally {
+      clearTimeout(timeout);
+    }
   };
 
   if ((method === "GET" || method === "HEAD") && options.responseType !== "blob") {

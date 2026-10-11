@@ -96,6 +96,19 @@ public class ApplicationDbContext : DbContext
             }
         }
 
+        // ProjectDepartments is a join entity and is never soft-deleted: it carries a
+        // UNIQUE index on (ProjectId, DepartmentId), so an IsDeleted row would
+        // permanently block re-assigning that department to the project. The
+        // domain flags a dropped assignment with MarkForDeletion() and drops it
+        // from the collection; translate the flag into a real DELETE here.
+        foreach (var entry in ChangeTracker.Entries<ProjectDepartment>())
+        {
+            if (entry.Entity.MarkedForDeletion)
+            {
+                entry.State = EntityState.Deleted;
+            }
+        }
+
         return await base.SaveChangesAsync(ct);
     }
 }

@@ -893,23 +893,25 @@ function ProjectSummaryCard({
           </div>
 
           <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-2">
-              <h3
-                className="text-sm font-bold text-slate-800 leading-snug line-clamp-2 group-hover:text-indigo-700 transition-colors"
-                title={project.name}
-              >
-                {project.name}
-              </h3>
+            {/* Name gets the full card width (up to 3 lines). The status badge
+                used to share its row, squeezing the name to a few characters
+                ("Ganga Expr…", "Demo 202…") on narrow cards. */}
+            <h3
+              className="text-sm font-bold text-slate-800 leading-snug line-clamp-3 break-words group-hover:text-indigo-700 transition-colors"
+              title={project.name}
+            >
+              {project.name}
+            </h3>
+            {/* Status + project code share one line under the name. */}
+            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
               <span
                 className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${status.badgeBg} ${status.badgeText}`}
               >
                 <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
                 {STATUS_LABELS[project.status] || project.status}
               </span>
-            </div>
-            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
               {project.projectCode && (
-                <span className="text-[10px] font-semibold text-slate-400 font-mono">{project.projectCode}</span>
+                <span className="text-[10px] font-semibold text-slate-400 font-mono truncate min-w-0">{project.projectCode}</span>
               )}
               <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${priority.bg} ${priority.text}`}>
                 <span className={`w-1.5 h-1.5 rounded-full inline-block mr-1 ${priority.dot}`} />

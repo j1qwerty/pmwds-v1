@@ -36,6 +36,13 @@ public class UpdateProjectCommandHandler
             project.PlannedBudget
         };
         var dto = req.Dto;
+        // The join rows that were loaded from the database. Needed to tell which
+        // ProjectDepartment instances the AssignDepartments calls below create.
+        // Compared by reference on purpose: Project.Update() runs
+        // AssignDepartments too, so an already-assigned department can be dropped
+        // and re-created as a *new* instance within the same request. Comparing
+        // by DepartmentId would mistake that new instance for an existing row.
+        var loadedAssignments = project.ProjectDepartments.ToList();
         var projectManagerId = string.IsNullOrWhiteSpace(dto.ProjectManagerId)
         ? (Guid?)null
         : Guid.Parse(dto.ProjectManagerId);
@@ -49,10 +56,24 @@ public class UpdateProjectCommandHandler
         dto.Priority,
         dto.DepartmentId,
         projectManagerId);
+        // Project.Update() already assigned the single primary department; this call
+        // reconciles the full requested set (adding / dropping assignments).
         project.AssignDepartments(dto.DepartmentIds ?? new[] { dto.DepartmentId });
         project.SetModified(
         _currentUser.UserId ?? "system");
         await _uow.Projects.UpdateAsync(project, ct);
+        // EfRepository.UpdateAsync marks the aggregate root Modified. EF's cascade
+        // for Modified does NOT add dependents, so the ProjectDepartment rows that
+        // AssignDepartments just created were left untracked and EF emitted an
+        // UPDATE for each instead of an INSERT. That UPDATE matched no row and the
+        // whole request failed with DbUpdateConcurrencyException (HTTP 500) - so
+        // editing a project worked only while the department list stayed the
+        // same length. Track the new join rows explicitly as Added.
+        foreach (var assignment in project.ProjectDepartments
+        .Where(a => !loadedAssignments.Any(loaded => ReferenceEquals(loaded, a))))
+        {
+            await _uow.ProjectDepartments.AddAsync(assignment, ct);
+        }
         await _uow.SaveChangesAsync(ct);
         await _audit.LogAsync(
         _currentUser.UserId ?? "system",

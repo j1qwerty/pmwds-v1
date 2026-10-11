@@ -1844,6 +1844,9 @@ namespace PMWDS.Persistence.Migrations
                     b.Property<bool>("IsPrimary")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("MarkedForDeletion")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("ModifiedBy")
                         .HasColumnType("TEXT");
 

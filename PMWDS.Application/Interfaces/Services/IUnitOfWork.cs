@@ -33,6 +33,7 @@ public interface IUnitOfWork : IDisposable
     IRepository<Domain.Entities.AllocationRecommendation> AllocationRecommendations { get; }
     IRepository<Domain.Entities.DelayPrediction> DelayPredictions { get; }
     IRepository<Domain.Entities.ProjectDocument> ProjectDocuments { get; }
+    IRepository<Domain.Entities.ProjectDepartment> ProjectDepartments { get; }
     IRepository<Domain.Entities.UtilizationCertificate> UtilizationCertificates { get; }
     IRepository<Domain.Entities.UserSkill> UserSkills { get; }
     IRepository<Domain.Entities.TaskAssignment> TaskAssignments { get; }

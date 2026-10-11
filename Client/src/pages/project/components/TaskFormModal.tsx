@@ -142,7 +142,7 @@ export function TaskFormModal({
     return errs;
   };
 
-  const handleSubmit = (e?: FormEvent) => {
+  const handleSubmit = async (e?: FormEvent) => {
     e?.preventDefault();
     if (submitting) return;
     const errs = validate();
@@ -161,7 +161,13 @@ export function TaskFormModal({
     };
     if (form.milestoneId) submission.milestoneId = form.milestoneId;
     if (form.assignedToUserIds[0]) submission.assignedToUserId = form.assignedToUserIds[0];
-    onSubmit(submission);
+    // Awaited + reset in finally so a slow/failing save can't wedge the
+    // footer button on its loading state (same bug as MilestoneFormModal).
+    try {
+      await onSubmit(submission);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
