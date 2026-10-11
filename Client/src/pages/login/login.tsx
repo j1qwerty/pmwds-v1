@@ -163,52 +163,39 @@ export function LoginPage() {
   };
 
   const title = mode === "signup" ? "Create account" : mode === "forgot" ? "Reset request" : mode === "reset" ? "Set new password" : "Sign in";
-
-  const features = [
-    {
-      icon: "analytics",
-      title: "Real-time Analytics",
-      description: "Track project progress with live dashboards and performance metrics"
-    },
-    {
-      icon: "account_tree",
-      title: "Department Management",
-      description: "Organize projects across departments with role-based access control"
-    },
-    {
-      icon: "task_alt",
-      title: "Milestone Tracking",
-      description: "Monitor deliverables and deadlines with automated milestone alerts"
-    },
-    {
-      icon: "insights",
-      title: "AI-Powered Insights",
-      description: "Get intelligent recommendations and risk predictions for your projects"
-    }
-  ];
+  const submitLabel =
+    mode === "signup" ? "Create Account" :
+    mode === "forgot" ? "Send Reset Link" :
+    mode === "reset" ? "Reset Password" : "Sign In";
+  const loadingLabel =
+    mode === "signup" ? "Creating account..." :
+    mode === "forgot" ? "Sending link..." :
+    mode === "reset" ? "Resetting..." : "Signing in...";
 
   return (
-    <div className="flex min-h-screen w-full bg-gradient-to-br from-slate-50 to-indigo-50/30 font-sans">
+    <div className="flex min-h-screen w-full bg-gradient-to-br from-slate-50 via-indigo-50/30 to-violet-50/40 font-sans">
       {/* Left Panel - Login Form */}
       <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-[440px]">
           {/* Mobile Logo */}
           <div className="lg:hidden text-center mb-8">
             <div className="inline-flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
                 <Icon name="rocket_launch" size={22} className="text-white" />
               </div>
-              <span className="text-2xl font-bold text-indigo-600">PMWDS</span>
+              <span className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">
+                PMWDS
+              </span>
             </div>
             <p className="text-sm text-slate-500">
               Project Monitoring & Workflow Distribution
             </p>
           </div>
 
-          {/* Login Card */}
-          <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200/60 p-8">
+          {/* Login Card — glass-panel */}
+          <div className="glass-panel rounded-2xl shadow-xl shadow-slate-200/50 p-8">
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-start gap-3 animate-shake">
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-5 flex items-start gap-3 animate-shake">
                 <Icon name="error" size={20} className="text-red-500 shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-red-700 mb-0.5">
@@ -228,7 +215,7 @@ export function LoginPage() {
             )}
 
             {success && (
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-5 flex items-start gap-3">
                 <Icon name="check_circle" size={20} className="text-emerald-500 shrink-0 mt-0.5" />
                 <p className="text-sm text-emerald-700 leading-relaxed">
                   {success}
@@ -260,7 +247,7 @@ export function LoginPage() {
                       value={firstName}
                       onChange={(e) => {
                         setFirstName(e.target.value);
-                        if (fieldErrors.firstName) setFieldErrors(prev => ({ ...prev, firstName: undefined }));
+                        if (fieldErrors.firstName) setFieldErrors((prev) => ({ ...prev, firstName: undefined }));
                       }}
                       required
                       placeholder="First name"
@@ -282,7 +269,7 @@ export function LoginPage() {
                       value={lastName}
                       onChange={(e) => {
                         setLastName(e.target.value);
-                        if (fieldErrors.lastName) setFieldErrors(prev => ({ ...prev, lastName: undefined }));
+                        if (fieldErrors.lastName) setFieldErrors((prev) => ({ ...prev, lastName: undefined }));
                       }}
                       required
                       placeholder="Last name"
@@ -303,7 +290,7 @@ export function LoginPage() {
               )}
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                   Email Address
                 </label>
                 <div className="relative">
@@ -313,7 +300,7 @@ export function LoginPage() {
                     value={email}
                     onChange={(e) => {
                       setEmail(e.target.value);
-                      if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: undefined }));
+                      if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: undefined }));
                     }}
                     placeholder="you@example.com"
                     disabled={loading}
@@ -336,14 +323,14 @@ export function LoginPage() {
 
               {mode === "reset" && (
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                     Reset Token
                   </label>
                   <input
                     value={resetToken}
                     onChange={(e) => {
                       setResetToken(e.target.value);
-                      if (fieldErrors.resetToken) setFieldErrors(prev => ({ ...prev, resetToken: undefined }));
+                      if (fieldErrors.resetToken) setFieldErrors((prev) => ({ ...prev, resetToken: undefined }));
                     }}
                     required
                     disabled={loading}
@@ -362,13 +349,13 @@ export function LoginPage() {
               {mode !== "forgot" && (
                 <div className="flex flex-col gap-1.5">
                   <div className="flex justify-between items-center">
-                    <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                       {mode === "reset" ? "New Password" : "Password"}
                     </label>
                     {mode === "signin" && (
                       <button
                         type="button"
-                        className="text-xs text-indigo-600 font-medium hover:text-indigo-700 transition-colors"
+                        className="text-xs text-indigo-600 font-semibold hover:text-indigo-700 transition-colors"
                         onClick={() => {
                           setMode("forgot");
                           setError("");
@@ -380,15 +367,17 @@ export function LoginPage() {
                     )}
                   </div>
                   <div className="relative">
-                    <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xl pointer-events-none">
-                      lock
-                    </span>
+                    <Icon
+                      name="lock"
+                      size={20}
+                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                    />
                     <input
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => {
                         setPassword(e.target.value);
-                        if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: undefined }));
+                        if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: undefined }));
                       }}
                       placeholder="Enter your password"
                       disabled={loading}
@@ -405,9 +394,7 @@ export function LoginPage() {
                       className="absolute right-1 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-slate-600 transition-colors"
                       aria-label="Toggle password visibility"
                     >
-                      <span className="material-symbols-outlined text-xl">
-                        {showPassword ? "visibility_off" : "visibility"}
-                      </span>
+                      <Icon name={showPassword ? "visibility_off" : "visibility"} size={18} />
                     </button>
                   </div>
                   {fieldErrors.password && (
@@ -422,17 +409,17 @@ export function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-sm font-semibold rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-indigo-500/25 active:scale-[0.98] flex items-center justify-center gap-2"
+                className="gradient-btn w-full h-11 text-white text-sm font-semibold rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-indigo-500/30 active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <>
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    {mode === "signup" ? "Creating account..." : mode === "forgot" ? "Sending link..." : mode === "reset" ? "Resetting..." : "Signing in..."}
+                    {loadingLabel}
                   </>
                 ) : (
                   <>
-                    <span className="material-symbols-outlined text-lg">login</span>
-                    {mode === "signup" ? "Create Account" : mode === "forgot" ? "Send Reset Link" : mode === "reset" ? "Reset Password" : "Sign In"}
+                    <Icon name="login" size={18} />
+                    {submitLabel}
                   </>
                 )}
               </button>
@@ -446,7 +433,7 @@ export function LoginPage() {
                     setSuccess("");
                     setFieldErrors({});
                   }}
-                  className="w-full h-11 border-2 border-slate-200 hover:border-indigo-300 text-slate-700 hover:text-indigo-700 text-sm font-semibold rounded-xl transition-all duration-200 hover:bg-indigo-50/50 flex items-center justify-center gap-2"
+                  className="w-full h-11 border border-slate-200 hover:border-indigo-300 text-slate-700 hover:text-indigo-700 text-sm font-semibold rounded-xl transition-all duration-200 hover:bg-indigo-50/50 flex items-center justify-center gap-2"
                 >
                   <Icon name="person_add" size={18} />
                   Create New Account
@@ -458,82 +445,52 @@ export function LoginPage() {
           {/* Demo Accounts - Mobile only */}
           {mode === "signin" && (
             <div className="mt-5 lg:hidden">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="flex-1 h-px bg-slate-200" />
-                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-sm">science</span>
-                  Dev Quick Login
-                </span>
-                <div className="flex-1 h-px bg-slate-200" />
-              </div>
-              <div className="space-y-2.5">
-                {demoAccountGroups.map((group) => (
-                  <div key={group.label}>
-                    <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 px-1">
-                      {group.label}
-                    </div>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {group.accounts.map((account) => (
-                        <button
-                          key={account.email}
-                          onClick={() => handleDemoLogin(account.email)}
-                          disabled={loading}
-                          className="flex items-center gap-2 p-2 rounded-lg border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/50 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <div className={`w-7 h-7 rounded-md ${account.color} flex items-center justify-center shrink-0`}>
-                            <span className="material-symbols-outlined text-white text-[13px]">
-                              {account.icon}
-                            </span>
-                          </div>
-                          <div className="text-left min-w-0">
-                            <div className="text-[11px] font-semibold text-slate-700 group-hover:text-indigo-700 transition-colors truncate">
-                              {account.label}
-                            </div>
-                            <div className="text-[9px] text-slate-400 truncate">
-                              {account.email}
-                            </div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <p className="text-[9px] text-slate-400 text-center mt-2.5">
-                Password: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 font-mono text-[9px]">Pmwds@123</code>
-              </p>
+              <DemoAccountsPanel
+                groups={demoAccountGroups}
+                onPick={handleDemoLogin}
+                loading={loading}
+                variant="light"
+              />
             </div>
           )}
         </div>
       </div>
 
-      {/* Right Panel - Demo Accounts (Desktop) */}
-      {mode === "signin" && (
-        <div className="hidden lg:flex w-[45%] xl:w-[50%] relative overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800">
+      {/* Right Panel - Sidebar (signin: demo accounts; otherwise: showcase) */}
+      {mode === "signin" ? (
+        <div className="hidden lg:flex w-[45%] xl:w-[50%] relative overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800">
           <div className="absolute inset-0 opacity-10">
             <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full translate-x-1/2 -translate-y-1/2" />
             <div className="absolute bottom-0 left-0 w-[30rem] h-[30rem] bg-white rounded-full -translate-x-1/4 translate-y-1/4" />
             <div className="absolute top-1/2 left-1/2 w-[40rem] h-[40rem] bg-white rounded-full -translate-x-1/2 -translate-y-1/2 opacity-50" />
           </div>
 
-          <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20 w-full">
-            
-
-            
-
+          <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20 w-full py-12">
             {/* Heading */}
             <div className="mb-6">
+              <div className="inline-flex items-center gap-3 mb-4">
+                <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
+                  <Icon name="rocket_launch" size={22} className="text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-white tracking-tight">PMWDS</h1>
+                  <p className="text-xs text-indigo-200">Project Monitoring & Workflow Distribution</p>
+                </div>
+              </div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="material-symbols-outlined text-indigo-200 text-lg">science</span>
-                <h2 className="text-base font-semibold text-white">Dev Quick Login</h2>
+                <Icon name="science" size={18} className="text-indigo-200" />
+                <h2 className="text-base font-bold text-white">Dev Quick Login</h2>
               </div>
               <p className="text-xs text-indigo-200/70">
-                Click any account to instantly sign in with password <code className="bg-white/10 px-1.5 py-0.5 rounded text-indigo-200 font-mono text-[10px]">Pmwds@123</code>
+                Click any account to instantly sign in with password{" "}
+                <code className="bg-white/10 px-1.5 py-0.5 rounded text-indigo-100 font-mono text-[10px]">
+                  Pmwds@123
+                </code>
               </p>
             </div>
 
             {/* Demo Accounts */}
-            <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-16rem)] pr-2">
+            <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-22rem)] pr-2">
               {demoAccountGroups.map((group) => (
                 <div key={group.label}>
                   <div className="text-[10px] font-bold text-indigo-200 uppercase tracking-widest mb-2">
@@ -545,12 +502,10 @@ export function LoginPage() {
                         key={account.email}
                         onClick={() => handleDemoLogin(account.email)}
                         disabled={loading}
-                        className="flex items-center gap-2.5 p-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 hover:bg-white/20 hover:border-white/20 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-2.5 p-3 rounded-xl bg-white/10 border border-white/10 hover:bg-white/20 hover:border-white/30 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <div className={`w-8 h-8 rounded-lg ${account.color} flex items-center justify-center shrink-0 shadow-sm`}>
-                          <span className="material-symbols-outlined text-white text-[15px]">
-                            {account.icon}
-                          </span>
+                          <Icon name={account.icon} size={15} className="text-white" />
                         </div>
                         <div className="text-left min-w-0 flex-1">
                           <div className="text-xs font-semibold text-white group-hover:text-indigo-100 transition-colors truncate">
@@ -560,9 +515,11 @@ export function LoginPage() {
                             {account.email}
                           </div>
                         </div>
-                        <span className="material-symbols-outlined text-indigo-300/50 group-hover:text-white text-sm ml-auto shrink-0 transition-all opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0">
-                          arrow_forward
-                        </span>
+                        <Icon
+                          name="arrow_forward"
+                          size={14}
+                          className="text-indigo-300/50 group-hover:text-white ml-auto shrink-0 transition-all opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0"
+                        />
                       </button>
                     ))}
                   </div>
@@ -572,72 +529,89 @@ export function LoginPage() {
 
             {/* Bottom Info */}
             <div className="mt-8 pt-6 border-t border-white/10">
-              <div className="flex items-center gap-4 text-[10px] text-indigo-200/60">
+              <div className="flex items-center gap-4 text-[10px] text-indigo-200/70">
                 <span className="flex items-center gap-1">
-                  <span className="material-symbols-outlined text-xs">apartment</span>
+                  <Icon name="apartment" size={12} />
                   11 Departments
                 </span>
                 <span className="w-px h-3 bg-white/20" />
                 <span className="flex items-center gap-1">
-                  <span className="material-symbols-outlined text-xs">flag</span>
+                  <Icon name="flag" size={12} />
                   13 Milestones
                 </span>
                 <span className="w-px h-3 bg-white/20" />
                 <span className="flex items-center gap-1">
-                  <span className="material-symbols-outlined text-xs">group</span>
+                  <Icon name="group" size={12} />
                   21 Users
                 </span>
               </div>
             </div>
           </div>
         </div>
+      ) : (
+        <LoginSidebar />
       )}
+    </div>
+  );
+}
 
-      {/* Right Panel - Non-signin modes (show features) */}
-      {mode !== "signin" && (
-        <div className="hidden lg:flex lg:w-[45%] xl:w-[50%] relative overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800">
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full translate-x-1/2 -translate-y-1/2" />
-            <div className="absolute bottom-0 left-0 w-[30rem] h-[30rem] bg-white rounded-full -translate-x-1/4 translate-y-1/4" />
-            <div className="absolute top-1/2 left-1/2 w-[40rem] h-[40rem] bg-white rounded-full -translate-x-1/2 -translate-y-1/2 opacity-50" />
-          </div>
-          <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20 w-full">
-            <div className="mb-12">
-              <div className="inline-flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                  <Icon name="rocket_launch" size={24} className="text-white" />
-                </div>
-                <div>
-                  <h1 className="text-3xl xl:text-4xl font-bold text-white tracking-tight">
-                    PMWDS
-                  </h1>
-                  <p className="text-sm text-indigo-200 mt-0.5">
-                    Project Monitoring & Workflow Distribution System
-                  </p>
-                </div>
-              </div>
+// ─── Demo Accounts Panel (mobile) ──────────────────────────────────
+
+function DemoAccountsPanel({
+  groups,
+  onPick,
+  loading,
+  variant,
+}: {
+  groups: typeof demoAccountGroups;
+  onPick: (email: string) => void;
+  loading: boolean;
+  variant: "light" | "dark";
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-3">
+        <div className="flex-1 h-px bg-slate-200" />
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+          <Icon name="science" size={14} />
+          Dev Quick Login
+        </span>
+        <div className="flex-1 h-px bg-slate-200" />
+      </div>
+      <div className="space-y-2.5">
+        {groups.map((group) => (
+          <div key={group.label}>
+            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 px-1">
+              {group.label}
             </div>
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-              {features.map((feature, index) => (
-                <div
-                  key={index}
-                  className="group bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:bg-white/15 transition-all duration-300 hover:scale-105"
+            <div className="grid grid-cols-2 gap-1.5">
+              {group.accounts.map((account) => (
+                <button
+                  key={account.email}
+                  onClick={() => onPick(account.email)}
+                  disabled={loading}
+                  className="flex items-center gap-2 p-2 rounded-lg border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/50 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <span className="material-symbols-outlined text-2xl text-indigo-200 mb-2 block">
-                    {feature.icon}
-                  </span>
-                  <h3 className="text-sm font-semibold text-white mb-1">
-                    {feature.title}
-                  </h3>
-                  <p className="text-xs text-indigo-200/80 leading-relaxed">
-                    {feature.description}
-                  </p>
-                </div>
+                  <div className={`w-7 h-7 rounded-md ${account.color} flex items-center justify-center shrink-0`}>
+                    <Icon name={account.icon} size={13} className="text-white" />
+                  </div>
+                  <div className="text-left min-w-0">
+                    <div className="text-[11px] font-semibold text-slate-700 group-hover:text-indigo-700 transition-colors truncate">
+                      {account.label}
+                    </div>
+                    <div className="text-[9px] text-slate-400 truncate">
+                      {account.email}
+                    </div>
+                  </div>
+                </button>
               ))}
             </div>
           </div>
-        </div>
-      )}
+        ))}
+      </div>
+      <p className="text-[9px] text-slate-400 text-center mt-2.5">
+        Password: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 font-mono text-[9px]">Pmwds@123</code>
+      </p>
     </div>
   );
 }

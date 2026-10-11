@@ -1,8 +1,9 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import type { Department, OrganizationRecord, User } from "../../../types";
 import { priorities } from "../../constants";
-import { ModalOverlay, ScopedUserSelect } from "../../shared/index";
+import { Sheet, ModalCancelButton, ModalPrimaryButton, ScopedUserSelect } from "../../shared/index";
 import { BUDGET_INPUT_LABEL, formatRupees, lakhsToRupees, rupeesToLakhs } from "../../../lib/formatters";
+import { Icon } from "../../../components/ui/Icon";
 
 export type ProjectFormState = {
   projectCode: string;
@@ -54,7 +55,7 @@ export function ProjectFormModal({
       const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
       setForm((prev) => ({ ...prev, projectCode: `${sanitized}-${ts}-${rand}` }));
     }
-  }, [form.name]);
+  }, [form.name]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [showProjectManager, setShowProjectManager] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -68,17 +69,18 @@ export function ProjectFormModal({
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setBudgetLakhs(form.plannedBudget > 0 ? String(rupeesToLakhs(form.plannedBudget)) : "");
     }
   }, [open, form.plannedBudget]);
-
-  if (!open) return null;
 
   const filteredDepartments = form.organizationId
     ? departments.filter((d) => d.organizationId === form.organizationId)
     : departments;
   const selectedDepartment = departments.find((d) => d.id === form.departmentId);
-  const selectedDepartmentIds = new Set(form.departmentIds?.length ? form.departmentIds : form.departmentId ? [form.departmentId] : []);
+  const selectedDepartmentIds = new Set(
+    form.departmentIds?.length ? form.departmentIds : form.departmentId ? [form.departmentId] : [],
+  );
   const updateDepartmentSelection = (departmentId: string, checked: boolean) => {
     const nextDepartmentIds = checked
       ? Array.from(new Set([...selectedDepartmentIds, departmentId]))
@@ -90,39 +92,74 @@ export function ProjectFormModal({
     });
   };
 
+  const handleSubmit = (e?: FormEvent) => {
+    e?.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
+    onSubmit(e as FormEvent);
+  };
+
   return (
-    <ModalOverlay onClose={onClose}>
-      <div className="bg-white rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl border border-slate-200">
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center">
-            <span className="material-symbols-outlined text-indigo-600 text-2xl">folder</span>
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-slate-900">{title}</h2>
-          </div>
-        </div>
-        <form onSubmit={(e) => { if (submitting) return; setSubmitting(true); onSubmit(e); }} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="md:col-span-2">
-            <Field label="Name" required>
-              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-sm" required />
-            </Field>
-          </div>
-          <div className="md:col-span-2">
-            <Field label="Description">
-              <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-sm" rows={3} />
-            </Field>
-          </div>
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title={title}
+      description="Set up the project details and assigned departments"
+      icon="folder_open"
+      accent="primary"
+      size="xl"
+      footer={
+        <>
+          <ModalCancelButton onClick={onClose} />
+          <ModalPrimaryButton
+            onClick={() => handleSubmit()}
+            loading={submitting}
+            label={submitting ? "Saving..." : submitLabel}
+            icon="check-circle"
+          />
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Field label="Name" required>
+          <input
+            type="text"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            required
+            className={INPUT_CLASS}
+            placeholder="e.g. District water quality monitoring"
+          />
+        </Field>
+
+        <Field label="Description">
+          <textarea
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            rows={3}
+            className="w-full min-h-[80px] px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all resize-none"
+            placeholder="What does this project cover?"
+          />
+        </Field>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Priority">
-            <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-sm">
+            <select
+              value={form.priority}
+              onChange={(e) => setForm({ ...form, priority: e.target.value })}
+              className={INPUT_CLASS}
+            >
               {priorities.map((p) => (
                 <option key={p}>{p}</option>
               ))}
             </select>
-            
           </Field>
-            <Field label={BUDGET_INPUT_LABEL}>
+
+          <Field label={BUDGET_INPUT_LABEL}>
             <div className="relative">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">₹</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">
+                ₹
+              </span>
               <input
                 type="number"
                 min={0}
@@ -131,104 +168,133 @@ export function ProjectFormModal({
                 onChange={(e) => {
                   const text = e.target.value;
                   setBudgetLakhs(text);
-                  setForm((prev) => ({ ...prev, plannedBudget: text === "" ? 0 : lakhsToRupees(Number(text)) }));
+                  setForm((prev) => ({
+                    ...prev,
+                    plannedBudget: text === "" ? 0 : lakhsToRupees(Number(text)),
+                  }));
                 }}
                 placeholder="0"
                 title="Enter the project budget in lakhs (1 lakh = ₹1,00,000)"
-                className="w-full border border-slate-200 rounded-lg p-2 pl-6 text-sm"
+                className={`${INPUT_CLASS} pl-7`}
               />
             </div>
             <p className="text-[10px] text-slate-400 mt-1">
-              Enter amount in lakhs (1 lakh = ₹1,00,000)
+              In lakhs (1L = ₹1,00,000)
               {form.plannedBudget > 0 && <> &middot; {formatRupees(form.plannedBudget)}</>}
             </p>
           </Field>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Start">
-            <input type="date" value={form.plannedStartDate} onChange={(e) => setForm({ ...form, plannedStartDate: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-sm" />
+            <input
+              type="date"
+              value={form.plannedStartDate}
+              onChange={(e) => setForm({ ...form, plannedStartDate: e.target.value })}
+              className={INPUT_CLASS}
+            />
           </Field>
           <Field label="End">
-            <input type="date" value={form.plannedEndDate} onChange={(e) => setForm({ ...form, plannedEndDate: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-sm" />
+            <input
+              type="date"
+              value={form.plannedEndDate}
+              onChange={(e) => setForm({ ...form, plannedEndDate: e.target.value })}
+              className={INPUT_CLASS}
+            />
           </Field>
-        
-          {showOrganizationFilter && (
-            <Field label="Organization">
-              <select
-                value={form.organizationId}
-                onChange={(e) => setForm({ ...form, organizationId: e.target.value, departmentId: "", departmentIds: [], projectManagerId: "" })}
-                className="w-full border border-slate-200 rounded-lg p-2 text-sm"
-              >
-                <option value="">Choose</option>
-                {organizations.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          )}
-          <div className="md:col-span-2">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Assigned Departments</span>
-            <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-lg border border-slate-200 p-3">
-              {filteredDepartments.map((department) => (
-                <label key={department.id} className="flex items-center gap-2 text-sm text-slate-600">
-                  <input
-                    type="checkbox"
-                    checked={selectedDepartmentIds.has(department.id)}
-                    onChange={(event) => updateDepartmentSelection(department.id, event.target.checked)}
-                  />
-                  <span>{department.name}</span>
-                </label>
-              ))}
-              {filteredDepartments.length === 0 && (
-                <span className="text-xs text-slate-400">No departments available.</span>
-              )}
-            </div>
-          </div>
-          <div className="md:col-span-2">
-            <button
-              type="button"
-              onClick={() => setShowProjectManager(!showProjectManager)}
-              className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+        </div>
+
+        {showOrganizationFilter && (
+          <Field label="Organization">
+            <select
+              value={form.organizationId}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  organizationId: e.target.value,
+                  departmentId: "",
+                  departmentIds: [],
+                  projectManagerId: "",
+                })
+              }
+              className={INPUT_CLASS}
             >
-              <span className="material-symbols-outlined text-lg">
-                {showProjectManager ? "expand_less" : "expand_more"}
-              </span>
-              Project Manager {!showProjectManager && form.projectManagerId && "(assigned)"}
-            </button>
-            {showProjectManager && (
-              <div className="mt-2">
-                <ScopedUserSelect
-                  users={users}
-                  value={form.projectManagerId}
-                  organizationId={form.organizationId || selectedDepartment?.organizationId}
-                  label=""
-                  onChange={(projectManagerId) => setForm({ ...form, projectManagerId })}
+              <option value="">Choose</option>
+              {organizations.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
+
+        <div>
+          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">
+            Assigned departments
+          </span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 rounded-lg border border-slate-200 bg-slate-50/50 p-2.5 max-h-44 overflow-y-auto">
+            {filteredDepartments.map((department) => (
+              <label
+                key={department.id}
+                className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer hover:bg-white rounded-md px-2 py-1 transition-colors"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedDepartmentIds.has(department.id)}
+                  onChange={(event) => updateDepartmentSelection(department.id, event.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-200"
                 />
-              </div>
+                <span className="truncate">{department.name}</span>
+              </label>
+            ))}
+            {filteredDepartments.length === 0 && (
+              <span className="text-xs text-slate-400 px-2 py-1">No departments available.</span>
             )}
           </div>
-          <div className="md:col-span-2 flex justify-end gap-3 pt-4 border-t border-slate-100">
-            <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600">
-              Cancel
-            </button>
-            <button type="submit" disabled={submitting} className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
-              {submitting ? "Saving..." : submitLabel}
-            </button>
-          </div>
-        </form>
-      </div>
-    </ModalOverlay>
+        </div>
+
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowProjectManager(!showProjectManager)}
+            aria-expanded={showProjectManager}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
+          >
+            <Icon name={showProjectManager ? "chevron-up" : "chevron-down"} size={15} className="text-slate-400" />
+            Project manager {!showProjectManager && form.projectManagerId && "(assigned)"}
+          </button>
+          {showProjectManager && (
+            <div className="mt-2">
+              <ScopedUserSelect
+                users={users}
+                value={form.projectManagerId}
+                organizationId={form.organizationId || selectedDepartment?.organizationId}
+                label=""
+                onChange={(projectManagerId) => setForm({ ...form, projectManagerId })}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Hidden submit input so pressing Enter triggers the form onSubmit */}
+        <input type="submit" className="hidden" />
+      </form>
+    </Sheet>
   );
 }
 
-function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
+const INPUT_CLASS =
+  "w-full h-9 px-3 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-700 outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all";
+
+function Field({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
   return (
-    <label className="flex flex-col gap-1">
-      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+    <div>
+      <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">
         {label}
-        {required && " *"}
-      </span>
+        {required && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
       {children}
-    </label>
+    </div>
   );
 }

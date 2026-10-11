@@ -1,26 +1,34 @@
-import { useState } from "react";
-import { DeleteConfirmationModal, ModalOverlay } from "../../shared/index";
+import { DeleteConfirmationModal } from "../../shared/index";
 
 interface ConfirmDeleteModalProps {
   open: boolean;
   name: string;
   warning?: string;
-  onConfirm: () => void;
+  /** Optional custom title forwarded to the shared modal */
+  title?: string;
+  /** Optional custom body copy forwarded to the shared modal */
+  description?: string;
+  onConfirm: () => void | Promise<void>;
   onClose: () => void;
 }
 
-export function ConfirmDeleteModal({ open, name, warning, onConfirm, onClose }: ConfirmDeleteModalProps) {
-  const [submitting, setSubmitting] = useState(false);
+/**
+ * Thin wrapper around the shared `DeleteConfirmationModal` for the project pages.
+ *
+ * `DeleteConfirmationModal` is self-contained (renders its own `<Modal>` with
+ * icon="delete" / accent="danger"), so this component just conditionally mounts
+ * it — no `ModalOverlay` wrapper needed.
+ */
+export function ConfirmDeleteModal({ open, name, warning, title, description, onConfirm, onClose }: ConfirmDeleteModalProps) {
   if (!open) return null;
   return (
-    <ModalOverlay onClose={onClose}>
-      <DeleteConfirmationModal
-        name={name}
-        warning={warning}
-        submitting={submitting}
-        onConfirm={() => { setSubmitting(true); onConfirm(); }}
-        onCancel={onClose}
-      />
-    </ModalOverlay>
+    <DeleteConfirmationModal
+      name={name}
+      warning={warning}
+      title={title}
+      description={description}
+      onConfirm={onConfirm}
+      onCancel={onClose}
+    />
   );
 }

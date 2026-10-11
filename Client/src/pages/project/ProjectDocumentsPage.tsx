@@ -7,8 +7,8 @@ import { ProjectNotFound } from "./ProjectNotFound";
 
 /**
  * Documents tab for a project. Reuses the shared DocumentsSection so
- * upload/download and the utilization-certificate block behave identically
- * everywhere they appear.
+ * upload/download/delete and the utilization-certificate block behave
+ * identically everywhere they appear.
  */
 export function ProjectDocumentsPage() {
   const ws = useProjectWorkspace();
@@ -37,6 +37,7 @@ export function ProjectDocumentsPage() {
           authToken={auth?.token}
           milestones={ws.milestones}
           tasks={ws.tasks}
+          users={ws.users}
         />
       </GlassCard>
     </div>

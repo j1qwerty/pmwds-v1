@@ -1,5 +1,6 @@
 import type { Department, OrganizationRecord } from "../../../types";
-import { GlassCard } from "../../shared";
+import { GlassCard, EmptyState } from "../../shared";
+import { Icon } from "../../../components/ui/Icon";
 
 interface MilestoneEntry {
   id: string;
@@ -39,12 +40,13 @@ export function MilestoneDepartmentsStep({
 
   if (milestones.length === 0) {
     return (
-      <GlassCard className="p-10 text-center">
-        <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-4">
-          <span className="material-symbols-outlined text-3xl text-amber-400">flag</span>
-        </div>
-        <p className="text-sm font-semibold text-slate-600">Create milestones first</p>
-        <p className="text-xs text-slate-400 mt-1">Each project milestone needs a department assignment.</p>
+      <GlassCard>
+        <EmptyState
+          icon="flag"
+          title="Create milestones first"
+          description="Each project milestone needs a department assignment."
+          accent="warning"
+        />
       </GlassCard>
     );
   }
@@ -52,7 +54,10 @@ export function MilestoneDepartmentsStep({
   if (loading && departments.length === 0) {
     return (
       <GlassCard className="p-10 text-center">
-        <p className="text-sm font-semibold text-slate-600">Loading departments...</p>
+        <div className="flex items-center justify-center gap-2 text-sm font-semibold text-slate-600">
+          <Icon name="hourglass_top" size={16} className="animate-spin text-slate-400" />
+          Loading departments...
+        </div>
         <p className="text-xs text-slate-400 mt-1">Fetching the latest department list.</p>
       </GlassCard>
     );
@@ -60,15 +65,13 @@ export function MilestoneDepartmentsStep({
 
   if (departments.length === 0) {
     return (
-      <GlassCard className="p-10 text-center">
-        <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-4">
-          <span className="material-symbols-outlined text-3xl text-red-400">groups</span>
-        </div>
-        <p className="text-sm font-semibold text-slate-600">No departments available</p>
-        <p className="text-xs text-slate-400 mt-1">
-          No departments were returned for your organization scope. Create one on the Departments page
-          (or ask an admin), then refresh and return to this step.
-        </p>
+      <GlassCard>
+        <EmptyState
+          icon="groups"
+          title="No departments available"
+          description="No departments were returned for your organization scope. Create one on the Departments page (or ask an admin), then refresh and return to this step."
+          accent="danger"
+        />
       </GlassCard>
     );
   }
@@ -81,14 +84,14 @@ export function MilestoneDepartmentsStep({
       {milestones.map((milestone) => (
         <div
           key={milestone.id}
-          className="grid grid-cols-1 md:grid-cols-[1fr_280px] gap-3 items-center p-4 rounded-xl border border-slate-200 bg-white/80"
+          className="grid grid-cols-1 md:grid-cols-[1fr_280px] gap-3 items-center p-3 rounded-xl border border-slate-200 bg-white"
         >
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-base text-indigo-500">flag</span>
+              <Icon name="flag" size={15} className="text-indigo-500 shrink-0" />
               <span className="font-semibold text-sm text-slate-800 truncate">{milestone.name}</span>
               {milestone.isCritical && (
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-100 text-red-600 uppercase">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-50 text-red-600 border border-red-100 uppercase">
                   Critical
                 </span>
               )}
@@ -100,16 +103,16 @@ export function MilestoneDepartmentsStep({
           </div>
 
           <div>
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+            <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
               Department <span className="text-red-500">*</span>
             </label>
             <select
               value={milestone.departmentId ?? ""}
               onChange={(event) => assignDepartment(milestone.id, event.target.value)}
-              className={`w-full p-2.5 rounded-lg border text-sm outline-none bg-white focus:ring-2 transition-all ${
+              className={`w-full h-9 px-3 rounded-lg text-sm outline-none focus:ring-2 transition-all ${
                 milestone.departmentId
-                  ? "border-slate-200 focus:border-indigo-300 focus:ring-indigo-100"
-                  : "border-red-300 focus:border-red-400 focus:ring-red-100"
+                  ? "bg-slate-50 border border-slate-200 text-slate-700 focus:bg-white focus:border-indigo-400 focus:ring-indigo-100"
+                  : "bg-red-50/50 border border-red-300 text-slate-700 focus:bg-white focus:border-red-400 focus:ring-red-100"
               }`}
             >
               <option value="">Select department...</option>

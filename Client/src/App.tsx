@@ -1,44 +1,81 @@
+import { Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth";
 import { AppDataProvider, useAppData } from "./appData";
 import { Layout } from "./layout";
 import { ToastProvider } from "./pages/shared/Toast";
 import { LoadingPage } from "./pages/shared";
+import { PageSkeleton } from "./pages/shared/Skeleton";
 import { NoAccessPage } from "./pages/shared/NoAccessPage";
 import { RoutePermissionGuard } from "./pages/shared/PermissionControls";
 import { PERMISSION_GROUPS, Permission } from "./permissions";
+import { lazyPage, whenIdle } from "./lib/lazyPage";
+import { registerRoutePreload } from "./lib/routePreload";
 
 // Overview
-import { DashboardPage } from "./pages/dashboard/dashboard";
-import { NotificationsPage } from "./pages/notifications/NotificationsPage";
 
 // Projects list + project workspace shell (Overview / Milestones / Tasks / Documents)
-import { ProjectsListPage } from "./pages/project/ProjectsListPage";
-import { ProjectDetailShell } from "./pages/project/ProjectDetailShell";
 
 // Project-nested views
 import { ProjectNotFound } from "./pages/project/ProjectNotFound";
 
 // Team
-import { OrganizationStructurePage } from "./pages/organisations/OrganizationStructurePage";
-import { DepartmentsPage } from "./pages/departments/DepartmentsPage";
-import { UsersPage } from "./pages/users/users";
-import { ProfilesPage } from "./pages/profiles/ProfilesPage";
 // Kept for when the Skills page is re-enabled (see SHOW_SKILLS_PAGE).
-import { SkillsPage } from "./pages/skills/SkillsPage";
 import { SHOW_SKILLS_PAGE } from "./featureFlags";
 
 // Tools
-import { AIPage as CoreAIPage } from "./pages/ai/ai";
-import { ReportsPage as CoreReportsPage } from "./pages/reports/reports";
-import { ReportViewPage } from "./pages/reports/ReportViewPage";
 import { ReportGenerationProvider } from "./pages/reports/ReportGenerationContext";
 
 // System
-import { RolesPage } from "./pages/roles/RolesPage";
-import { ActivityLogsPage } from ".//pages/activity/ActivityLogsPage";
-import { SettingsPage } from "./pages/settings/settings";
-import { LoginPage } from "./pages/login/login";
+// Route-level code splitting: each page is its own chunk, fetched on demand and
+// warmed on nav hover / browser idle (see routePreload + whenIdle below).
+const DashboardPage = lazyPage(() => import("./pages/dashboard/dashboard").then((m) => ({ default: m.DashboardPage })));
+const NotificationsPage = lazyPage(() => import("./pages/notifications/NotificationsPage").then((m) => ({ default: m.NotificationsPage })));
+const ProjectsListPage = lazyPage(() => import("./pages/project/ProjectsListPage").then((m) => ({ default: m.ProjectsListPage })));
+const ProjectDetailShell = lazyPage(() => import("./pages/project/ProjectDetailShell").then((m) => ({ default: m.ProjectDetailShell })));
+const OrganizationStructurePage = lazyPage(() => import("./pages/organisations/OrganizationStructurePage").then((m) => ({ default: m.OrganizationStructurePage })));
+const DepartmentsPage = lazyPage(() => import("./pages/departments/DepartmentsPage").then((m) => ({ default: m.DepartmentsPage })));
+const UsersPage = lazyPage(() => import("./pages/users/users").then((m) => ({ default: m.UsersPage })));
+const ProfilesPage = lazyPage(() => import("./pages/profiles/ProfilesPage").then((m) => ({ default: m.ProfilesPage })));
+const SkillsPage = lazyPage(() => import("./pages/skills/SkillsPage").then((m) => ({ default: m.SkillsPage })));
+const RolesPage = lazyPage(() => import("./pages/roles/RolesPage").then((m) => ({ default: m.RolesPage })));
+const ActivityLogsPage = lazyPage(() => import(".//pages/activity/ActivityLogsPage").then((m) => ({ default: m.ActivityLogsPage })));
+const SettingsPage = lazyPage(() => import("./pages/settings/settings").then((m) => ({ default: m.SettingsPage })));
+const LoginPage = lazyPage(() => import("./pages/login/login").then((m) => ({ default: m.LoginPage })));
+const ReportViewPage = lazyPage(() => import("./pages/reports/ReportViewPage").then((m) => ({ default: m.ReportViewPage })));
+const CoreAIPage = lazyPage(() => import("./pages/ai/ai").then((m) => ({ default: m.AIPage })));
+const CoreReportsPage = lazyPage(() => import("./pages/reports/reports").then((m) => ({ default: m.ReportsPage })));
+
+registerRoutePreload("/", DashboardPage.preload);
+registerRoutePreload("/notificationsPage", NotificationsPage.preload);
+registerRoutePreload("/projects", ProjectsListPage.preload);
+registerRoutePreload("/organizationStructure", OrganizationStructurePage.preload);
+registerRoutePreload("/departmentsPage", DepartmentsPage.preload);
+registerRoutePreload("/users", UsersPage.preload);
+registerRoutePreload("/profiles", ProfilesPage.preload);
+registerRoutePreload("/skills", SkillsPage.preload);
+registerRoutePreload("/roles", RolesPage.preload);
+registerRoutePreload("/activity-logs", ActivityLogsPage.preload);
+registerRoutePreload("/settings", SettingsPage.preload);
+registerRoutePreload("/reports/view", ReportViewPage.preload);
+registerRoutePreload("/ai", CoreAIPage.preload);
+registerRoutePreload("/reports", CoreReportsPage.preload);
+
+// After first paint, quietly warm the most-visited routes.
+whenIdle(() => {
+  DashboardPage.preload();
+  ProjectsListPage.preload();
+  ProjectDetailShell.preload();
+});
+
+function RouteFallback() {
+  return (
+    <div className="p-7" aria-busy="true">
+      <PageSkeleton />
+    </div>
+  );
+}
+
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { auth } = useAuth();
   const { initialized, loading } = useAppData();
@@ -76,12 +113,13 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/login" element={auth ? <Navigate to="/" /> : <LoginPage />} />
+      <Route path="/login" element={auth ? <Navigate to="/" /> : <Suspense fallback={<RouteFallback />}><LoginPage /></Suspense>} />
       <Route
         path="/*"
         element={
           <PrivateRoute>
             <Layout>
+              <Suspense fallback={<RouteFallback />}>
               <Routes>
                 {/* Overview */}
                 <Route path="/" element={<DashboardPage />} />
@@ -149,6 +187,7 @@ function AppRoutes() {
 
                 <Route path="*" element={<NoAccessPage />} />
               </Routes>
+              </Suspense>
             </Layout>
           </PrivateRoute>
         }

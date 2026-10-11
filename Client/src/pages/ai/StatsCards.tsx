@@ -82,7 +82,7 @@ function StatCard({
   // No overflow-hidden here: the card is narrower than the hint popup, so
   // clipping would cut the popup off at the card edge. Nothing inside the
   // card bleeds, so rounded corners render fine without it.
-  // No backdrop-blur either: it creates a stacking context that traps the
+  // No either: it creates a stacking context that traps the
   // popup's z-index, so later cards would paint over it. relative + hover:z
   // lifts the hovered card (popup included) above its siblings instead.
   return (

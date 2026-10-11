@@ -297,7 +297,7 @@ export function BgControls() {
       <div className="relative flex-1 overflow-hidden">
         <BgRenderer config={config} absolute />
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-8  text-center">
+          <div className="bg-white/80 rounded-xl shadow-lg p-8  text-center">
             <h1 className="text-2xl font-bold text-gray-800">Your content here</h1>
             <p className="text-gray-500 mt-2">Adjust controls to see the background change.</p>
           </div>

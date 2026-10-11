@@ -68,7 +68,7 @@ export function OverallProgressRing({ progress, project, delayRisk, healthScore 
           {/* Delay Risk */}
           <div className="bg-slate-50 p-4 rounded-xl">
             <div className="text-[10px] text-slate-400 uppercase tracking-wider font-bold mb-1">Delay Risk</div>
-            <div className={`text-lg font-bold mb-1 ${delayRisk && delayRisk > 50 ? "text-orange-600" : "text-emerald-600"}`}>
+            <div className={`text-lg font-bold mb-1 ${delayRisk && delayRisk > 50 ? "text-amber-600" : "text-emerald-600"}`}>
               {delayRisk != null ? `${delayRisk}%` : "\u2014"}
             </div>
             <div className="text-xs text-emerald-600 flex items-center gap-1">

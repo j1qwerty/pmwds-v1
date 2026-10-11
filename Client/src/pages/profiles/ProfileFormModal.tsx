@@ -1,15 +1,17 @@
-import { useState, useEffect, type FormEvent } from "react";
+// ProfileFormModal.tsx
+import { useState, useEffect, type FormEvent, type ReactNode } from "react";
 import type { User, UserProfileRecord } from "../../types";
-import { Avatar } from "../shared";
+import { Avatar, ModalCancelButton, ModalPrimaryButton, Sheet } from "../shared";
 
 interface ProfileFormModalProps {
+  open: boolean;
   user: User;
   profile: UserProfileRecord | null;
   onSubmit: (payload: Record<string, unknown>) => void;
   onCancel: () => void;
 }
 
-export function ProfileFormModal({ user, profile, onSubmit, onCancel }: ProfileFormModalProps) {
+export function ProfileFormModal({ open, user, profile, onSubmit, onCancel }: ProfileFormModalProps) {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     bio: profile?.bio || user?.bio || "",
@@ -31,133 +33,139 @@ export function ProfileFormModal({ user, profile, onSubmit, onCancel }: ProfileF
     });
   }, [profile, user]);
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (e?: FormEvent) => {
+    e?.preventDefault();
     if (submitting) return;
     setSubmitting(true);
     onSubmit({
       ...form,
       dateOfBirth: form.dateOfBirth || null,
     });
+    // Parent will close the modal and the submitting flag will reset when the
+    // modal is reopened. Reset shortly after to avoid a stuck spinner if the
+    // save fails and the user keeps the modal open.
+    setTimeout(() => setSubmitting(false), 500);
   };
 
+  const inputClass =
+    "w-full h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all placeholder:text-slate-400";
+
   return (
-    <div className="bg-white rounded-2xl p-8 w-[600px] max-w-[95vw] shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Avatar person={user} size="lg" className="rounded-xl" />
-        <div>
-          <h2 className="text-xl font-bold text-slate-900">
-            Edit Profile · {user.fullName}
-          </h2>
-          <p className="text-sm text-slate-500">
-            Update personal and professional details
-          </p>
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        {/* Job Title */}
-        <div>
-          <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
-            Job Title
-          </label>
-          <input
-            type="text"
-            value={form.jobTitle}
-            onChange={(e) => setForm({ ...form, jobTitle: e.target.value })}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-[13px] outline-none bg-white placeholder:text-slate-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-            placeholder="e.g., Senior Developer"
+    <Sheet
+      open={open}
+      onClose={onCancel}
+      title="Edit profile"
+      description={user.fullName}
+      icon="edit"
+      accent="primary"
+      size="md"
+      footer={
+        <>
+          <ModalCancelButton onClick={onCancel} />
+          <ModalPrimaryButton
+            onClick={() => handleSubmit()}
+            loading={submitting}
+            label="Save profile"
+            icon="check"
           />
+        </>
+      }
+    >
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSubmit(e);
+        }}
+        className="space-y-4"
+      >
+        {/* Header preview */}
+        <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
+          <Avatar person={user} size="lg" className="rounded-xl" />
+          <div className="min-w-0">
+            <div className="text-sm font-bold text-slate-800 truncate">{user.fullName}</div>
+            <div className="text-xs text-slate-500 truncate">{user.email || "—"}</div>
+          </div>
         </div>
 
-        {/* Date of Birth */}
-        <div>
-          <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
-            Date of Birth
-          </label>
-          <input
-            type="date"
-            value={form.dateOfBirth}
-            onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-[13px] outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
-          />
+        {/* Job Title + Date of Birth */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field label="Job title">
+            <input
+              type="text"
+              value={form.jobTitle}
+              onChange={(e) => setForm({ ...form, jobTitle: e.target.value })}
+              className={inputClass}
+              placeholder="e.g., Senior Developer"
+            />
+          </Field>
+          <Field label="Date of birth">
+            <input
+              type="date"
+              value={form.dateOfBirth}
+              onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })}
+              className={inputClass}
+            />
+          </Field>
         </div>
 
         {/* Bio */}
-        <div>
-          <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
-            Bio
-          </label>
+        <Field label="Bio">
           <textarea
             value={form.bio}
             onChange={(e) => setForm({ ...form, bio: e.target.value })}
             rows={4}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-[13px] outline-none bg-white placeholder:text-slate-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all resize-none"
+            className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all resize-none min-h-[80px] placeholder:text-slate-400"
             placeholder="Tell us about yourself..."
           />
-        </div>
+        </Field>
 
         {/* Address */}
-        <div>
-          <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
-            Address
-          </label>
+        <Field label="Address">
           <textarea
             value={form.address}
             onChange={(e) => setForm({ ...form, address: e.target.value })}
             rows={2}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-[13px] outline-none bg-white placeholder:text-slate-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all resize-none"
+            className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all resize-none placeholder:text-slate-400"
             placeholder="Full address"
           />
-        </div>
+        </Field>
 
         {/* Emergency Contact & LinkedIn */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
-              Emergency Contact
-            </label>
+          <Field label="Emergency contact">
             <input
               type="text"
               value={form.emergencyContact}
               onChange={(e) => setForm({ ...form, emergencyContact: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-[13px] outline-none bg-white placeholder:text-slate-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+              className={inputClass}
               placeholder="Name and phone number"
             />
-          </div>
-          <div>
-            <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
-              LinkedIn URL
-            </label>
+          </Field>
+          <Field label="LinkedIn URL">
             <input
               type="url"
               value={form.linkedInUrl}
               onChange={(e) => setForm({ ...form, linkedInUrl: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-[13px] outline-none bg-white placeholder:text-slate-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+              className={inputClass}
               placeholder="https://linkedin.com/in/username"
             />
-          </div>
+          </Field>
         </div>
 
-        {/* Actions */}
-        <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-100">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 font-medium text-sm hover:bg-slate-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="px-5 py-2.5 rounded-xl border-none bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {submitting ? "Saving..." : "Save Profile"}
-          </button>
-        </div>
+        {/* Hidden submit so Enter key works */}
+        <button type="submit" className="hidden" aria-hidden />
       </form>
-    </div>
+    </Sheet>
+  );
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="block">
+      <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">
+        {label}
+      </span>
+      {children}
+    </label>
   );
 }

@@ -68,7 +68,9 @@ export function TaskHeaderCard({
       {onClose && !hideCloseButton && (
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 cursor-pointer"
+          aria-label="Close panel"
+          title="Close"
+          className="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 cursor-pointer transition-colors"
         >
           <FiX className="w-5 h-5" />
         </button>
@@ -76,19 +78,19 @@ export function TaskHeaderCard({
 
       <div className="flex items-start justify-between mb-3 pr-6">
         <div className="flex-1 min-w-0">
-          <h3 className="text-base font-bold text-slate-900">
+          <h3 className="text-base font-bold text-slate-800 leading-snug">
             {task.title}
             {hasSubTasks && (
-              <span className="ml-2 px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-600">
+              <span className="ml-2 px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100">
                 {subtaskCount} subtask{subtaskCount !== 1 ? "s" : ""}
               </span>
             )}
           </h3>
-          <div className="flex items-center gap-2 flex-wrap mt-1">
+          <div className="flex items-center gap-2 flex-wrap mt-1.5">
             <StatusBadgeMinimal status={task.status} />
             <PriorityBadge priority={task.priority} />
             {task.isOverdue && (
-              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-red-50 text-red-600 animate-pulse">
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-red-50 text-red-600 border border-red-200 animate-pulse">
                 Overdue
               </span>
             )}
@@ -96,13 +98,13 @@ export function TaskHeaderCard({
         </div>
         {mayEdit && (
           <div className="flex items-center gap-1 shrink-0">
-            <button onClick={onEdit} className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 cursor-pointer" title="Edit task">
+            <button onClick={onEdit} aria-label="Edit task" className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-indigo-600 cursor-pointer transition-colors" title="Edit task">
               <FiEdit className="w-4 h-4" />
             </button>
-            <button onClick={onEscalate} className="p-2 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600 cursor-pointer" title="Escalate">
+            <button onClick={onEscalate} aria-label="Escalate task" className="p-2 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600 cursor-pointer transition-colors" title="Escalate">
               <FiAlertTriangle className="w-4 h-4" />
             </button>
-            <button onClick={onDelete} className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 cursor-pointer" title="Delete task">
+            <button onClick={onDelete} aria-label="Delete task" className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 cursor-pointer transition-colors" title="Delete task">
               <FiTrash2 className="w-4 h-4" />
             </button>
           </div>
@@ -118,7 +120,7 @@ export function TaskHeaderCard({
         <InfoChip icon={<FiFlag className="w-3.5 h-3.5" />} label="Milestone" value={milestone?.name || "None"} />
         <InfoChip icon={<FiCalendar className="w-3.5 h-3.5" />} label="Due" value={task.dueDate ? formatDate(task.dueDate) : "Not set"} />
         {assignedUsersResolved.length > 0 && (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 text-xs cursor-default">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200/70 text-xs cursor-default">
             <AvatarStack people={assignedUsersResolved} size="xs" />
             <span className="text-slate-600 font-medium truncate max-w-[120px]">
               {assignedUsersResolved.map((u, i) => (
@@ -134,7 +136,7 @@ export function TaskHeaderCard({
           <span className="text-slate-500 font-medium">
             Progress{hasSubTasks && <span className="ml-1 text-indigo-500">(auto)</span>}
           </span>
-          <span className="font-bold text-slate-700">{progress}%</span>
+          <span className="font-bold text-slate-700 tabular-nums">{progress}%</span>
         </div>
         <div
           ref={progressBarRef}
@@ -160,7 +162,7 @@ export function TaskHeaderCard({
 
       {mayEdit ? (
         <div className="mt-2">
-          <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Status</label>
+          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Status</label>
           <StatusDropdown currentStatus={task.status} onChange={onStatusChange} />
         </div>
       ) : (
@@ -171,9 +173,9 @@ export function TaskHeaderCard({
 
       {task.isEscalated && (
         <div className="mt-2 p-2 rounded-lg bg-red-50 border border-red-200 text-xs flex items-center gap-2">
-          <FiAlertTriangle className="text-red-500 w-4 h-4" />
+          <FiAlertTriangle className="text-red-500 w-4 h-4 shrink-0" />
           <span className="font-semibold text-red-700">Escalated</span>
-          <span className="ml-auto text-red-500">Lv.{task.escalationLevel}</span>
+          <span className="ml-auto text-red-500 font-medium">Lv.{task.escalationLevel}</span>
         </div>
       )}
     </div>

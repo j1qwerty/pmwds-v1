@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import type { Milestone, MilestoneDependency } from "../../../types";
-import { ModalOverlay, useToast } from "../../shared/index";
+import { Sheet, ModalCancelButton, ModalPrimaryButton, useToast, getStatusColor } from "../../shared/index";
+import { Icon } from "../../../components/ui/Icon";
 
 interface DependencyFormModalProps {
   open: boolean;
@@ -10,6 +11,12 @@ interface DependencyFormModalProps {
   onUpdate: (id: string, payload: Record<string, unknown>) => Promise<void>;
   onClose: () => void;
 }
+
+const SELECT_CLASS =
+  "w-full h-9 px-3 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-800 outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed appearance-none pr-8";
+
+const LABEL_CLASS =
+  "text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5";
 
 export function DependencyFormModal({
   open,
@@ -43,8 +50,8 @@ export function DependencyFormModal({
     }
   }, [open, editDep]);
 
-  const handleSave = async (e: FormEvent) => {
-    e.preventDefault();
+  const handleSave = async (e?: FormEvent) => {
+    e?.preventDefault();
     if (submitting) return;
     if (!form.prerequisiteMilestoneId || !form.dependentMilestoneId) {
       addToast("Please select both milestones", "error");
@@ -82,33 +89,44 @@ export function DependencyFormModal({
     }
   };
 
-  if (!open) return null;
+  // Sheet handles open/closed internally (stays mounted so the exit animation plays)
+  const prerequisite = milestones.find((m) => m.id === form.prerequisiteMilestoneId);
+  const dependent = milestones.find((m) => m.id === form.dependentMilestoneId);
 
   return (
-    <ModalOverlay onClose={onClose} >
-      <form onSubmit={handleSave} className="bg-white rounded-2xl w-full  flex flex-col shadow-xl border border-slate-200">
-        <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
-          <div> 
-            <h3 className="text-lg font-bold text-slate-900">{editDep ? "Edit Dependency" : "New Dependency"}</h3>
-            <p className="text-xs text-slate-400 mt-1">
-              {editDep ? "Update the dependency condition" : "Define which milestone blocks another"}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <div className="flex items-center gap-1 mb-1">
-                <label htmlFor="dependency-prerequisite" className="text-[10px] font-bold text-slate-400 uppercase">
-                  Prerequisite
-                </label>
-                <span aria-hidden="true" className="text-[10px] font-bold text-red-500">*</span>
-              </div>
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title={editDep ? "Edit dependency" : "New dependency"}
+      description={editDep ? "Update the dependency condition" : "Define which milestone blocks another"}
+      icon="link"
+      accent="primary"
+      size="md"
+      footer={
+        <>
+          <ModalCancelButton onClick={onClose} />
+          <ModalPrimaryButton
+            onClick={() => handleSave()}
+            loading={submitting}
+            label={editDep ? "Update" : "Add dependency"}
+            icon="check"
+          />
+        </>
+      }
+    >
+      <form onSubmit={handleSave} className="space-y-4">
+        {/* Prerequisite + Dependent */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className={LABEL_CLASS}>
+              Prerequisite <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
               <select
-                id="dependency-prerequisite"
                 value={form.prerequisiteMilestoneId}
                 onChange={(e) => setForm({ ...form, prerequisiteMilestoneId: e.target.value })}
                 disabled={!!editDep}
-                className="w-full p-2.5 rounded-lg border border-slate-200 text-sm bg-white"
+                className={SELECT_CLASS}
               >
                 <option value="">Select...</option>
                 {milestones.map((m) => (
@@ -117,20 +135,23 @@ export function DependencyFormModal({
                   </option>
                 ))}
               </select>
+              {prerequisite && (
+                <span
+                  className={`absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full pointer-events-none ${getStatusColor(prerequisite.status).dot}`}
+                />
+              )}
             </div>
-            <div>
-              <div className="flex items-center gap-1 mb-1">
-                <label htmlFor="dependency-dependent" className="text-[10px] font-bold text-slate-400 uppercase">
-                  Dependent
-                </label>
-                <span aria-hidden="true" className="text-[10px] font-bold text-red-500">*</span>
-              </div>
+          </div>
+          <div>
+            <label className={LABEL_CLASS}>
+              Dependent <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
               <select
-                id="dependency-dependent"
                 value={form.dependentMilestoneId}
                 onChange={(e) => setForm({ ...form, dependentMilestoneId: e.target.value })}
                 disabled={!!editDep}
-                className="w-full p-2.5 rounded-lg border border-slate-200 text-sm bg-white"
+                className={SELECT_CLASS}
               >
                 <option value="">Select...</option>
                 {milestones.map((m) => (
@@ -139,70 +160,103 @@ export function DependencyFormModal({
                   </option>
                 ))}
               </select>
-            </div>
-            <div className="sm:col-span-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Condition</label>
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-1.5 text-sm text-slate-600 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="depType"
-                    checked={form.type === "CompletionBased"}
-                    onChange={() => setForm({ ...form, type: "CompletionBased" })}
-                    className="accent-amber-500"
-                  />
-                  Must complete
-                </label>
-                <label className="flex items-center gap-1.5 text-sm text-slate-600 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="depType"
-                    checked={form.type === "ProgressThreshold"}
-                    onChange={() => setForm({ ...form, type: "ProgressThreshold" })}
-                    className="accent-amber-500"
-                  />
-                  Reach progress %
-                </label>
-              </div>
-            </div>
-            {form.type === "ProgressThreshold" && (
-              <div className="sm:col-span-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">
-                  Threshold: {form.thresholdPercentage}%
-                </label>
-                <input
-                  type="range"
-                  min={1}
-                  max={100}
-                  value={form.thresholdPercentage}
-                  onChange={(e) => setForm({ ...form, thresholdPercentage: Number(e.target.value) })}
-                  className="w-full accent-amber-500"
+              {dependent && (
+                <span
+                  className={`absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full pointer-events-none ${getStatusColor(dependent.status).dot}`}
                 />
-                <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
-                  <span>1%</span>
-                  <span>100%</span>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
-        <div className="flex items-center justify-end gap-2 p-6 border-t border-slate-100">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="px-5 py-2.5 rounded-xl bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700 transition-colors disabled:opacity-50"
-          >
-            {submitting ? "Saving..." : editDep ? "Update" : "Add"}
-          </button>
+
+        {/* Flow indicator */}
+        {form.prerequisiteMilestoneId && form.dependentMilestoneId && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+            <Icon name="flag" size={13} className="text-slate-400 shrink-0" />
+            <span className="font-medium text-slate-700 truncate">
+              {prerequisite?.name ?? "—"}
+            </span>
+            <Icon name="arrow_forward" size={13} className="text-indigo-500 shrink-0" />
+            <span className="font-medium text-slate-700 truncate">
+              {dependent?.name ?? "—"}
+            </span>
+          </div>
+        )}
+
+        {/* Condition radios */}
+        <div>
+          <label className={LABEL_CLASS}>Condition</label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, type: "CompletionBased" })}
+              className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all ${
+                form.type === "CompletionBased"
+                  ? "border-indigo-400 bg-indigo-50 text-indigo-700 shadow-sm shadow-indigo-500/10"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+              }`}
+            >
+              <span
+                className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                  form.type === "CompletionBased" ? "border-indigo-500" : "border-slate-300"
+                }`}
+              >
+                {form.type === "CompletionBased" && (
+                  <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                )}
+              </span>
+              <span>Must complete</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, type: "ProgressThreshold" })}
+              className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all ${
+                form.type === "ProgressThreshold"
+                  ? "border-indigo-400 bg-indigo-50 text-indigo-700 shadow-sm shadow-indigo-500/10"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+              }`}
+            >
+              <span
+                className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                  form.type === "ProgressThreshold" ? "border-indigo-500" : "border-slate-300"
+                }`}
+              >
+                {form.type === "ProgressThreshold" && (
+                  <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                )}
+              </span>
+              <span>Reach progress %</span>
+            </button>
+          </div>
         </div>
+
+        {/* Threshold slider */}
+        {form.type === "ProgressThreshold" && (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className={LABEL_CLASS + " mb-0"}>Threshold</label>
+              <span className="text-sm font-bold text-indigo-600 tabular-nums">
+                {form.thresholdPercentage}%
+              </span>
+            </div>
+            <input
+              type="range"
+              min={1}
+              max={100}
+              value={form.thresholdPercentage}
+              onChange={(e) => setForm({ ...form, thresholdPercentage: Number(e.target.value) })}
+              className="w-full accent-indigo-600"
+            />
+            <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+              <span>1%</span>
+              <span>100%</span>
+            </div>
+          </div>
+        )}
+
+        {/* Hidden submit so Enter inside form submits */}
+        <button type="submit" className="hidden" aria-hidden="true" />
       </form>
-    </ModalOverlay>
+    </Sheet>
   );
 }

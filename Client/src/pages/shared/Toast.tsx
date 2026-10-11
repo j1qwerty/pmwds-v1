@@ -32,13 +32,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
       {children}
-      <div className="fixed top-4 right-4 z-[1100] flex flex-col gap-2 pointer-events-none">
+      <div className="fixed top-4 right-4 z-[1200] flex flex-col gap-2 pointer-events-none">
         {toasts.map((toast) => (
           <div
             key={toast.id}
             className={`
               pointer-events-auto
-              px-4 py-3 rounded-xl shadow-lg backdrop-blur-sm border
+              px-4 py-3 rounded-xl shadow-lg border
               text-sm font-medium
               animate-[slideInRight_0.3s_ease]
               ${toast.type === "success" ? "bg-emerald-50/95 border-emerald-200 text-emerald-700" : ""}

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FiEdit3 } from "react-icons/fi";
 import { StatusDropdown } from "./StatusDropdown";
+import { Icon } from "../../../components/ui/Icon";
 
 interface ProgressStatusEditorProps {
   progress: number;
@@ -13,9 +14,9 @@ interface ProgressStatusEditorProps {
 
 function getProgressGradient(value: number): string {
   if (value >= 80) return "from-emerald-400 to-emerald-500";
-  if (value >= 50) return "from-cyan-400 to-cyan-500";
+  if (value >= 50) return "from-sky-400 to-sky-500";
   if (value >= 25) return "from-amber-400 to-amber-500";
-  return "from-rose-400 to-rose-500";
+  return "from-red-400 to-red-500";
 }
 
 export function ProgressStatusEditor({ progress, status, mayEdit, onChange, entityType = "task" }: ProgressStatusEditorProps) {
@@ -188,18 +189,21 @@ export function ProgressStatusEditor({ progress, status, mayEdit, onChange, enti
     return (
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide block mb-2">
+          <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">
             Progress
           </label>
-          <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-            <div
-              className={`h-full rounded-full bg-gradient-to-r ${progressGradient}`}
-              style={{ width: `${currentProgress}%` }}
-            />
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
+              <div
+                className={`h-full rounded-full bg-gradient-to-r ${progressGradient}`}
+                style={{ width: `${currentProgress}%` }}
+              />
+            </div>
+            <span className="text-xs font-bold text-slate-600 shrink-0">{currentProgress}%</span>
           </div>
         </div>
         <div>
-          <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide block mb-2">
+          <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">
             Status
           </label>
           <StatusDropdown currentStatus={status} onChange={() => {}} />
@@ -212,14 +216,15 @@ export function ProgressStatusEditor({ progress, status, mayEdit, onChange, enti
     <div className="space-y-5">
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+          <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
             Progress
           </label>
-          <div className="flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 bg-white">
+          <div className="flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 bg-slate-50 focus-within:bg-white focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
             <FiEdit3 className="w-3 h-3 text-slate-400" />
             <input
               type="text"
               inputMode="numeric"
+              aria-label="Progress percentage"
               value={progressInput}
               onChange={handleProgressInputChange}
               onBlur={handleProgressInputBlur}
@@ -230,7 +235,7 @@ export function ProgressStatusEditor({ progress, status, mayEdit, onChange, enti
                   handleKeyDown(e);
                 }
               }}
-              className="w-12 text-xs font-semibold text-slate-700 text-center outline-none"
+              className="w-12 text-xs font-semibold text-slate-700 text-center outline-none bg-transparent"
             />
             <span className="text-xs text-slate-400">%</span>
           </div>
@@ -249,7 +254,7 @@ export function ProgressStatusEditor({ progress, status, mayEdit, onChange, enti
           onKeyDown={handleKeyDown}
           className={`relative w-full h-4 rounded-full bg-slate-100 overflow-hidden cursor-pointer select-none group ${
             isDragging ? "scale-y-125" : ""
-          } transition-transform`}
+          } transition-transform focus-visible:ring-2 focus-visible:ring-indigo-200 outline-none`}
         >
           <div className="absolute inset-0 bg-slate-100" />
 
@@ -278,21 +283,23 @@ export function ProgressStatusEditor({ progress, status, mayEdit, onChange, enti
       </div>
 
       {warning && (
-        <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
+        <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 view-fade">
           <div className="flex items-start gap-2">
-            <span className="material-symbols-outlined text-amber-600 text-sm mt-0.5 shrink-0">warning</span>
+            <Icon name="warning" size={14} className="text-amber-600 mt-0.5 shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-amber-800">
                 This {entityType} is completed. Reducing progress will change status to InProgress.
               </p>
               <div className="flex gap-2 mt-2">
                 <button
+                  type="button"
                   onClick={() => applyProgressReduction(warning.pendingProgress)}
                   className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 transition-colors"
                 >
                   Continue
                 </button>
                 <button
+                  type="button"
                   onClick={cancelProgressReduction}
                   className="px-3 py-1.5 rounded-lg bg-white border border-amber-200 text-amber-700 text-xs font-semibold hover:bg-amber-100 transition-colors"
                 >
@@ -306,7 +313,7 @@ export function ProgressStatusEditor({ progress, status, mayEdit, onChange, enti
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide block mb-2">
+          <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">
             Status
           </label>
           <StatusDropdown

@@ -1,7 +1,8 @@
 import { useEffect, useState, useDeferredValue, useCallback, useRef } from "react";
 import { api } from "../../api";
 import type { AIModel, AIProvider, AIProviderTestResult, AISettingsResponse } from "../../types";
-import { GlassCard, GradientButton } from "../shared";
+import { SectionCard, EmptyState } from "../shared";
+import { Icon } from "../../components/ui/Icon";
 
 // ─── localStorage helpers ──────────────────────────────────────────
 
@@ -101,8 +102,8 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
     setAiLoading(true);
     setError("");
     api.getAISettings(auth.token)
-      .then(s => { setAiSettings(s); setExplorerProvider(s.defaultProvider); })
-      .catch(e => setError(e instanceof Error ? e.message : "Failed to load AI settings"))
+      .then((s) => { setAiSettings(s); setExplorerProvider(s.defaultProvider); })
+      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load AI settings"))
       .finally(() => setAiLoading(false));
 
     api.getAiProviders(auth.token)
@@ -125,7 +126,7 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
       const data = await api.searchAiModels(auth.token, provider, "", loadAll ? 200 : 30);
       const sorted = sortModels(data, favorites);
       setExplorerModels(sorted);
-      setModelCache(prev => {
+      setModelCache((prev) => {
         const next = { ...prev, [provider]: { data, timestamp: now } };
         LS.set(LS.CACHE, next);
         return next;
@@ -151,28 +152,28 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
     }
     const q = deferredSearch.toLowerCase();
     const filtered = cached.data.filter(
-      m => m.id.toLowerCase().includes(q) || m.name.toLowerCase().includes(q)
+      (m) => m.id.toLowerCase().includes(q) || m.name.toLowerCase().includes(q)
     );
     setExplorerModels(sortModels(filtered, favorites));
   }, [deferredSearch, explorerProvider]);
 
   // ── Refresh favorites sort when favorites change ──
   useEffect(() => {
-    setExplorerModels(prev => sortModels(prev, favorites));
+    setExplorerModels((prev) => sortModels(prev, favorites));
   }, [favorites]);
 
   // ── Helpers ──
   const toggleFavorite = (modelId: string) => {
-    setFavorites(prev => {
-      const next = prev.includes(modelId) ? prev.filter(id => id !== modelId) : [...prev, modelId];
+    setFavorites((prev) => {
+      const next = prev.includes(modelId) ? prev.filter((id) => id !== modelId) : [...prev, modelId];
       LS.set(LS.FAVORITES, next);
       return next;
     });
   };
 
   const recordHistory = (entry: TestHistoryEntry) => {
-    setHistory(prev => {
-      const filtered = prev.filter(h => !(h.provider === entry.provider && h.model === entry.model));
+    setHistory((prev) => {
+      const filtered = prev.filter((h) => !(h.provider === entry.provider && h.model === entry.model));
       const next = [entry, ...filtered].slice(0, 100);
       LS.set(LS.HISTORY, next);
       return next;
@@ -188,7 +189,7 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
     if (!settingsRef.current) return;
     setAiSettings({
       ...settingsRef.current,
-      providers: settingsRef.current.providers.map(p =>
+      providers: settingsRef.current.providers.map((p) =>
         p.provider === provider ? { ...p, [field]: value } : p
       ),
     });
@@ -242,7 +243,7 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
       ...settingsRef.current,
       defaultProvider: prov,
       defaultModel: mdl,
-      providers: settingsRef.current.providers.map(p =>
+      providers: settingsRef.current.providers.map((p) =>
         p.provider === prov ? { ...p, defaultModel: mdl } : p
       ),
     });
@@ -261,7 +262,7 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
         riskThreshold: s.riskThreshold,
         useLocalModel: s.useLocalModel,
         mlModelPath: s.mlModelPath,
-        providers: s.providers.map(p => ({
+        providers: s.providers.map((p) => ({
           provider: p.provider,
           displayName: p.displayName,
           enabled: p.enabled,
@@ -300,203 +301,241 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
   // ── Derived ──
   const defaultProvider = aiSettings?.defaultProvider ?? "OpenRouter";
   const defaultModelStr = aiSettings?.defaultModel ?? "";
-  const currentProvider = aiSettings?.providers.find(p => p.provider === defaultProvider);
+  const currentProvider = aiSettings?.providers.find((p) => p.provider === defaultProvider);
   const defaultProviderDisplay = currentProvider?.displayName ?? defaultProvider;
 
   const historyFiltered = explorerProvider
-    ? history.filter(h => h.provider === explorerProvider)
+    ? history.filter((h) => h.provider === explorerProvider)
     : history;
 
-  const favoritedModels = explorerModels.filter(m => favorites.includes(m.id));
+  const favoritedModels = explorerModels.filter((m) => favorites.includes(m.id));
 
   // ── Render ──
   if (aiLoading) {
-    return <div className="flex items-center justify-center py-20 text-slate-400 text-sm">Loading AI settings...</div>;
+    return (
+      <div className="flex items-center justify-center py-20 text-slate-400 text-sm gap-2">
+        <Icon name="hourglass_top" size={16} className="animate-spin" />
+        Loading AI settings...
+      </div>
+    );
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
 
       {/* ───── Active Configuration ───── */}
-      <GlassCard className="p-5">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-indigo-500 text-lg">check_circle</span>
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active</span>
-            </div>
-            <div className="h-6 w-px bg-slate-200" />
-            <div className="text-sm">
-              <span className="font-semibold text-slate-800">{defaultProviderDisplay}</span>
-              {defaultModelStr && (
-                <>
-                  <span className="text-slate-300 mx-1.5">·</span>
-                  <span className="font-mono text-xs text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">{defaultModelStr}</span>
-                </>
-              )}
-            </div>
-            <div className="h-6 w-px bg-slate-200" />
-            <div className="text-xs text-slate-500">
-              Risk threshold: <span className="font-semibold text-slate-700">{aiSettings?.riskThreshold ?? 0.7}</span>
-            </div>
+      <SectionCard
+        title="Active configuration"
+        description="Provider and model currently used across AI features"
+        icon="check_circle"
+      >
+        <div className="flex items-center flex-wrap gap-x-3 gap-y-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-600">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            Active
+          </span>
+          <div className="text-sm">
+            <span className="font-semibold text-slate-800">{defaultProviderDisplay}</span>
+            {defaultModelStr && (
+              <>
+                <span className="text-slate-300 mx-1.5">·</span>
+                <span className="font-mono text-xs text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
+                  {defaultModelStr}
+                </span>
+              </>
+            )}
+          </div>
+          <div className="h-6 w-px bg-slate-200" />
+          <div className="text-xs text-slate-500">
+            Risk threshold: <span className="font-semibold text-slate-700">{aiSettings?.riskThreshold ?? 0.7}</span>
           </div>
         </div>
-      </GlassCard>
+      </SectionCard>
 
       {/* ───── Error ───── */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl py-3 px-4 text-red-700 text-sm flex items-center gap-2">
-          <span className="material-symbols-outlined text-lg">error</span>
-          {error}
+        <div className="bg-red-50 border border-red-200 rounded-xl py-3 px-4 text-red-700 text-sm flex items-start gap-2.5">
+          <Icon name="error" size={18} className="text-red-500 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="font-semibold">Something went wrong</p>
+            <p className="text-xs mt-0.5">{error}</p>
+          </div>
         </div>
       )}
 
       {/* ───── Provider Configuration ───── */}
-      <div>
-        <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
-          <span className="material-symbols-outlined text-indigo-500">hub</span>
-          Provider Configuration
-        </h3>
-        <div className="flex flex-col gap-3">
-          {aiSettings?.providers.map(provider => (
-            <GlassCard key={provider.provider} className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={provider.enabled}
-                    onChange={e => updateProvider(provider.provider, "enabled", e.target.checked)}
-                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <div>
-                    <span className="text-sm font-bold text-slate-800">{provider.displayName}</span>
-                    <span className="text-[10px] text-slate-400 ml-2 uppercase">{provider.provider}</span>
-                  </div>
+      <SectionCard
+        title="Provider configuration"
+        description="Enable and configure each AI provider"
+        icon="hub"
+        bodyClassName="p-4 flex flex-col gap-3"
+      >
+        {aiSettings?.providers.map((provider) => (
+          <div
+            key={provider.provider}
+            className={`rounded-xl border bg-white p-4 transition-all ${
+              provider.enabled
+                ? "border-slate-200 shadow-sm"
+                : "border-slate-100 bg-slate-50/40"
+            }`}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={provider.enabled}
+                  onChange={(e) => updateProvider(provider.provider, "enabled", e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <div>
+                  <span className="text-sm font-bold text-slate-800">{provider.displayName}</span>
+                  <span className="text-[10px] text-slate-400 ml-2 uppercase">{provider.provider}</span>
                 </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setExplorerProvider(provider.provider);
+                  setSearchQuery("");
+                  loadModels(provider.provider);
+                }}
+                className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 transition-colors inline-flex items-center gap-1"
+              >
+                <Icon name="database_search" size={14} />
+                Browse Models
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Base URL</label>
+                <input
+                  value={provider.baseUrl}
+                  onChange={(e) => updateProvider(provider.provider, "baseUrl", e.target.value)}
+                  disabled={!provider.enabled}
+                  className="w-full h-9 px-3 rounded-lg bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-xs text-slate-700 transition-all disabled:bg-slate-100 disabled:text-slate-400"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">API Key</label>
+                <div className="flex items-center gap-2 mb-1">
+                  <label className="flex items-center gap-1.5 text-[10px] text-slate-500 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={provider.useEnvironmentDefault}
+                      onChange={(e) => updateProvider(provider.provider, "useEnvironmentDefault", e.target.checked)}
+                      disabled={!provider.enabled}
+                      className="w-3 h-3 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    .env key
+                  </label>
+                </div>
+                <input
+                  type="password"
+                  value={provider.apiKey}
+                  onChange={(e) => updateProvider(provider.provider, "apiKey", e.target.value)}
+                  placeholder={provider.hasStoredKey ? "Replace stored key" : "Enter API key"}
+                  disabled={!provider.enabled || provider.useEnvironmentDefault}
+                  className="w-full h-9 px-3 rounded-lg bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-xs text-slate-700 transition-all disabled:bg-slate-100 disabled:text-slate-400"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Default Model</label>
+                <input
+                  value={provider.defaultModel}
+                  onChange={(e) => updateProvider(provider.provider, "defaultModel", e.target.value)}
+                  placeholder="e.g. gpt-4o"
+                  disabled={!provider.enabled}
+                  className="w-full h-9 px-3 rounded-lg bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-xs text-slate-700 font-mono transition-all disabled:bg-slate-100 disabled:text-slate-400"
+                />
+              </div>
+              <div className="flex items-end gap-2">
                 <button
-                  type="button"
-                  onClick={() => { setExplorerProvider(provider.provider); setSearchQuery(""); loadModels(provider.provider); }}
-                  className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1"
+                  onClick={async () => {
+                    if (!auth || !provider.defaultModel) return;
+                    setTesting(true);
+                    setTestResult(null);
+                    try {
+                      const r = await api.testAiProvider(auth.token, provider.provider, provider.defaultModel, "Reply with: ok");
+                      setTestResult(r);
+                    } catch (e) {
+                      setTestResult({ provider: provider.provider, model: provider.defaultModel, success: false, message: e instanceof Error ? e.message : "Failed", rawResponse: null, executedAtUtc: new Date().toISOString() });
+                    } finally {
+                      setTesting(false);
+                    }
+                  }}
+                  disabled={testing || !provider.enabled || !provider.defaultModel}
+                  className="h-9 flex-1 rounded-lg border border-slate-200 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
                 >
-                  <span className="material-symbols-outlined text-sm">database_search</span>
-                  Browse Models
+                  <Icon name={testing ? "hourglass_top" : "bolt"} size={14} />
+                  {testing ? "Testing..." : "Test"}
                 </button>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Base URL</label>
-                  <input
-                    value={provider.baseUrl}
-                    onChange={e => updateProvider(provider.provider, "baseUrl", e.target.value)}
-                    disabled={!provider.enabled}
-                    className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs outline-none bg-white focus:border-indigo-300 transition-all disabled:bg-slate-50 disabled:text-slate-400"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">API Key</label>
-                  <div className="flex items-center gap-2 mb-1">
-                    <label className="flex items-center gap-1.5 text-[10px] text-slate-500 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={provider.useEnvironmentDefault}
-                        onChange={e => updateProvider(provider.provider, "useEnvironmentDefault", e.target.checked)}
-                        disabled={!provider.enabled}
-                        className="w-3 h-3 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                      .env key
-                    </label>
-                  </div>
-                  <input
-                    type="password"
-                    value={provider.apiKey}
-                    onChange={e => updateProvider(provider.provider, "apiKey", e.target.value)}
-                    placeholder={provider.hasStoredKey ? "Replace stored key" : "Enter API key"}
-                    disabled={!provider.enabled || provider.useEnvironmentDefault}
-                    className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs outline-none bg-white focus:border-indigo-300 transition-all disabled:bg-slate-50"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Default Model</label>
-                  <input
-                    value={provider.defaultModel}
-                    onChange={e => updateProvider(provider.provider, "defaultModel", e.target.value)}
-                    placeholder="e.g. gpt-4o"
-                    disabled={!provider.enabled}
-                    className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs outline-none bg-white font-mono focus:border-indigo-300 transition-all disabled:bg-slate-50"
-                  />
-                </div>
-                <div className="flex items-end gap-2">
+            </div>
+            {testResult && testResult.provider === provider.provider && (
+              <div className={`mt-3 p-3 rounded-lg text-xs border flex items-center gap-2 flex-wrap ${
+                testResult.success
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                  : "bg-red-50 border-red-200 text-red-700"
+              }`}>
+                <Icon name={testResult.success ? "check_circle" : "error"} size={14} />
+                <span className="font-mono font-semibold">{testResult.model}</span>
+                <span className="flex-1">{testResult.message}</span>
+                {testResult.success && (
                   <button
-                    onClick={async () => {
-                      if (!auth || !provider.defaultModel) return;
-                      setTesting(true);
-                      setTestResult(null);
-                      try {
-                        const r = await api.testAiProvider(auth.token, provider.provider, provider.defaultModel, "Reply with: ok");
-                        setTestResult(r);
-                      } catch (e) {
-                        setTestResult({ provider: provider.provider, model: provider.defaultModel, success: false, message: e instanceof Error ? e.message : "Failed", rawResponse: null, executedAtUtc: new Date().toISOString() });
-                      } finally {
-                        setTesting(false);
-                      }
-                    }}
-                    disabled={testing || !provider.enabled || !provider.defaultModel}
-                    className="h-9 flex-1 rounded-lg border border-slate-200 text-[11px] font-medium text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
+                    onClick={() => handleSetDefault(provider.provider, testResult.model)}
+                    className="px-2.5 py-1 rounded-md bg-emerald-600 text-white text-[10px] font-semibold hover:bg-emerald-700 transition-colors"
                   >
-                    <span className="material-symbols-outlined text-sm">{testing ? "hourglass_top" : "bolt"}</span>
-                    <span>{testing ? "Testing..." : "Test"}</span>
+                    Set as Default
                   </button>
-                </div>
+                )}
               </div>
-              {testResult && testResult.provider === provider.provider && (
-                <div className={`mt-3 p-3 rounded-lg text-xs border ${
-                  testResult.success
-                    ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                    : "bg-red-50 border-red-200 text-red-700"
-                }`}>
-                  <span className="font-mono font-semibold">{testResult.model}</span>
-                  <span className="ml-1.5">{testResult.message}</span>
-                  {testResult.success && (
-                    <button
-                      onClick={() => handleSetDefault(provider.provider, testResult.model)}
-                      className="ml-3 px-2.5 py-1 rounded-md bg-emerald-600 text-white text-[10px] font-semibold hover:bg-emerald-700 transition-colors"
-                    >
-                      Set as Default
-                    </button>
-                  )}
-                </div>
-              )}
-            </GlassCard>
-          ))}
-        </div>
-      </div>
+            )}
+          </div>
+        ))}
+      </SectionCard>
 
       {/* ───── Model Explorer ───── */}
-      <GlassCard className="p-0 overflow-hidden">
+      <SectionCard
+        title="Model explorer"
+        description="Browse, favorite, and test available models"
+        icon="database_search"
+        bodyClassName="p-0"
+      >
         {/* Tabs */}
-        <div className="flex border-b border-slate-200">
-          {(["browse", "favorites", "history"] as const).map(tab => (
-            <button
-              key={tab}
-              onClick={() => { setExplorerTab(tab); setTestResult(null); setCustomResponse(""); if (tab === "browse" && explorerProvider) loadModels(explorerProvider); }}
-              className={`flex-1 py-3 text-xs font-semibold uppercase tracking-wider transition-all duration-200 ${
-                explorerTab === tab
-                  ? "text-indigo-600 bg-indigo-50/50 border-b-2 border-indigo-500"
-                  : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
-              }`}
-            >
-              <span className="material-symbols-outlined text-base align-middle mr-1">
-                {tab === "browse" ? "database_search" : tab === "favorites" ? "star" : "history"}
-              </span>
-              {tab}
-              {tab === "favorites" && favorites.length > 0 && (
-                <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold">{favorites.length}</span>
-              )}
-              {tab === "history" && historyFiltered.length > 0 && (
-                <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold">{historyFiltered.length}</span>
-              )}
-            </button>
-          ))}
+        <div className="flex items-center gap-1 px-3 pt-3 border-b border-slate-100">
+          {(["browse", "favorites", "history"] as const).map((tab) => {
+            const active = explorerTab === tab;
+            const count =
+              tab === "favorites"
+                ? favorites.length
+                : tab === "history"
+                ? historyFiltered.length
+                : undefined;
+            return (
+              <button
+                key={tab}
+                onClick={() => {
+                  setExplorerTab(tab);
+                  setTestResult(null);
+                  setCustomResponse("");
+                  if (tab === "browse" && explorerProvider) loadModels(explorerProvider);
+                }}
+                className={`inline-flex items-center gap-1.5 px-3 h-9 text-xs font-semibold transition-all border-b-2 -mb-px ${
+                  active
+                    ? "text-indigo-600 border-indigo-500"
+                    : "text-slate-500 hover:text-slate-700 border-transparent"
+                }`}
+              >
+                <Icon name={tab === "browse" ? "database_search" : tab === "favorites" ? "star" : "history"} size={14} />
+                <span className="capitalize">{tab}</span>
+                {count !== undefined && count > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold">
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         <div className="p-4">
@@ -505,30 +544,39 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
             <div className="flex items-center gap-2 mb-3">
               <select
                 value={explorerProvider}
-                onChange={e => { setExplorerProvider(e.target.value); setSelectedModel(null); setTestResult(null); setCustomResponse(""); setSearchQuery(""); loadModels(e.target.value); }}
-                className="flex-1 h-9 px-3 rounded-lg border border-slate-200 text-xs text-slate-700 bg-white outline-none focus:border-indigo-300 transition-all"
+                onChange={(e) => {
+                  setExplorerProvider(e.target.value);
+                  setSelectedModel(null);
+                  setTestResult(null);
+                  setCustomResponse("");
+                  setSearchQuery("");
+                  loadModels(e.target.value);
+                }}
+                className="flex-1 h-9 px-3 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
               >
-                {providers.map(p => (
+                {providers.map((p) => (
                   <option key={p.provider} value={p.provider}>{p.displayName}</option>
                 ))}
               </select>
               {explorerTab === "browse" && (
                 <div className="relative flex-1">
-                  <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">search</span>
+                  <Icon name="search" size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                   <input
                     value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search models..."
-                    className="w-full h-9 pl-8 pr-3 rounded-lg border border-slate-200 text-xs outline-none bg-white focus:border-indigo-300 transition-all"
+                    className="w-full h-9 pl-8 pr-3 rounded-lg bg-slate-50 border border-slate-200 text-xs outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
                   />
                 </div>
               )}
               {explorerTab === "browse" && (
                 <button
                   type="button"
-                  onClick={() => { setLoadAll(prev => !prev); loadModels(explorerProvider, true); }}
-                  className={`h-9 px-3 rounded-lg border text-xs font-medium whitespace-nowrap transition-colors ${
-                    loadAll ? "bg-indigo-100 border-indigo-300 text-indigo-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                  onClick={() => { setLoadAll((prev) => !prev); loadModels(explorerProvider, true); }}
+                  className={`h-9 px-3 rounded-lg border text-xs font-semibold whitespace-nowrap transition-colors ${
+                    loadAll
+                      ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                      : "border-slate-200 text-slate-600 bg-white hover:bg-slate-50"
                   }`}
                 >
                   {loadAll ? "All" : "Recent 30"}
@@ -540,7 +588,10 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
           {/* Content */}
           {explorerError && (
             <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700 mb-3 flex items-center justify-between">
-              <span>{explorerError}</span>
+              <span className="flex items-center gap-1.5">
+                <Icon name="warning" size={14} />
+                {explorerError}
+              </span>
               <button
                 onClick={() => loadModels(explorerProvider, true)}
                 className="ml-3 px-2.5 py-1 rounded-md bg-amber-600 text-white text-[10px] font-semibold hover:bg-amber-700 transition-colors shrink-0"
@@ -550,7 +601,12 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
             </div>
           )}
 
-          {explorerLoading && <div className="text-xs text-slate-400 text-center py-6">Loading models...</div>}
+          {explorerLoading && (
+            <div className="text-xs text-slate-400 text-center py-6 flex items-center justify-center gap-2">
+              <Icon name="hourglass_top" size={14} className="animate-spin" />
+              Loading models...
+            </div>
+          )}
 
           {!explorerLoading && explorerTab === "browse" && (
             <ModelList
@@ -582,9 +638,9 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
                 <div className="flex justify-end mb-2">
                   <button
                     onClick={clearHistory}
-                    className="text-[10px] font-medium text-red-500 hover:text-red-700 transition-colors flex items-center gap-1"
+                    className="text-[10px] font-semibold text-red-500 hover:text-red-700 transition-colors inline-flex items-center gap-1"
                   >
-                    <span className="material-symbols-outlined text-xs">delete_sweep</span>
+                    <Icon name="delete_sweep" size={12} />
                     Clear all
                   </button>
                 </div>
@@ -601,9 +657,11 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
                       loadModels(entry.provider);
                     }}
                   >
-                    <span className={`material-symbols-outlined text-lg ${entry.worked ? "text-emerald-500" : "text-red-400"}`}>
-                      {entry.worked ? "check_circle" : "cancel"}
-                    </span>
+                    <Icon
+                      name={entry.worked ? "check_circle" : "close"}
+                      size={16}
+                      className={entry.worked ? "text-emerald-500" : "text-red-400"}
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="text-xs font-semibold text-slate-800 truncate">{entry.name}</div>
                       <div className="text-[10px] text-slate-400 font-mono">{entry.model}</div>
@@ -612,7 +670,13 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
                   </div>
                 ))}
                 {historyFiltered.length === 0 && (
-                  <p className="text-xs text-slate-400 text-center py-6">No test history yet. Test a model to see it here.</p>
+                  <EmptyState
+                    icon="history"
+                    title="No test history yet"
+                    description="Test a model to see it here."
+                    compact
+                    accent="neutral"
+                  />
                 )}
               </div>
             </div>
@@ -631,23 +695,23 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
                   <button
                     onClick={handleTestModel}
                     disabled={testing}
-                    className={`px-4 h-8 rounded-lg text-xs font-semibold transition-all ${
+                    className={`px-4 h-8 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1 ${
                       testResult?.success
                         ? "bg-emerald-600 text-white"
                         : testResult?.success === false
                         ? "bg-red-600 text-white"
                         : "bg-indigo-600 text-white hover:bg-indigo-700"
-                    } disabled:opacity-50 flex items-center gap-1`}
+                    } disabled:opacity-50`}
                   >
-                    <span className="material-symbols-outlined text-sm">{testing ? "hourglass_top" : "bolt"}</span>
+                    <Icon name={testing ? "hourglass_top" : "bolt"} size={14} />
                     {testing ? "Testing..." : testResult ? (testResult.success ? "Connected" : "Failed") : "Test"}
                   </button>
                   {testResult?.success && (
                     <button
                       onClick={() => handleSetDefault()}
-                      className="px-4 h-8 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-all flex items-center gap-1"
+                      className="px-4 h-8 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-all inline-flex items-center gap-1"
                     >
-                      <span className="material-symbols-outlined text-sm">push_pin</span>
+                      <Icon name="push_pin" size={14} />
                       Set Default
                     </button>
                   )}
@@ -656,11 +720,12 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
 
               {/* Test result message */}
               {testResult && (
-                <div className={`p-3 rounded-lg text-xs border mb-3 ${
+                <div className={`p-3 rounded-lg text-xs border mb-3 flex items-center gap-2 ${
                   testResult.success
                     ? "bg-emerald-50 border-emerald-200 text-emerald-700"
                     : "bg-red-50 border-red-200 text-red-700"
                 }`}>
+                  <Icon name={testResult.success ? "check_circle" : "error"} size={14} />
                   {testResult.message}
                 </div>
               )}
@@ -669,16 +734,16 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
               <div className="flex gap-2">
                 <input
                   value={customPrompt}
-                  onChange={e => setCustomPrompt(e.target.value)}
+                  onChange={(e) => setCustomPrompt(e.target.value)}
                   placeholder="Custom test prompt..."
-                  className="flex-1 h-9 px-3 rounded-lg border border-slate-200 text-xs outline-none bg-white focus:border-indigo-300 transition-all"
+                  className="flex-1 h-9 px-3 rounded-lg bg-slate-50 border border-slate-200 text-xs outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
                 />
                 <button
                   onClick={handleTestCustom}
                   disabled={testingCustom || !customPrompt.trim()}
-                  className="h-9 px-4 rounded-lg bg-cyan-600 text-white text-xs font-semibold hover:bg-cyan-700 transition-colors disabled:opacity-50 flex items-center gap-1"
+                  className="h-9 px-4 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 inline-flex items-center gap-1"
                 >
-                  <span className="material-symbols-outlined text-sm">{testingCustom ? "hourglass_top" : "play_arrow"}</span>
+                  <Icon name={testingCustom ? "hourglass_top" : "play"} size={14} />
                   {testingCustom ? "Running..." : "Run"}
                 </button>
               </div>
@@ -690,14 +755,28 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
             </div>
           )}
         </div>
-      </GlassCard>
+      </SectionCard>
 
       {/* ───── Save ───── */}
       <div className="flex justify-end">
-        <GradientButton onClick={handleSave} disabled={saving}>
-          <span className="material-symbols-outlined text-sm">save</span>
-          {saving ? "Saving..." : "Save AI Settings"}
-        </GradientButton>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-sm shadow-indigo-500/20 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {saving ? (
+            <>
+              <span className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Icon name="save" size={14} />
+              Save AI settings
+            </>
+          )}
+        </button>
       </div>
     </div>
   );
@@ -723,28 +802,38 @@ function ModelList({
   showContext: boolean;
 }) {
   if (models.length === 0) {
-    return <p className="text-xs text-slate-400 text-center py-6">{empty}</p>;
+    return (
+      <EmptyState
+        icon="inbox"
+        title="No models found"
+        description={empty}
+        compact
+        accent="neutral"
+      />
+    );
   }
   return (
     <div className="space-y-1 max-h-[260px] overflow-y-auto pr-1">
-      {models.map(m => {
+      {models.map((m) => {
         const isFav = favorites.includes(m.id);
         const isSelected = selectedModelId === m.id;
         return (
           <div
             key={m.id}
             className={`flex items-center gap-2 p-2.5 rounded-lg cursor-pointer transition-all duration-200 border ${
-              isSelected ? "bg-indigo-50 border-indigo-200" : "bg-white border-transparent hover:bg-slate-50 hover:border-slate-200"
+              isSelected
+                ? "bg-indigo-50 border-indigo-200"
+                : "bg-white border-transparent hover:bg-slate-50 hover:border-slate-200"
             }`}
             onClick={() => onSelect(m)}
           >
             <button
               type="button"
-              onClick={e => { e.stopPropagation(); onToggleFavorite(m.id); }}
+              onClick={(e) => { e.stopPropagation(); onToggleFavorite(m.id); }}
               className={`shrink-0 transition-colors ${isFav ? "text-amber-400" : "text-slate-300 hover:text-amber-300"}`}
               title={isFav ? "Unfavorite" : "Favorite"}
             >
-              <span className="material-symbols-outlined text-lg">{isFav ? "star" : "star"}</span>
+              <Icon name="star" size={16} />
             </button>
             <div className="min-w-0 flex-1">
               <div className="text-xs font-semibold text-slate-800 truncate">{m.name}</div>

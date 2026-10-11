@@ -1,9 +1,8 @@
-import { GlassCard } from "../shared/GlassCard";
-import { GradientButton } from "../shared/GradientButton";
+import { Avatar, SectionCard, StatCard, EmptyState } from "../shared";
 import { InfoTile } from "../shared/InfoTile";
 import { DepartmentCard } from "./DepartmentCard";
 import type { OrganizationRecord, Department, User } from "../../types";
-import { Avatar } from "../shared";
+import { Icon } from "../../components/ui/Icon";
 
 function formatDate(dateStr: string | undefined | null): string {
   if (!dateStr) return "—";
@@ -28,6 +27,10 @@ interface OrganizationDetailProps {
   onDeleteDept: (dept: Department) => void;
 }
 
+/**
+ * Organization detail content. Designed to sit inside a right-hand Sheet —
+ * the header, stat tiles, contact info, and department sections stack vertically.
+ */
 export function OrganizationDetail({
   organization,
   departments,
@@ -47,147 +50,120 @@ export function OrganizationDetail({
     ? departments.reduce((sum, d) => sum + (d.capacityUtilization || 0), 0) / departments.length
     : 0;
 
-  const getDeptHead = (dept: Department) => 
+  const getDeptHead = (dept: Department) =>
     users.find((u) => u.id === dept.departmentHeadUserId);
 
   const getTeamMembers = (deptId: string) =>
     users.filter((u) => u.departmentId === deptId || u.departments?.some((department) => department.departmentId === deptId));
 
   return (
-    <>
-      {/* Organization Detail Card */}
-      <GlassCard className="p-8">
-        {/* Header */}
-        <div className="flex justify-between items-start flex-wrap gap-4 mb-8">
-          <div className="flex items-start gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
-              <span className="material-symbols-outlined text-white text-3xl">business</span>
+    <div className="flex flex-col gap-5 min-w-0">
+      {/* Organization Header */}
+      <div>
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shadow-sm shadow-indigo-500/20 shrink-0">
+              <Icon name="account_balance" size={22} className="text-white" />
             </div>
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900 mb-1">{organization.name}</h2>
-              <div className="flex items-center gap-3 text-sm text-slate-500">
-                <span className="flex items-center gap-1">
-                  <span className="material-symbols-outlined text-sm">layers</span>
-                  {departments.length} Departments
+            <div className="min-w-0">
+              <h2 className="text-lg font-bold text-slate-900 truncate">{organization.name}</h2>
+              <div className="flex items-center gap-3 text-xs text-slate-500 mt-1 flex-wrap">
+                <span className="inline-flex items-center gap-1">
+                  <Icon name="layers" size={12} className="text-slate-400" />
+                  {departments.length} Department{departments.length !== 1 ? "s" : ""}
                 </span>
                 {organization.taxId && (
-                  <span className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm">fingerprint</span>
+                  <span className="inline-flex items-center gap-1">
+                    <Icon name="badge" size={12} className="text-slate-400" />
                     {organization.taxId}
+                  </span>
+                )}
+                {organization.foundedDate && (
+                  <span className="inline-flex items-center gap-1">
+                    <Icon name="calendar_today" size={12} className="text-slate-400" />
+                    Founded {formatDate(organization.foundedDate)}
                   </span>
                 )}
               </div>
             </div>
           </div>
           {isAdmin && (
-            <div className="flex gap-2">
-              <GradientButton variant="ghost" onClick={onEditOrg}>
-                <span className="material-symbols-outlined text-base">edit</span>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={onEditOrg}
+                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-semibold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all"
+              >
+                <Icon name="edit" size={14} />
                 Edit
-              </GradientButton>
+              </button>
               {canDeleteOrg && (
-                <GradientButton variant="danger" onClick={onDeleteOrg}>
-                  <span className="material-symbols-outlined text-base">delete</span>
+                <button
+                  type="button"
+                  onClick={onDeleteOrg}
+                  className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-semibold bg-red-600 hover:bg-red-700 text-white shadow-sm shadow-red-500/20 transition-all"
+                >
+                  <Icon name="delete" size={14} />
                   Delete
-                </GradientButton>
+                </button>
               )}
             </div>
           )}
         </div>
 
         {organization.director && (
-          <div className="mb-8 flex items-center gap-3 rounded-xl border border-indigo-100 bg-indigo-50 p-4">
+          <div className="mt-4 flex items-center gap-3 rounded-xl border border-indigo-100 bg-indigo-50/70 p-3">
             <Avatar person={organization.director} size="md" />
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-500">Admin</div>
-              <div className="text-sm font-bold text-slate-800">{organization.director.fullName}</div>
-              <div className="text-xs text-slate-500">{organization.director.email}</div>
+            <div className="min-w-0">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-indigo-500">Director</div>
+              <div className="text-sm font-bold text-slate-800 truncate">{organization.director.fullName}</div>
+              <div className="text-xs text-slate-500 truncate">{organization.director.email}</div>
             </div>
           </div>
         )}
+      </div>
 
-        {/* Stats Overview */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-          <div className="bg-indigo-50 rounded-xl p-4">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 mb-1">Departments</div>
-            <div className="text-2xl font-bold text-indigo-600">{departments.length}</div>
-            <div className="text-xs text-indigo-400 mt-1">Active units</div>
-          </div>
-          <div className="bg-emerald-50 rounded-xl p-4">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-1">Avg Capacity</div>
-            <div className="text-2xl font-bold text-emerald-600">{(capacityUtilization * 100).toFixed(0)}%</div>
-            <div className="text-xs text-emerald-400 mt-1">Utilization</div>
-          </div>
-          <div className="bg-violet-50 rounded-xl p-4">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400 mb-1">Total Capacity</div>
-            <div className="text-2xl font-bold text-violet-600">
-              {departments.reduce((sum, d) => sum + (d.maxCapacity || 0), 0)}
-            </div>
-            <div className="text-xs text-violet-400 mt-1">Max members</div>
-          </div>
-          <div className="bg-amber-50 rounded-xl p-4">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400 mb-1">Founded</div>
-            <div className="text-lg font-bold text-amber-600">
-              {formatDate(organization.foundedDate)}
-            </div>
-            <div className="text-xs text-amber-400 mt-1">Established</div>
-          </div>
-        </div>
+      {/* Stats Overview */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <StatCard label="Departments" value={departments.length} color="indigo" icon="groups" />
+        <StatCard label="Avg Capacity" value={`${(capacityUtilization * 100).toFixed(0)}%`} color="emerald" icon="speed" />
+        <StatCard label="Total Capacity" value={departments.reduce((sum, d) => sum + (d.maxCapacity || 0), 0)} color="violet" icon="trending_up" />
+        <StatCard label="Founded" value={formatDate(organization.foundedDate)} color="amber" icon="calendar_today" />
+      </div>
 
-        {/* Contact Details */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <InfoTile 
-            icon="id_card" 
-            label="Tax ID" 
-            value={organization.taxId} 
-          />
-          <InfoTile 
-            icon="call" 
-            label="Phone" 
-            value={organization.contactPhone} 
-          />
-          <InfoTile 
-            icon="mail" 
-            label="Email" 
-            value={organization.contactEmail} 
-          />
-          <InfoTile 
-            icon="location_on" 
-            label="Address" 
-            value={organization.address} 
-          />
-          <InfoTile 
-            icon="calendar_today" 
-            label="Founded Date" 
-            value={formatDate(organization.foundedDate)}
-          />
-          <InfoTile 
-            icon="description" 
-            label="Departments" 
-            value={departments.length}
-          />
+      {/* Contact Details */}
+      <SectionCard title="Contact details" icon="mail" description="Organization contact information">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <InfoTile icon="id_card" label="Tax ID" value={organization.taxId} />
+          <InfoTile icon="call" label="Phone" value={organization.contactPhone} />
+          <InfoTile icon="mail" label="Email" value={organization.contactEmail} />
+          <InfoTile icon="location_on" label="Address" value={organization.address} />
+          <InfoTile icon="calendar_today" label="Founded Date" value={formatDate(organization.foundedDate)} />
+          <InfoTile icon="account_tree" label="Departments" value={departments.length} />
         </div>
-      </GlassCard>
+      </SectionCard>
 
       {/* Departments Section */}
-      <GlassCard className="p-8 flex-1">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h3 className="text-lg font-bold text-slate-900">Departments</h3>
-            <p className="text-sm text-slate-500 mt-1">
-              {departments.length} department{departments.length !== 1 ? "s" : ""} in {organization.name}
-            </p>
-          </div>
-          {canCreateDepartments && (
-            <GradientButton onClick={onAddDept}>
-              <span className="material-symbols-outlined text-lg">add</span>
-              Add Department
-            </GradientButton>
-          )}
-        </div>
-
+      <SectionCard
+        title="Departments"
+        icon="account_tree"
+        description={`${departments.length} department${departments.length !== 1 ? "s" : ""} in ${organization.name}`}
+        actions={
+          canCreateDepartments ? (
+            <button
+              type="button"
+              onClick={onAddDept}
+              className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-sm shadow-indigo-500/20 transition-all"
+            >
+              <Icon name="add" size={14} />
+              Add department
+            </button>
+          ) : undefined
+        }
+        bodyClassName="pt-4"
+      >
         {departments.length > 0 ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
             {departments.map((dept, index) => (
               <DepartmentCard
                 key={dept.id}
@@ -204,23 +180,26 @@ export function OrganizationDetail({
             ))}
           </div>
         ) : (
-          <div className="text-center py-16">
-            <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
-              <span className="material-symbols-outlined text-3xl text-slate-400">folder_open</span>
-            </div>
-            <h4 className="text-base font-semibold text-slate-700 mb-2">No departments yet</h4>
-            <p className="text-sm text-slate-400  mx-auto mb-6">
-              Create your first department to start organizing your teams and projects.
-            </p>
-            {canCreateDepartments && (
-              <GradientButton variant="ghost" onClick={onAddDept}>
-                <span className="material-symbols-outlined">add</span>
-                Create First Department
-              </GradientButton>
-            )}
-          </div>
+          <EmptyState
+            icon="folder_open"
+            title="No departments yet"
+            description="Create your first department to start organizing your teams and projects."
+            accent="primary"
+            action={
+              canCreateDepartments ? (
+                <button
+                  type="button"
+                  onClick={onAddDept}
+                  className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-sm shadow-indigo-500/20 transition-all"
+                >
+                  <Icon name="add" size={14} />
+                  Create first department
+                </button>
+              ) : undefined
+            }
+          />
         )}
-      </GlassCard>
-    </>
+      </SectionCard>
+    </div>
   );
 }

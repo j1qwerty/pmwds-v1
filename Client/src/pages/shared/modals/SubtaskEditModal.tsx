@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { FiMessageSquare, FiTrash2, FiCheck, FiCalendar, FiFlag, FiSave } from "react-icons/fi";
+import { FiCalendar, FiFlag, FiTrash2 } from "react-icons/fi";
 import type { Task } from "../../../types";
-import { ModalOverlay, useToast } from "..";
+import { Sheet, ModalCancelButton, ModalPrimaryButton, useToast } from "..";
 import { ProgressStatusEditor } from "../../project/components/ProgressStatusEditor";
 import { priorities } from "../../constants";
+import { Icon } from "../../../components/ui/Icon";
 
 interface SubtaskEditModalProps {
   subtask: Task;
@@ -75,123 +76,117 @@ export function SubtaskEditModal({
     selectedPriority !== (subtask.priority || "Medium") ||
     commentText.trim().length > 0;
 
-  return (
-    <ModalOverlay onClose={onClose} showCloseButton={true}>
-      <div className="bg-white rounded-2xl shadow-xl border border-slate-200 mx-auto" style={{ width: "auto", maxWidth: "100vw" }}>
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-3 min-w-0">
-            <div
-              className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${editStatus === "Completed"
-                  ? "bg-emerald-100 text-emerald-600"
-                  : editStatus === "InProgress"
-                    ? "bg-blue-100 text-blue-600"
-                    : "bg-slate-100 text-slate-500"
-                }`}
-            >
-              <FiCheck className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <h3 className="text-sm font-bold text-slate-900 truncate">{subtask.title}</h3>
-              <p className="text-[10px] text-slate-400">Subtask</p>
-            </div>
-          </div>
+  const headerAccent =
+    editStatus === "Completed" ? "success" : editStatus === "InProgress" ? "info" : "neutral";
 
-          <div className="flex items-center gap-1">
-            {mayEdit && (
+  return (
+    <Sheet
+      open={true}
+      onClose={onClose}
+      title={subtask.title}
+      description="Subtask"
+      icon="check-circle"
+      accent={headerAccent}
+      size="md"
+      footer={
+        mayEdit ? (
+          <>
+            <div className="flex-1">
               <button
+                type="button"
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
                 title="Delete subtask"
-                aria-label="Delete subtask"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <FiTrash2 className="w-4 h-4" />
+                {isDeleting ? (
+                  <span className="w-3.5 h-3.5 rounded-full border-2 border-red-300 border-t-red-600 animate-spin" />
+                ) : (
+                  <FiTrash2 className="w-3.5 h-3.5" />
+                )}
+                {isDeleting ? "Deleting..." : "Delete"}
               </button>
-            )}
-          </div>
-        </div>
-
-        <div className="p-5 space-y-5">
-          <div className="pt-3 border-t border-slate-100">
-            <div className="flex items-center gap-4 text-xs text-slate-500">
-              {subtask.dueDate && (
-                <div className="flex items-center gap-1.5">
-                  <FiCalendar className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Due <strong className="text-slate-700">{new Date(subtask.dueDate).toLocaleDateString()}</strong></span>
-                </div>
-              )}
-              {subtask.priority && (
-                <div className="flex items-center gap-1.5">
-                  <FiFlag className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Priority </span>
-                  {mayEdit && (
-                    
-                      <div>
-
-                        <select
-                          value={selectedPriority}
-                          onChange={(e) => setSelectedPriority(e.target.value)}
-                          className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 outline-none focus:border-indigo-300 bg-white"
-                        >
-                          {priorities.map((p) => (
-                            <option key={p} value={p}>{p}</option>
-                          ))}
-                        </select>
-                      </div>
-                   
-                  )}
-                </div>
-              )}
             </div>
-          </div>
-
-          {mayEdit && (
-            <ProgressStatusEditor
-              progress={editProgress}
-              status={editStatus}
-              mayEdit={mayEdit}
-              onChange={handleProgressStatusChange}
-              entityType="subtask"
+            <ModalCancelButton onClick={onClose} />
+            <ModalPrimaryButton
+              onClick={handleUpdate}
+              loading={isUpdating}
+              disabled={!hasChanges}
+              label="Update"
+              icon="check-circle"
             />
-          )}
-
-
-
-          {mayEdit && (
-            <div>
-              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5 mb-2">
-                <FiMessageSquare className="w-3.5 h-3.5" /> Comment
-              </label>
-              <textarea
-                value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                placeholder="Add a comment with this update..."
-                rows={2}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all resize-none"
-              />
+          </>
+        ) : (
+          <ModalCancelButton onClick={onClose} label="Close" />
+        )
+      }
+    >
+      <div className="space-y-4">
+        {/* Quick info row: due date + priority */}
+        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+          {subtask.dueDate && (
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-50 border border-slate-200">
+              <FiCalendar className="w-3.5 h-3.5 text-slate-400" />
+              <span>
+                Due <strong className="text-slate-700">{new Date(subtask.dueDate).toLocaleDateString()}</strong>
+              </span>
             </div>
           )}
-
-          {mayEdit && (
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                onClick={handleUpdate}
-                disabled={isUpdating || !hasChanges}
-                className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-              >
-                <FiSave className="w-3.5 h-3.5" />
-                {isUpdating ? "Updating..." : "Update"}
-              </button>
-              <button
-                onClick={onClose}
-                className="px-6 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
-              >
-                Cancel
-              </button>
+          {subtask.priority && (
+            <div className="inline-flex items-center gap-1.5">
+              <FiFlag className="w-3.5 h-3.5 text-slate-400" />
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Priority</span>
+              {mayEdit ? (
+                <select
+                  value={selectedPriority}
+                  onChange={(e) => setSelectedPriority(e.target.value)}
+                  className="h-8 px-2 rounded-md border border-slate-200 bg-slate-50 text-xs font-medium text-slate-700 outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+                >
+                  {priorities.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className="font-semibold text-slate-700">{selectedPriority}</span>
+              )}
             </div>
           )}
         </div>
+
+        {mayEdit && (
+          <ProgressStatusEditor
+            progress={editProgress}
+            status={editStatus}
+            mayEdit={mayEdit}
+            onChange={handleProgressStatusChange}
+            entityType="subtask"
+          />
+        )}
+
+        {mayEdit && (
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 mb-1.5">
+              <Icon name="info" size={12} />
+              Comment
+            </label>
+            <textarea
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              placeholder="Add a comment with this update..."
+              rows={2}
+              className="w-full min-h-[80px] px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-800 outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all resize-none"
+            />
+          </div>
+        )}
+
+        {!mayEdit && (
+          <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-500 text-center">
+            You don't have permission to edit this subtask.
+          </div>
+        )}
       </div>
-    </ModalOverlay>
+    </Sheet>
   );
 }

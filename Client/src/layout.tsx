@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "./auth";
+import { preloadRoute } from "./lib/routePreload";
 import { useAppData } from "./appData";
 import { onStatusChanged, type RealtimeStatus } from "./realtime";
-import { Avatar, NavHeaderProvider, NavHeader, NavActionButton, usePermission, BgRenderer } from "./pages/shared";
+import { Avatar, NavHeaderProvider, NavHeader, NavActionButton, usePermission, BgRenderer, CommandPaletteProvider, useCommandPalette } from "./pages/shared";
 import { PERMISSION_GROUPS } from "./permissions";
 import { SHOW_CHAT_BUTTON, SHOW_SKILLS_PAGE } from "./featureFlags";
 import { roleDisplayNames } from "./permissions";
@@ -177,6 +178,59 @@ const sectionThemes: Record<string, {
   },
 };
 
+/** Cmd/Ctrl+K search trigger — visible pill on desktop, compact pill on mobile.
+ *  The shortcut hint always shows BOTH platform badges side by side (⌘K + Ctrl K),
+ *  matching the kbd badge style used across the app. */
+function TopbarSearchButton() {
+  const { openPalette } = useCommandPalette();
+
+  return (
+    <button
+      onClick={openPalette}
+      aria-label="Open command palette"
+      title="Search everything (⌘K / Ctrl K)"
+      className="group hidden md:flex items-center gap-2 rounded-xl bg-white/70 border border-slate-200/70 text-slate-400 hover:text-slate-600 hover:border-blue-300 hover:shadow-sm transition-all duration-200 overflow-hidden"
+      style={{
+        height: 'clamp(30px,4vw,36px)',
+        padding: '0 clamp(8px,1vw,12px)',
+        minWidth: 'clamp(150px,16vw,220px)',
+        fontSize: 'clamp(11px,1.1vw,13px)',
+      }}
+    >
+      <HiOutlineSearch className="h-[clamp(13px,1.6vw,16px)] w-[clamp(13px,1.6vw,16px)] shrink-0" />
+      <span className="flex-1 text-left truncate">Search everything…</span>
+      <kbd className="shrink-0 inline-flex items-center rounded-md bg-slate-100 border border-slate-200 px-1.5 text-[10px] font-semibold text-slate-500 group-hover:bg-white transition-colors">
+        ⌘K
+      </kbd>
+      <kbd className="shrink-0 inline-flex items-center rounded-md bg-slate-100 border border-slate-200 px-1.5 text-[10px] font-semibold text-slate-500 group-hover:bg-white transition-colors">
+        Ctrl K
+      </kbd>
+    </button>
+  );
+}
+
+/** Mobile search trigger — icon plus the same ⌘K / Ctrl K badges. */
+function TopbarSearchIconButton() {
+  const { openPalette } = useCommandPalette();
+  return (
+    <button
+      onClick={openPalette}
+      aria-label="Open command palette (⌘ K / Ctrl K)"
+      title="Search everything (⌘K / Ctrl K)"
+      className="md:hidden flex items-center gap-1.5 rounded-full bg-white/70 border border-slate-200/70 text-slate-400 hover:text-slate-600 hover:border-blue-300 transition-all"
+      style={{ height: 'clamp(32px,4.5vw,38px)', padding: '0 clamp(6px,1vw,10px)' }}
+    >
+      <HiOutlineSearch style={{ height: 'clamp(16px,2.5vw,20px)', width: 'clamp(16px,2.5vw,20px)' }} className="shrink-0" />
+      <kbd className="shrink-0 inline-flex items-center rounded-md bg-slate-100 border border-slate-200 px-1 text-[10px] font-semibold text-slate-500">
+        ⌘ K
+      </kbd>
+      <kbd className="shrink-0 inline-flex items-center rounded-md bg-slate-100 border border-slate-200 px-1 text-[10px] font-semibold text-slate-500">
+        Ctrl K
+      </kbd>
+    </button>
+  );
+}
+
 function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const { auth, logout } = useAuth();
@@ -211,22 +265,25 @@ function Layout({ children }: { children: React.ReactNode }) {
     [data.notifications],
   );
 
-  // Responsive breakpoint detection
+  // Responsive breakpoint detection. matchMedia only fires when a breakpoint is
+  // actually crossed, unlike a window "resize" listener that fires every frame
+  // of a drag.
   useEffect(() => {
-    const handleResize = () => {
-      const width = window.innerWidth;
-      setIsMobile(width < 768);
-      setIsTablet(width >= 768 && width < 1024);
-
+    const mobileQuery = window.matchMedia("(max-width: 767px)");
+    const tabletQuery = window.matchMedia("(min-width: 768px) and (max-width: 1023px)");
+    const apply = () => {
+      setIsMobile(mobileQuery.matches);
+      setIsTablet(tabletQuery.matches);
       // Auto-collapse sidebar on tablet
-      if (width >= 768 && width < 1024) {
-        setSidebarCompact(true);
-      }
+      if (tabletQuery.matches) setSidebarCompact(true);
     };
-
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    apply();
+    mobileQuery.addEventListener("change", apply);
+    tabletQuery.addEventListener("change", apply);
+    return () => {
+      mobileQuery.removeEventListener("change", apply);
+      tabletQuery.removeEventListener("change", apply);
+    };
   }, []);
 
   const navGroups: Array<{
@@ -281,12 +338,13 @@ function Layout({ children }: { children: React.ReactNode }) {
   }, [location.pathname]);
 
   return (
+    <CommandPaletteProvider>
     <NavHeaderProvider>
       <div className="flex min-h-screen demo-bg text-on-surface font-sans antialiased">
         {/* Mobile overlay backdrop */}
         {mobileSidebarOpen && (
           <div
-            className="fixed inset-0 z-[90] bg-black/50 backdrop-blur-sm md:hidden transition-opacity duration-300"
+            className="fixed inset-0 z-[90] bg-black/50 md:hidden transition-opacity duration-300"
             onClick={() => setMobileSidebarOpen(false)}
           />
         )}
@@ -295,7 +353,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         <nav
           className={classNames(
             "fixed left-0 top-0 z-50 h-full flex flex-col transition-all duration-300",
-            "bg-surface-container-lowest/95 backdrop-blur-3xl shadow-[8px_0_40px_rgba(0,0,0,0.05)]",
+            "bg-surface-container-lowest/97  shadow-[8px_0_40px_rgba(0,0,0,0.05)]",
             // Mobile: overlay with smooth slide
             "max-md:z-[100]",
             mobileSidebarOpen
@@ -405,6 +463,8 @@ function Layout({ children }: { children: React.ReactNode }) {
                 return (
                   <Link
                     to="/projects"
+                    onMouseEnter={() => preloadRoute("/projects")}
+                    onFocus={() => preloadRoute("/projects")}
                     onClick={() => setMobileSidebarOpen(false)}
                     className={classNames(
                       "relative flex items-center rounded-md transition-all duration-200 group",
@@ -524,6 +584,8 @@ function Layout({ children }: { children: React.ReactNode }) {
                         <Link
                           key={item.path}
                           to={item.path}
+                          onMouseEnter={() => preloadRoute(item.path)}
+                          onFocus={() => preloadRoute(item.path)}
                           onClick={() => setMobileSidebarOpen(false)}
                           className={classNames(
                             "relative flex items-center rounded-md transition-all duration-200 group",
@@ -627,7 +689,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         >
           {/* Topbar */}
           <header
-            className="sticky top-0 z-40 bg-surface-container-lowest/90 backdrop-blur-2xl border-b border-surface-variant"
+            className="sticky top-0 z-40 bg-surface-container-lowest/97  border-b border-surface-variant"
             style={{ height: 'clamp(48px,6vw,56px)' }}
           >
             <div className="flex h-full items-center justify-between" style={{ padding: '0 clamp(8px,3vw,24px)' }}>
@@ -646,6 +708,11 @@ function Layout({ children }: { children: React.ReactNode }) {
 
               {/* Right actions */}
               <div className="flex items-center" style={{ gap: 'clamp(8px,1.5vw,16px)' }}>
+                <TopbarSearchButton />
+
+                {/* Mobile search icon */}
+                <TopbarSearchIconButton />
+
                 <button
                   onClick={() => void refresh()}
                   disabled={loading}
@@ -734,6 +801,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     </NavHeaderProvider>
+    </CommandPaletteProvider>
   );
 }
 

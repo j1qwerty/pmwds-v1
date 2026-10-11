@@ -1,10 +1,16 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
 import type { PermissionRecord, RoleRecord } from "../../types";
+import {
+  Sheet,
+  ModalCancelButton,
+  ModalPrimaryButton,
+} from "../shared";
+import { Icon } from "../../components/ui/Icon";
 
 interface RoleFormModalProps {
   initialData?: RoleRecord;
   permissions: PermissionRecord[];
-  onSubmit: (payload: Record<string, unknown>) => void;
+  onSubmit: (payload: Record<string, unknown>) => void | Promise<void>;
   onCancel: () => void;
 }
 
@@ -19,6 +25,11 @@ type MatrixPermission = {
 
 const SCOPED_CODE = /^(.+?)_(OWN|ALL)_(.+)$/;
 const LEGACY_CODE = /^(DEPARTMENT|PROJECT|MILESTONE|TASK|SUBTASK|USER|NOTIFICATION|REPORT|ACTIVITY_LOG|DOCUMENT|UTILIZATION_CERTIFICATE|KNOWLEDGE)_(VIEW|CREATE|EDIT|DELETE|MANAGE|ASSIGN|COMMENT_CREATE|ATTACHMENT_CREATE)$/;
+
+const inputCls =
+  "w-full h-9 px-3 rounded-lg bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm text-slate-700 transition-all";
+const labelCls =
+  "text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5";
 
 function parseScoped(permission: PermissionRecord): MatrixPermission | null {
   const match = permission.code.match(SCOPED_CODE);
@@ -86,10 +97,12 @@ function inheritedTitle(source: "ALL" | "OWN_MANAGE" | "OTHER" | null, fallback:
 
 export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: RoleFormModalProps) {
   const [submitting, setSubmitting] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(initialData?.permissions?.map((permission) => permission.id) ?? []),
   );
+  const formRef = useRef<HTMLFormElement>(null);
 
   const matrix = useMemo(() => {
     const groups = new Map<string, MatrixPermission[]>();
@@ -225,9 +238,20 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
     });
   };
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (submitting) return;
+
+    const form = event.currentTarget as HTMLFormElement;
+    const formData = new FormData(form);
+    const name = formData.get("name")?.toString().trim() ?? "";
+    const description = formData.get("description")?.toString() ?? "";
+
+    if (!name) {
+      setNameError("Role name is required");
+      return;
+    }
+    setNameError(null);
     setSubmitting(true);
 
     const normalized = new Set(selected);
@@ -256,88 +280,114 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
       }
     }
 
-    const form = event.currentTarget as HTMLFormElement;
-    const name = new FormData(form).get("name")?.toString().trim() ?? "";
-    const description = new FormData(form).get("description")?.toString() ?? "";
-    onSubmit({ name, description, permissionLevel: Number(new FormData(form).get("permissionLevel") ?? 10), permissionIds: Array.from(normalized) });
+    try {
+      await onSubmit({ name, description, permissionLevel: Number(formData.get("permissionLevel") ?? 10), permissionIds: Array.from(normalized) });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSaveClick = () => {
+    formRef.current?.requestSubmit();
   };
 
   return (
-    <div className="w-[min(1180px,96vw)] max-w-[96vw] max-h-[92vh] overflow-hidden rounded-2xl bg-white shadow-2xl border border-slate-200 flex flex-col">
-      <div className="px-6 py-5 border-b border-slate-100 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-bold text-slate-900">{initialData ? "Edit Role" : "Create Role"}</h2>
-          <p className="text-xs text-slate-500 mt-1">
-            Configure permissions by feature and department scope. All Departments includes the user's own departments.
-          </p>
-        </div>
-        <button type="button" onClick={onCancel} className="size-9 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400">
-          <span className="material-symbols-outlined">close</span>
-        </button>
-      </div>
-
-      <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-        <div className="grid grid-cols-1 lg:grid-cols-[240px_160px_1fr] gap-4 p-6 border-b border-slate-100">
-          <div>
-            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Role name *</label>
+    <Sheet
+      open
+      onClose={onCancel}
+      title={initialData ? "Edit role" : "Create role"}
+      description="Configure permissions by feature and department scope. All Departments includes the user's own departments."
+      icon={initialData ? "edit" : "shield_person"}
+      accent="primary"
+      size="lg"
+      footer={
+        <>
+          <ModalCancelButton onClick={onCancel} />
+          <ModalPrimaryButton
+            onClick={handleSaveClick}
+            loading={submitting}
+            label={initialData ? "Save changes" : "Create role"}
+            icon="check-circle"
+          />
+        </>
+      }
+    >
+      <form ref={formRef} onSubmit={handleSubmit} noValidate>
+        {/* Top form fields */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-4 border-b border-slate-100">
+          <div className="sm:col-span-2">
+            <label className={labelCls} htmlFor="role-form-name">
+              Role name <span className="text-red-500">*</span>
+            </label>
             <input
-              required
+              id="role-form-name"
               defaultValue={initialData?.name ?? ""}
               name="name"
-              className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
               placeholder="e.g. Department Reviewer"
+              aria-invalid={nameError ? true : undefined}
+              className={`${inputCls} ${nameError ? "border-red-300 focus:border-red-400 focus:ring-red-100" : ""}`}
             />
+            {nameError && <p className="text-xs text-red-600 mt-1">{nameError}</p>}
           </div>
           <div>
-            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Level</label>
+            <label className={labelCls} htmlFor="role-form-level">Level</label>
             <input
+              id="role-form-level"
               type="number"
               min={0}
               max={100}
               defaultValue={initialData?.permissionLevel ?? 10}
               name="permissionLevel"
-              className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+              className={inputCls}
             />
           </div>
           <div>
-            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Description</label>
+            <label className={labelCls} htmlFor="role-form-description">Description</label>
             <input
+              id="role-form-description"
               defaultValue={initialData?.description ?? ""}
               name="description"
-              className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
               placeholder="What this role is responsible for"
+              className={inputCls}
             />
           </div>
         </div>
 
-        <div className="px-6 pt-4 flex items-center justify-between gap-3">
+        {/* Search + grant count */}
+        <div className="py-3 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 text-xs text-slate-500">
-            <span className="rounded-full bg-indigo-50 px-2 py-1 font-medium text-indigo-600">{selected.size} grants stored</span>
-            <span>Manage checks View, Create, Edit and Delete.</span>
+            <span className="rounded-full bg-indigo-50 px-2 py-1 font-semibold text-indigo-600 border border-indigo-100">
+              {selected.size} grants stored
+            </span>
+            <span className="hidden sm:inline">Manage checks View, Create, Edit and Delete.</span>
           </div>
           <div className="relative w-[min(360px,55vw)]">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+              <Icon name="search" size={15} />
+            </span>
             <input
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search features or permissions"
-              className="w-full rounded-xl border border-slate-200 pl-9 pr-3 py-2 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+              aria-label="Search features or permissions"
+              className="w-full h-9 pl-9 pr-3 rounded-lg bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm transition-all"
             />
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-6 space-y-4">
+        {/* Matrix (the Sheet body scrolls; sticky footer stays visible) */}
+        <div className="space-y-3">
           {filteredMatrix.map(([module, rows]) => (
             <section key={module} className="rounded-xl border border-slate-200 overflow-hidden">
-              <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-bold text-slate-800">{module}</h3>
-                  <p className="text-[11px] text-slate-400">Department-scoped feature permissions</p>
+                  <p className="text-[10px] text-slate-400">Department-scoped feature permissions</p>
                 </div>
               </div>
               {module === "Projects" && primaryDepartmentPermission && (
-                <div className="border-t border-slate-100 bg-amber-50/50 px-4 py-3">
-                  <label className="flex items-start gap-2">
+                <div className="border-t border-slate-100 bg-amber-50/50 px-4 py-2.5">
+                  <label className="flex items-start gap-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={selected.has(primaryDepartmentPermission.id)}
@@ -347,7 +397,7 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
                         else next.add(primaryDepartmentPermission.id);
                         return next;
                       })}
-                      className="mt-0.5 size-4 accent-amber-600"
+                      className="mt-0.5 size-4 accent-indigo-600"
                       title={primaryDepartmentPermission.description}
                     />
                     <span>
@@ -364,8 +414,8 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
                 const extras = extraRows(rows, scope);
                 if (extras.length === 0) return null;
                 return (
-                  <div key={scope} className="border-t border-slate-100 px-4 py-3 bg-slate-50/40">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                  <div key={scope} className="border-t border-slate-100 px-4 py-2.5 bg-slate-50/40">
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
                       Additional permissions · {scope === "OWN" ? "Own Department" : "All Departments"}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -373,7 +423,7 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
                         const source = ownGrantSource(row, rows, selected);
                         const inherited = scope === "OWN" && isEffective(row.permission) && !selected.has(row.permission.id);
                         return (
-                          <label key={row.permission.id} className="flex items-start gap-2 rounded-lg border border-slate-100 bg-white px-3 py-2 hover:bg-slate-50">
+                          <label key={row.permission.id} className="flex items-start gap-2 rounded-lg border border-slate-100 bg-white px-3 py-2 hover:bg-slate-50 cursor-pointer">
                             <input
                               type="checkbox"
                               checked={isEffective(row.permission)}
@@ -393,16 +443,16 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
                   </div>
                 );
               })}
-              
+
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[720px] text-xs">
                   <thead className="bg-white border-b border-slate-100">
                     <tr>
-                      <th className="text-left px-4 py-2.5 font-semibold text-slate-500">Scope</th>
+                      <th className="text-left px-4 py-2.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Scope</th>
                       {(["VIEW", "CREATE", "EDIT", "DELETE", "MANAGE"] as const).map((action) => (
-                        <th key={action} className="text-center px-3 py-2.5 font-semibold text-slate-500">{action}</th>
+                        <th key={action} className="text-center px-3 py-2.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider">{action}</th>
                       ))}
-                      <th className="text-left px-4 py-2.5 font-semibold text-slate-500">Scope meaning</th>
+                      <th className="text-left px-4 py-2.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Scope meaning</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -438,17 +488,17 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
                               (() => {
                                 const manageInherited = scope === "OWN" && !selected.has(manage.permission.id) && isEffective(manage.permission);
                                 return (
-                              <label className="inline-flex items-center gap-2">
-                                <input
-                                  type="checkbox"
-                                  checked={isEffective(manage.permission)}
-                                  disabled={manageInherited}
-                                  onChange={() => toggleManage(scope, rows)}
-                                  title={manageInherited ? "Granted by All Departments" : manage.permission.description}
-                                  className="size-4 accent-emerald-600"
-                                />
-                                <span className="font-semibold text-emerald-700">Manage</span>
-                              </label>
+                                  <label className="inline-flex items-center gap-2 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={isEffective(manage.permission)}
+                                      disabled={manageInherited}
+                                      onChange={() => toggleManage(scope, rows)}
+                                      title={manageInherited ? "Granted by All Departments" : manage.permission.description}
+                                      className="size-4 accent-emerald-600"
+                                    />
+                                    <span className="font-semibold text-emerald-700">Manage</span>
+                                  </label>
                                 );
                               })()
                             ) : (
@@ -466,13 +516,13 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
 
           {globalPermissions.length > 0 && (
             <section className="rounded-xl border border-slate-200 overflow-hidden">
-              <div className="px-4 py-3 bg-slate-50 border-b border-slate-200">
+              <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
                 <h3 className="text-sm font-bold text-slate-800">Global permissions</h3>
-                <p className="text-[11px] text-slate-400">Organization, authorization and other non-department capabilities.</p>
+                <p className="text-[10px] text-slate-400">Organization, authorization and other non-department capabilities.</p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 p-3">
                 {globalPermissions.map((permission) => (
-                  <label key={permission.id} className="flex items-start gap-2 rounded-lg border border-slate-100 px-3 py-2.5 hover:bg-slate-50">
+                  <label key={permission.id} className="flex items-start gap-2 rounded-lg border border-slate-100 bg-white px-3 py-2.5 hover:bg-slate-50 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={selected.has(permission.id)}
@@ -486,7 +536,7 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
                     />
                     <span className="min-w-0">
                       <span className="block text-xs font-semibold text-slate-700">{permission.name}</span>
-                      <span className="block text-[10px] text-slate-400">{permission.code}</span>
+                      <span className="block text-[10px] text-slate-400 font-mono">{permission.code}</span>
                     </span>
                   </label>
                 ))}
@@ -495,19 +545,12 @@ export function RoleFormModal({ initialData, permissions, onSubmit, onCancel }: 
           )}
 
           {filteredMatrix.length === 0 && globalPermissions.length === 0 && (
-            <div className="py-12 text-center text-sm text-slate-400">No assignable permissions match this search.</div>
+            <div className="py-12 text-center text-sm text-slate-400">
+              No assignable permissions match this search.
+            </div>
           )}
         </div>
-
-        <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50/80">
-          <button type="button" onClick={onCancel} className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-white">
-            Cancel
-          </button>
-          <button type="submit" disabled={submitting} className="px-5 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50">
-            {submitting ? "Saving..." : initialData ? "Save Changes" : "Create Role"}
-          </button>
-        </div>
       </form>
-    </div>
+    </Sheet>
   );
 }

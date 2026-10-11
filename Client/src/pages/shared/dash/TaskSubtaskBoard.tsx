@@ -73,8 +73,8 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
     const getProgressColor = (progress: number): string => {
         if (progress === 100) return 'bg-emerald-500';
         if (progress >= 75) return 'bg-amber-400';
-        if (progress >= 50) return 'bg-cyan-400';
-        if (progress >= 25) return 'bg-rose-400';
+        if (progress >= 50) return 'bg-sky-400';
+        if (progress >= 25) return 'bg-red-400';
         return 'bg-slate-300';
     };
 

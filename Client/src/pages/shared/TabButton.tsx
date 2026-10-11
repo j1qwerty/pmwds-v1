@@ -17,7 +17,7 @@ export function TabButton({
     <button
       onClick={onClick}
       className={`
-        px-5 py-3 rounded-t-xl text-sm font-medium transition-all duration-200 flex items-center gap-2 relative
+        px-5 py-3 rounded-t-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2 relative
         ${active
           ? "bg-white text-indigo-600 border border-slate-200 border-b-white -mb-px shadow-sm"
           : "text-slate-500 hover:text-slate-700 hover:bg-slate-50 border border-transparent"
@@ -28,7 +28,7 @@ export function TabButton({
       {label}
       {count !== undefined && (
         <span className={`
-          px-2 py-0.5 rounded-full text-xs font-bold
+          px-2 py-0.5 rounded-full text-[11px] font-semibold
           ${countColor === "amber"
             ? "bg-amber-100 text-amber-700"
             : active

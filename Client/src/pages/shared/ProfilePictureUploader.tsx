@@ -165,9 +165,9 @@ interface ProfilePictureEditorModalProps {
 
 function ProfilePictureEditorModal({ editor, busy, onClose, onSave, onEditorChange }: ProfilePictureEditorModalProps) {
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/40"
         onClick={onClose}
       />
       <div

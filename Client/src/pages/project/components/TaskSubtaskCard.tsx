@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { api } from "../../../api";
 import { useAuth } from "../../../auth";
 import type { Task, User } from "../../../types";
-import { getPriorityColor, getStatusColor, usePermission, useToast } from "../../shared/index";
+import { getPriorityColor, getStatusColor, usePermission, useToast, HoverActions } from "../../shared/index";
 import { SubtaskFormModal } from "./SubtaskFormModal";
 import { AvatarStack } from "../../shared/Avatar";
 import { SubtaskEditModal } from "../../shared/modals/SubtaskEditModal";
@@ -213,13 +213,8 @@ export function TaskSubtaskCard({
     }
   };
 
-  const stopRowClick = (handler?: () => void) => (e: React.MouseEvent) => {
-    e.stopPropagation();
-    handler?.();
-  };
-
   return (
-    <div className="bg-white rounded-xl py-4 px-2 shadow-sm border border-slate-100 hover:shadow-md hover:border-blue-500 hover:shadow-blue-300 transition-shadow duration-200">
+    <div className="group bg-white rounded-xl py-4 px-2 shadow-sm border border-slate-200/60 hover:shadow-md hover:border-slate-300 transition-all duration-200">
       {/* Title + progress — clickable to open the task details modal */}
       <div
         className={mayEdit ? "cursor-pointer" : ""}
@@ -235,12 +230,13 @@ export function TaskSubtaskCard({
       >
         <div className="px-2">
 
-        
+
         <div className="flex items-center justify-between mb-3">
-          <h4 className="text-sm font-medium text-slate-700 leading-snug min-w-0">{task.title}</h4>
+          <h4 className="text-sm font-semibold text-slate-800 leading-snug min-w-0">{task.title}</h4>
           {mayEdit && (
             <button
               onClick={(e) => { e.stopPropagation(); handleTaskEscalate(); }}
+              aria-label="Escalate task"
               className={`p-2 rounded-lg cursor-pointer transition-colors shrink-0 ml-2 ${
                 task.isEscalated
                   ? 'bg-amber-50 text-amber-600'
@@ -255,8 +251,8 @@ export function TaskSubtaskCard({
 
         <div className="mb-3">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] text-slate-400 font-medium">Progress</span>
-            <span className="text-[10px] font-semibold text-slate-600">
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Progress</span>
+            <span className="text-[10px] font-semibold text-slate-600 tabular-nums">
               {cardProgress}%
             </span>
           </div>
@@ -277,7 +273,7 @@ export function TaskSubtaskCard({
         {hasSubtasks && (
           <div
             onClick={(e) => e.stopPropagation()}
-            className={`flex items-center justify-between gap-2 rounded-lg pl-2  py-1.5 flex-1 min-w-0 ${expanded ? "bg-slate-100" : "bg-purple-50 hover:bg-purple-100"
+            className={`flex items-center justify-between gap-2 rounded-lg pl-2 py-1.5 flex-1 min-w-0 transition-colors ${expanded ? "bg-slate-100" : "bg-slate-50 hover:bg-slate-100"
               }`}
           >
             <button
@@ -356,14 +352,18 @@ export function TaskSubtaskCard({
                     </svg>
                   </div>
                   {mayEdit && (
-                    <button
-                      type="button"
-                      onClick={stopRowClick(() => handleDeleteSubtask(sub.id))}
-                      className="p-1 text-slate-400 hover:text-red-500"
-                      title="Delete subtask"
-                    >
-                      <Icon name="delete" size={14} />
-                    </button>
+                    <HoverActions
+                      entity="subtasks"
+                      className="shrink-0"
+                      always={[
+                        {
+                          icon: "delete",
+                          label: "Delete subtask",
+                          tone: "danger",
+                          onClick: () => handleDeleteSubtask(sub.id),
+                        },
+                      ]}
+                    />
                   )}
                 </div>
               </div>
@@ -378,7 +378,7 @@ export function TaskSubtaskCard({
       >
         <div className="flex items-center gap-2">
           <span
-            className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${priorityColor.bg} ${priorityColor.text} ${priorityColor.border}`}
+            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${priorityColor.bg} ${priorityColor.text} ${priorityColor.border}`}
           >
             {task.priority}
           </span>
@@ -390,48 +390,32 @@ export function TaskSubtaskCard({
           )}
         </div>
 
-        <div className="flex items-center gap-1.5">
-
-          {mayEdit &&
-            (onAddSubtask ? (
-              <button
-                type="button"
-                title="Add subtask"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onAddSubtask(task.id);
-                }}
-                className="p-1 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-              >
-                <Icon name="add" size={16} />
-              </button>
-            ) : (
-              <button
-                type="button"
-                title="Add subtask"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowSubtaskModal(true);
-                }}
-                className="p-1 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-              >
-                <Icon name="add" size={16} />
-              </button>
-            ))}
-
-          {mayEdit && onEditTask && (
-            <button
-              type="button"
-              title="Edit task"
-              onClick={() => onEditTask(task)}
-              className="p-1 text-slate-400 hover:text-amber-500 transition-colors"
-            >
-              <Icon name="edit" size={16} />
-            </button>
-          )}
-
-
-        </div>
+        {/* Always visible: add-subtask (+ per-subtask delete above). On hover:
+            edit task. The escalate action keeps its dedicated state-aware button
+            next to the title (amber when escalated), so it is not duplicated here. */}
+        <HoverActions
+          entity="subtasks"
+          className="shrink-0"
+          always={
+            mayEdit
+              ? [
+                  {
+                    icon: "add",
+                    label: "Add subtask",
+                    onClick: () => {
+                      if (onAddSubtask) onAddSubtask(task.id);
+                      else setShowSubtaskModal(true);
+                    },
+                  },
+                ]
+              : []
+          }
+          onHover={
+            mayEdit && onEditTask
+              ? [{ icon: "edit", label: "Edit task", onClick: () => onEditTask(task) }]
+              : []
+          }
+        />
       </div>
 
       {editSubtask && (

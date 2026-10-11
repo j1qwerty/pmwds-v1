@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import "@fontsource-variable/inter/wght.css";
 
 @layer theme, base, components, utilities;
 @import "tailwindcss/theme" layer(theme);
@@ -42,7 +42,7 @@
   --color-error-container: #ffdad6;
   --color-on-error-container: #93000a;
 
-  /* Background & Surface */
+  /* Background & Surfaces */
   --color-background: #f7f9fb;
   --color-on-background: #191c1e;
   --color-surface: #f7f9fb;
@@ -72,7 +72,7 @@
   --warning-bg: #fef9c3;
 
   /* Font */
-  --font-sans: "Inter", "Manrope", "Aptos", "Segoe UI", sans-serif;
+  --font-sans: "Inter Variable", "Inter", "Manrope", "Aptos", "Segoe UI", sans-serif;
 
   /* Font Sizes */
   --text-h1: 2rem;
@@ -106,7 +106,7 @@
 
 html {
   background: #f7f9fb;
-  font-family: "Inter", "Manrope", "Aptos", "Segoe UI", sans-serif;
+  font-family: "Inter Variable", "Inter", "Manrope", "Aptos", "Segoe UI", sans-serif;
 }
 
 body {
@@ -115,7 +115,7 @@ body {
   margin: 0;
   background: #f7f9fb;
   color: #191c1e;
-  font-family: "Inter", sans-serif;
+  font-family: "Inter Variable", "Inter", sans-serif;
   overflow-x: hidden;
 }
 
@@ -133,9 +133,7 @@ html, body {
 
 /* Glass Panel Effect */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
@@ -167,7 +165,180 @@ html, body {
   box-shadow: 0 10px 30px -10px rgba(70, 72, 212, 0.08);
 }
 
-/* Main Scrollbar */
+/* ============================================================
+   MODAL ANIMATIONS — snappy, fast, modern
+   ============================================================ */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInFast {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes slideUpSnappy {
+  from { opacity: 0; transform: translateY(6px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes scaleInFast {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes modalSlideOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(6px) scale(0.98); }
+}
+
+@keyframes backdropFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes slideInRight {
+  0% { transform: translateX(100%); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+/* ============================================================
+   SHEET (right side panel) — fast, 0.18s in / 0.12s out
+   ============================================================ */
+@keyframes sheetScrimIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes sheetScrimOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes sheetPanelIn {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes sheetPanelOut {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(24px); opacity: 0; }
+}
+.sheet-scrim-enter { animation: sheetScrimIn 0.15s ease-out forwards; }
+.sheet-scrim-exit { animation: sheetScrimOut 0.12s ease-in forwards; }
+.sheet-panel-enter { animation: sheetPanelIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.sheet-panel-exit { animation: sheetPanelOut 0.12s ease-in forwards; }
+
+/* ============================================================
+   COMMAND PALETTE (Cmd+K)
+   ============================================================ */
+@keyframes cmdkBackdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes cmdkPanelIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes cmdkBackdropOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes cmdkPanelOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-6px) scale(0.98); }
+}
+.cmdk-backdrop-enter { animation: cmdkBackdropIn 0.15s ease-out forwards; }
+.cmdk-panel-enter { animation: cmdkPanelIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.cmdk-backdrop-exit { animation: cmdkBackdropOut 0.12s ease-in forwards; }
+.cmdk-panel-exit { animation: cmdkPanelOut 0.12s ease-in forwards; }
+
+/* Slightly taller default text input height token used by cmdk input */
+.h-13 { height: 3.25rem; }
+.h-5\.5 { height: 1.375rem; }
+.h-4\.5 { height: 1.125rem; }
+
+/* Modal animation utilities — 0.15s enter / 0.12s exit */
+.modal-backdrop-enter {
+  animation: fadeIn 0.15s ease-out forwards;
+}
+.modal-backdrop-exit {
+  animation: backdropFadeOut 0.12s ease-in forwards;
+}
+.modal-content-enter {
+  animation: slideUpSnappy 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.modal-content-exit {
+  animation: modalSlideOut 0.12s ease-in forwards;
+}
+
+/* ============================================================
+   DROPDOWN MENU (FilterDropdown / SortDropdown portal menus)
+   ============================================================ */
+@keyframes dropdownMenuIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.dropdown-menu-enter {
+  animation: dropdownMenuIn 0.12s ease-out forwards;
+}
+
+/* Card stagger entrance */
+@keyframes cardFadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.card-stagger {
+  animation: cardFadeUp 0.35s ease-out both;
+}
+
+/* View transition */
+@keyframes viewFade {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.view-fade {
+  animation: viewFade 0.18s ease-out forwards;
+}
+
+/* Filter chip pop */
+@keyframes chipPop {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+.chip-pop {
+  animation: chipPop 0.12s ease-out forwards;
+}
+
+/* ============================================================
+   SCROLLBARS
+   ============================================================ */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -188,7 +359,6 @@ html, body {
   opacity: 1;
 }
 
-/* Sidebar Custom Scrollbar */
 .sidebar-scrollbar::-webkit-scrollbar {
   width: 5px;
 }
@@ -203,7 +373,9 @@ html, body {
   opacity: 0.9;
 }
 
-/* Badge Styles */
+/* ============================================================
+   BADGE STYLES
+   ============================================================ */
 .badge-success {
   background-color: var(--success-bg);
   color: var(--success);
@@ -219,7 +391,9 @@ html, body {
   color: var(--warning);
 }
 
-/* Skeleton Loading Animation */
+/* ============================================================
+   SKELETON LOADING
+   ============================================================ */
 .skeleton {
   background: linear-gradient(
     90deg,
@@ -232,17 +406,9 @@ html, body {
   border-radius: var(--radius-default);
 }
 
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-@keyframes slideInRight {
-  0% { transform: translateX(100%); opacity: 0; }
-  100% { transform: translateX(0); opacity: 1; }
-}
-
-/* Responsive Layout */
+/* ============================================================
+   RESPONSIVE LAYOUT
+   ============================================================ */
 @media (min-width: 2560px) {
   .layout-max-width {
     max-width: 2320px;
@@ -259,5 +425,15 @@ html, body {
 @media (max-width: 480px) {
   .container-margin {
     padding: 0 var(--spacing-md);
+  }
+}
+
+/* Perf: skip layout/paint work for off-screen content blocks, and honour reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
