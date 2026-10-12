@@ -58,13 +58,25 @@ const directorMilestone: Step = {
 
     // The milestone is created by the sheet's Create action; wait for the
     // POST so we know it stuck rather than trusting the toast (toasts
-    // auto-dismiss after 3s).
-    await d
-      .clickAndWait("save", "milestone-form", "createMilestone")
-      .catch(async (err: unknown) => {
-        api.report.warn(`save failed: ${String(err).split("\n")[0]}`);
-      });
+    // auto-dismiss after 3s). `clickAndExpect` asserts the status: the API
+    // rejects a milestone whose department is not assigned to the project, and
+    // a silent 400 previously let this flow report a milestone that never
+    // existed.
+    await d.clickAndExpect("save", "milestone-form", "createMilestone");
     await d.page.waitForTimeout(1500);
+
+    // Confirm it is really on the project before recording it in the context.
+    await d.goto(`/projects/${project.id}/milestones`);
+    await d.page
+      .getByText(name, { exact: false })
+      .first()
+      .waitFor({ state: "visible", timeout: 15000 })
+      .catch(() => {
+        throw new Error(
+          `milestone "${name}" was accepted by the API but is not listed on the milestones tab`,
+        );
+      });
+
     const list = api.ctx.milestones[project.id] ?? (api.ctx.milestones[project.id] = []);
     list.push({ id: "", name, departmentId: DEPARTMENT_OWNER });
     api.report.ok(`${DIRECTOR} created milestone "${name}" for ${DEPARTMENT_LABEL}`);

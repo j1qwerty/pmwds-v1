@@ -18,6 +18,10 @@ assert selectPrompt text="Select a Milestone"
 assert statTotal text="Total Milestones"
 assert statCritical text="Critical"
 assert statAvgProgress text="Avg Progress"
+# Generic "some milestone card is listed" handle. Flows assert the text of the
+# milestone they just created against this list, which is how flow 2 proves the
+# POST actually landed instead of quietly returning a 400.
+field listed css="div[role='button']" hint="any milestone card in the list panel"
 @end
 
 @group milestone-card type=form page=milestones desc="Per-milestone card and its hover actions"

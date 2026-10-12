@@ -10,7 +10,13 @@ type ScopedUserSelectProps = {
   onChange: (value: string) => void;
   onMultiChange?: (values: string[]) => void;
   organizationId?: string | null;
-  departmentId?: string | null;
+  /**
+   * Restrict the list to members of these departments. A single id is still
+   * accepted. Pass every department the entity spans — narrowing to one was the
+   * bug that left a ProjectManager or DepartmentHead staring at "0 users" when
+   * the project spanned more than one department.
+   */
+  departmentIds?: string | string[] | null;
   label?: string;
   placeholder?: string;
   multiple?: boolean;
@@ -25,7 +31,7 @@ export function ScopedUserSelect({
   onChange,
   onMultiChange,
   organizationId,
-  departmentId,
+  departmentIds,
   label = "User",
   placeholder = "Search users...",
   multiple = false,
@@ -34,20 +40,28 @@ export function ScopedUserSelect({
 }: ScopedUserSelectProps) {
   const [search, setSearch] = useState("");
 
+  const scopeDepartmentIds = useMemo(
+    () => new Set(Array.isArray(departmentIds) ? departmentIds : departmentIds ? [departmentIds] : []),
+    [departmentIds],
+  );
+
   const filteredUsers = useMemo(() => {
     const term = search.trim().toLowerCase();
     return users.filter((user) => {
       if (!user.isActive) return false;
       if (hideSuperAdmins && hasRoleKey(user.roleKeys ?? user.roles, RoleKey.SuperAdmin)) return false;
       const inOrganization = !organizationId || user.organizationId === organizationId || user.departments?.some((assignment) => assignment.organizationId === organizationId);
-      const inDepartment = !departmentId || user.departments?.some((assignment) => assignment.departmentId === departmentId) || user.departmentId === departmentId;
+      const inDepartment =
+        scopeDepartmentIds.size === 0 ||
+        user.departments?.some((assignment) => scopeDepartmentIds.has(assignment.departmentId)) ||
+        (user.departmentId != null && scopeDepartmentIds.has(user.departmentId));
       const matchesSearch = !term ||
         user.fullName.toLowerCase().includes(term) ||
         user.email.toLowerCase().includes(term) ||
         (user.jobTitle ?? "").toLowerCase().includes(term);
       return inOrganization && inDepartment && matchesSearch;
     });
-  }, [departmentId, hideSuperAdmins, organizationId, search, users]);
+  }, [hideSuperAdmins, organizationId, scopeDepartmentIds, search, users]);
 
   const selectedValues = multiple ? values : value ? [value] : [];
 

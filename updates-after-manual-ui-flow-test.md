@@ -252,6 +252,82 @@ Client `PERMISSION_COVERAGE` was updated to match, so both sides agree.
 
 `tsc -b`, `vite build` and `dotnet build PMWDS.API` are all clean.
 
+### 2f. Wizard steps never rendered, and four flows were blocked behind it
+Running `tests/e2e` (see [tests.md](tests.md)) surfaced a hard UI defect plus
+four test defects that had been hiding real gaps.
+
+**Wizard step 2 was permanently blank.** Flow 1 failed at
+`addMilestoneOpen` with a 30 s timeout, every run (5/5). The map file was
+correct — the button exists. The six wizard steps were `lazyPage()`-wrapped, and
+`React.lazy` + `Suspense` could stay **Pending indefinitely after the chunk had
+already loaded**: the network log showed `GET …/steps/MilestonesStep.tsx 200`,
+an in-page `import()` of the same URL succeeded and exported `MilestonesStep`,
+yet the Suspense placeholder stayed mounted and the DOM never contained "Add
+milestone". No console error, no failed request, and clicking Back/Next could
+not recover it. Disabling the idle preload did not help, which ruled out the
+shared cached promise.
+
+Code-splitting those steps bought almost nothing anyway — the wizard is already
+its own chunk behind `LazyNewProjectPage` and only mounts on click — so they are
+now imported eagerly. This was a real user-facing bug, not a test-only one:
+click *Next* and the panel was blank until a reload.
+
+| File | Change |
+|---|---|
+| `Client/src/pages/NewProject/NewProjectPage.tsx` | Steps 2–6 imported eagerly; removed the `lazyPage`/`whenIdle` step preloader and its dead `STEP_COMPONENTS` map. |
+
+**Assignee picker showed "0 users" for a DepartmentHead.** `TaskFormModal`
+scoped the picker to `getProjectDepartmentIds(project)[0]` — one arbitrary
+department, in whatever order the project record happened to list them. The API
+scopes the caller's user list to their *own* department, so on a multi-department
+project the intersection was empty and no assignee could be picked. Real users
+hit this, not just the test.
+
+| File | Change |
+|---|---|
+| `Client/src/pages/shared/ScopedUserSelect.tsx` | `departmentId` → `departmentIds`, accepting one id or a list. |
+| `Client/src/pages/project/components/TaskFormModal.tsx` | Passes every department the project spans. |
+
+**Two steps reported `[ok]` when nothing had happened.** `clickAndWait` returns
+whatever status the API gave, so flow 2 awaited a `POST /milestones` that
+answered **400** (the milestone's department was not assigned to the project) and
+still printed `admin created milestone …`. Flow 5 was worse: a failed submit
+click was downgraded to a warning and the step then reported success because
+"no API failures" was also true when *no API call ever happened*.
+
+| File | Change |
+|---|---|
+| `tests/e2e/lib/driver.ts` | New `expectApi` / `clickAndExpect`, which throw on a non-2xx and quote the response body. |
+| `tests/e2e/flows/02-head-milestones.ts` | Uses `clickAndExpect`, then re-navigates and asserts the milestone is actually listed before recording it. |
+| `tests/e2e/flows/05-documents.ts` | Same, plus an explicit wait for the upload sheet's file input to attach. |
+
+**Three map entries could not match what they named.** `project-tasks.txt`
+addressed `project` and `milestone` with `css="select"` and no `nth`, so both
+resolved to the *Priority* select — flow 3 therefore created every task with no
+milestone, which is why the member in flow 4 could not see them (the workspace
+task board is milestone-scoped). `project-documents.txt` used an unscoped
+`input[type='file']`, which matched the utilization-certificate input instead of
+the upload sheet's, leaving the sheet's own file state empty and its submit
+disabled; and `text="Upload"` matched the sheet's *heading* "Upload document"
+before the button. All three now use the map's own reorder-proof mechanisms —
+`byLabel`, `root="[role='dialog']"` and `role`+`name`.
+
+| File | Change |
+|---|---|
+| `tests/e2e/flows/data.ts` | `buildPlan` now emits one milestone per department code, defaulting to `PWDC`/`PWD`/`PROC`, so the project spans Procurement and flow 2's milestone is legal. |
+| `tests/e2e/flows/03-tasks-subtasks.ts` | Sets the milestone on each task. |
+| `tests/e2e/flows/05-documents.ts` | Clicks the "UC" level chip before touching any certificate control — `UtilizationCertificates` only mounts once that chip is active. |
+| `tests/e2e/flows/07-project-teardown.ts` | Goes to the Overview tab: Edit/Delete live on `ProjectInfoCard`, which is not rendered on the Milestones tab. |
+
+**Result.** Full suite green twice in a row, 20 steps, no failures. Two steps
+still *warn* rather than fail, both understood and both test-side: flow 4's
+status dropdown is on screen but `StatusDropdown` labels it "In progress" while
+the flow filters with a case-sensitive `/In Progress/`; and flow 6 addresses the
+milestone hover actions by `title=` + `nth=0` with no `root=`, so it edits and
+deletes whichever milestone card is *first* in DOM order — which, because
+milestone deletion cascades to tasks, makes the later task delete succeed or
+fail depending on database row order.
+
 ### 2e. Dependency rows showed "Unknown" for milestones in other departments
 Logged in as TeamMember on a project spanning several departments: the
 Dependencies tab showed 18 rows, most of them "Unknown → X" or "X → Unknown",

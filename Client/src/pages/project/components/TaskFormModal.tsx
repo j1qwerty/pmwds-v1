@@ -122,12 +122,13 @@ export function TaskFormModal({
     perm.isSuperAdmin || perm.canModule("assign", "task");
   const projectMilestones = milestones.filter((m) => m.projectId === form.projectId);
   const selectedProject = projects.find((p) => p.id === form.projectId);
-  const selectedDepartment = selectedProject
-    ? departments.find((d) => d.id === getProjectDepartmentIds(selectedProject)[0])
-    : undefined;
-  const projectDepartmentId = selectedProject
-    ? getProjectDepartmentIds(selectedProject)[0]
-    : undefined;
+  // Every department the project spans, not just the first. Narrowing to
+  // `getProjectDepartmentIds(project)[0]` left the picker at "0 users" whenever
+  // the caller's own department happened not to be that one — which is the
+  // normal case for a multi-department project, because the order comes from
+  // the project record rather than from anything meaningful.
+  const projectDepartmentIds = selectedProject ? getProjectDepartmentIds(selectedProject) : [];
+  const selectedDepartment = departments.find((d) => d.id === projectDepartmentIds[0]);
 
   const validate = (): FieldErrors => {
     const errs: FieldErrors = {};
@@ -356,7 +357,7 @@ export function TaskFormModal({
           users={users}
           values={form.assignedToUserIds}
           organizationId={organizationId ?? selectedDepartment?.organizationId}
-          departmentId={projectDepartmentId}
+          departmentIds={projectDepartmentIds}
           label="Assignees"
           multiple
           onChange={(userId) => setForm({ ...form, assignedToUserIds: userId ? [userId] : [] })}

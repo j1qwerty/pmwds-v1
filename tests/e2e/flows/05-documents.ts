@@ -25,6 +25,12 @@ function uploadAt(level: "project" | "milestone" | "task"): Step {
 
       // The upload sheet sets the level itself - no need to touch the tabs.
       await d.click("openUpload", "docs-upload");
+      // The sheet slides in; without this the file input can still be missing
+      // when we go looking for it, which is what failed the task-level upload.
+      await d.page
+        .locator('[role="dialog"] input[type="file"]')
+        .first()
+        .waitFor({ state: "attached", timeout: 15000 });
       await d.upload("uploadFile", [file], "docs-upload");
       const levelLabel = level === "project" ? "Project" : level === "milestone" ? "Milestone" : "Task";
       await d.select("uploadLevel", levelLabel, "docs-upload");
@@ -38,18 +44,14 @@ function uploadAt(level: "project" | "milestone" | "task"): Step {
         }
       }
 
-      await d.click("uploadSubmit", "docs-upload").catch(async (err: unknown) => {
-        api.report.warn(`Upload not clickable: ${String(err).split("\n")[0]}`);
-      });
-      await d.page.waitForTimeout(2000);
+      // Assert the upload POST actually succeeded. Previously a failed submit
+      // click was downgraded to a warning and the step still printed `[ok]`,
+      // because "no API failures" was also true when no API call ever happened.
+      await d.clickAndExpect("uploadSubmit", "docs-upload", "uploadDocument", { nth: "0" });
+      await d.page.waitForTimeout(1000);
 
-      const failures = d.apiFailures();
-      if (failures.length) {
-        api.report.warn(`upload ${level}: ${failures.map((f) => `${f.status} ${f.url.split("/api/v1")[1]}`).join(", ")}`);
-      } else {
-        api.ctx.documents.push({ name: file, level });
-        api.report.ok(`dummy file uploaded at ${level} level`);
-      }
+      api.ctx.documents.push({ name: file, level });
+      api.report.ok(`dummy file uploaded at ${level} level`);
     },
   };
 }
@@ -64,6 +66,9 @@ const uploadCertificate: Step = {
     const pdf = makeDummyPdf(api.ctx.notes.artifactDir!, "e2e-dummy-cert.pdf");
 
     await d.goto(`/projects/${project.id}/documents`);
+    // The certificates panel only mounts once the "UC" level chip is active.
+    await d.click("ucTab", "docs-uc");
+    await d.page.waitForTimeout(600);
     await d.click("submitUc", "docs-uc", { nth: "0,1" }).catch((err: unknown) => {
       api.report.warn(`Submit UC not available: ${String(err).split("\n")[0]}`);
     });

@@ -48,40 +48,45 @@ function addDays(days: number): string {
 /**
  * Builds the project plan.
  *
- * `deptCodes` are the departments to spread the wizard's milestones across.
- * The defaults are the two seeded departments whose heads the flow signs in
- * as: PWDC (PWD Civil Division -> head.eng@org1.com) and PWD (Public Works
- * Department -> head.pmo@org1.com).
+ * `deptCodes` are the departments to spread the wizard's milestones across; one
+ * milestone is created per code, and that is what puts those departments on the
+ * project. The API rejects a milestone whose department is not assigned to the
+ * project (400 "Validation failed"), so flow 2's Director-created Procurement
+ * milestone is only legal because PROC is in this list.
+ *
+ * Defaults to the three seeded departments the flows use: PWDC (PWD Civil
+ * Division -> head.eng@org1.com), PWD (Public Works Department ->
+ * head.pmo@org1.com) and PROC (Procurement & Finance -> head.ops@org1.com).
  */
-export function buildPlan(deptCodes: string[] = ["PWDC", "PWD"]): Plan {
+export function buildPlan(deptCodes: string[] = ["PWDC", "PWD", "PROC"]): Plan {
   const s = stamp();
-  const codes = deptCodes.length >= 2 ? deptCodes.slice(0, 2) : ["PWDC", "PWD"];
+  const codes = deptCodes.length >= 2 ? deptCodes : ["PWDC", "PWD", "PROC"];
+  const milestones = codes.map((deptCode, i) => ({
+    name: `${MILESTONE_NAMES[i % MILESTONE_NAMES.length]} ${s}`,
+    description: MILESTONE_DESCRIPTIONS[i % MILESTONE_DESCRIPTIONS.length],
+    dueDate: addDays(25 + i * 30),
+    critical: i === 0,
+    deptCode,
+  }));
+
   return {
     projectName: `E2E Water Works ${s}`,
     description: `Automated end-to-end test project created ${s}. Safe to delete.`,
     priority: "High",
     budgetLakhs: "120",
     startDate: addDays(0),
-    endDate: addDays(90),
-    milestones: [
-      {
-        name: `Survey & Design ${s}`,
-        description: "Site survey, drawings and design sign-off.",
-        dueDate: addDays(25),
-        critical: true,
-        deptCode: codes[0],
-      },
-      {
-        name: `Execution Phase 1 ${s}`,
-        description: "First construction package.",
-        dueDate: addDays(60),
-        critical: false,
-        deptCode: codes[1],
-      },
-    ],
+    endDate: addDays(120),
+    milestones,
     dependency: { prereq: 0, dependent: 1, type: "completion" },
   };
 }
+
+const MILESTONE_NAMES = ["Survey & Design", "Execution Phase 1", "Procurement Handover"];
+const MILESTONE_DESCRIPTIONS = [
+  "Site survey, drawings and design sign-off.",
+  "First construction package.",
+  "Vendor selection and material release.",
+];
 
 /** Creates the dummy text file used by the upload tests. */
 export function makeDummyFile(dir: string, name = "e2e-dummy.txt"): string {

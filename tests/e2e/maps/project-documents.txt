@@ -24,9 +24,16 @@ assert docsEmpty text="No documents in this section"
 button openUpload text="Upload document" nth=0
 field uploadLevel byLabel="Document level"
 field uploadTarget css="select" nth=1 hint="second select in the sheet: the level target"
-field uploadFile css="input[type='file']" hint="inside the dashed file label"
-button uploadSubmit text="Upload" nth=0
-button uploading text="Uploading..."
+# Scoped to the sheet: the documents page also renders a utilization-certificate
+# file input, and an unscoped `input[type='file']` was picking that one up
+# instead, leaving the sheet's own file state empty and its submit disabled.
+field uploadFile css="input[type='file']" root="[role='dialog']" hint="inside the dashed file label in the upload sheet"
+# role+name, not text: `text="Upload"` also matched the sheet's own "Upload
+# document" heading, which comes first in the DOM, so the click landed on the
+# title and no POST was ever made.
+button uploadSubmit role=button name="Upload" nth=0 root="[role='dialog']"
+button uploading text="Uploading..." root="[role='dialog']"
+api   uploadDocument method=POST path=/api/v1/projects
 @end
 
 @group docs-table type=list page=documents
@@ -40,6 +47,10 @@ assert uploaded css="text=/\\.txt|\\.pdf|\\.csv|\\.md/"
 
 @group docs-uc type=modal page=documents desc="Utilization certificates - submit + review"
 
+# The UC panel only mounts once the "UC" level chip is active
+# (DocumentsSection renders UtilizationCertificates only when activeTab==="uc"),
+# so this has to be clicked before any of the UC controls below exist.
+button ucTab role=button name="UC" exact=1 hint="documents level filter chip"
 button submitUc text="Submit UC"
 button sendForReview text="Send for review"
 button review text="Review"

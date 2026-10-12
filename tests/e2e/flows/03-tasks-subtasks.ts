@@ -56,18 +56,30 @@ function makeTaskStep(head: string): Step {
         // client2's task sheet has no estimated-hours field (defaults apply).
         await d.select("priority", i === 0 ? "High" : "Medium", "task-form");
 
-        // Milestone assignment is manager-only in the task form. Heads can
-        // still create assigned project tasks, which this flow verifies.
+        // Put the task on a milestone. This matters beyond tidiness: the project
+        // workspace's task board is milestone-scoped, so a task with no
+        // milestone is invisible to a TeamMember even when they are assigned to
+        // it. Leaving it empty is why flow 4's member could not find anything.
+        const target = milestoneFor(api.ctx, project.id, head);
+        if (target?.name) {
+          await d
+            .select("milestone", target.name, "task-form")
+            .catch(() =>
+              api.report.warn(
+                `milestone option "${target.name}" not offered; task left without a milestone`,
+              ),
+            );
+        }
 
-        // Keep the created tasks visible to the member-progress flow. This
-        // creator's primary department is PWDC, which includes the seeded
-        // member account.
+        // Assign to the seeded member so flow 4 has someone to log in as.
         const assigneeSearch = d.page.getByPlaceholder("Search users...").first();
         if (await assigneeSearch.count()) {
           for (const name of ["Ananya Patel", "Rohan Iyer"]) {
             await assigneeSearch.fill(name);
             await d.page.locator("div.max-h-56 button").filter({ hasText: name }).first().click();
           }
+        } else {
+          api.report.warn("assignee picker not present; task created unassigned");
         }
 
         await d.clickAndWait("save", "task-form", "createTask", { nth: "0,1" });

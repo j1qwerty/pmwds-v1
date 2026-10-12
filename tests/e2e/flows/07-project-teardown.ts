@@ -19,7 +19,10 @@ const editProject: Step = {
     const newName = `${project.name} [edited]`;
     const newDescription = `${project.name} - description edited by ${PM} during the e2e run.`;
 
-    await d.goto(`/projects/${project.id}/milestones`);
+    // Edit/Delete live on ProjectInfoCard's hover actions, and that card is
+    // rendered on the Overview and Tasks tabs only (it was removed from the
+    // Milestones tab), so the overview is where these buttons exist.
+    await d.goto(`/projects/${project.id}`);
     await d.click("editProject", "shell-info", { nth: "0" });
     await d.page.waitForTimeout(600);
 
@@ -48,7 +51,7 @@ const deleteProject: Step = {
     const d = await api.as(PM);
     const project = api.ctx.latestProject();
 
-    await d.goto(`/projects/${project.id}/milestones`);
+    await d.goto(`/projects/${project.id}`);
     await d.click("deleteProject", "shell-info", { nth: "0" });
     await d.page.waitForTimeout(600);
 

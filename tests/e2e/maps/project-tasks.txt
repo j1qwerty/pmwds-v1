@@ -52,9 +52,12 @@ field title byLabel="Title" required=1
 field description byLabel="Description"
 field start byLabel="Start date"
 field due byLabel="Due date"
-field priority css="select" hint="Low/Medium/High/Critical"
-field project css="select" hint="first option Select project"
-field milestone css="select" hint="first option None, superadmin/director only"
+field priority byLabel="Priority"
+# byLabel, not css=select: the sheet has up to three selects and the Project one
+# only renders when no project is fixed, so a positional index silently resolved
+# both of these to the Priority select.
+field project byLabel="Project" hint="only rendered when no project is fixed"
+field milestone byLabel="Milestone" hint="first option None"
 field assignees label="Assignees"
 button save text="Create task"
 button saveChanges text="Save changes"

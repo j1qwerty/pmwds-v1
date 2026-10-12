@@ -1,6 +1,17 @@
 import { Suspense, useState, useMemo, useEffect, useRef } from "react";
-import { lazyPage, whenIdle } from "../../lib/lazyPage";
 import { ProjectDetailsStep } from "./steps/ProjectDetailsStep"; // first step: ships with the wizard chunk
+// The remaining steps are imported eagerly rather than through lazyPage().
+// Code-splitting them bought very little — the whole wizard is already its own
+// chunk behind LazyNewProjectPage, and the modal only mounts on click — but it
+// added a real failure mode: React.lazy + Suspense could stay Pending
+// indefinitely *after* the chunk had already loaded, leaving a permanently
+// blank 200px step body that no navigation could recover from.
+import { DepartmentsStep } from "./steps/DepartmentsStep";
+import { MilestonesStep } from "./steps/MilestonesStep";
+import { MilestoneDepartmentsStep } from "./steps/MilestoneDepartmentsStep";
+import { DependenciesStep } from "./steps/DependenciesStep";
+import { TasksStep } from "./steps/TasksStep";
+import { UsersStep } from "./steps/UsersStep";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
@@ -15,23 +26,6 @@ import {
 import { Icon } from "../../components/ui/Icon";
 import { Permission, RoleKey, hasRoleKey } from "../../permissions";
 import { useUserOrganization } from "../shared/useUserOrganization";
-
-const DepartmentsStep = lazyPage(() => import("./steps/DepartmentsStep").then((m) => ({ default: m.DepartmentsStep })));
-const MilestonesStep = lazyPage(() => import("./steps/MilestonesStep").then((m) => ({ default: m.MilestonesStep })));
-const MilestoneDepartmentsStep = lazyPage(() => import("./steps/MilestoneDepartmentsStep").then((m) => ({ default: m.MilestoneDepartmentsStep })));
-const DependenciesStep = lazyPage(() => import("./steps/DependenciesStep").then((m) => ({ default: m.DependenciesStep })));
-const TasksStep = lazyPage(() => import("./steps/TasksStep").then((m) => ({ default: m.TasksStep })));
-const UsersStep = lazyPage(() => import("./steps/UsersStep").then((m) => ({ default: m.UsersStep })));
-
-// Details renders immediately; the other steps are prefetched one ahead (see effect below).
-const STEP_COMPONENTS: Record<string, { preload: () => Promise<unknown> }> = {
-  departments: DepartmentsStep,
-  users: UsersStep,
-  milestones: MilestonesStep,
-  milestoneDepartments: MilestoneDepartmentsStep,
-  dependencies: DependenciesStep,
-  tasks: TasksStep,
-};
 
 interface MilestoneEntry {
   id: string;
@@ -258,14 +252,6 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const canUploadProjectDocument = perm.has(Permission.DocumentOwnProjectUpload) || perm.has(Permission.DocumentAllProjectUpload);
   const steps = PROJECT_WIZARD_STEPS;
   const currentStepKey = steps[currentStep]?.key ?? "details";
-
-  // Warm every other step as soon as the browser is idle after the wizard opens,
-  // so moving to the next step never waits on the network.
-  useEffect(() => {
-    whenIdle(() => {
-      Object.values(STEP_COMPONENTS).forEach((c) => void c.preload());
-    }, 800);
-  }, []);
 
   const dependenciesStepIndex = steps.findIndex((step) => step.key === "dependencies");
   const visibleSteps = steps.slice(0, dependenciesStepIndex + 1);

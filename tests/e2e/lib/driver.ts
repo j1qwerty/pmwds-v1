@@ -271,6 +271,43 @@ export class Driver {
     return response;
   }
 
+  /**
+   * Waits for an API response and throws unless it is a success status.
+   *
+   * `waitApi` happily returns a 400 — a flow that only awaited it would then
+   * report success for a write that never happened. Use this wherever the run
+   * depends on the write landing.
+   */
+  async expectApi(key: string, group?: string, timeout = 20000) {
+    const response = await this.waitApi(key, group, timeout);
+    const status = response.status();
+    if (status < 200 || status >= 300) {
+      let body = "";
+      try {
+        body = (await response.text()).slice(0, 400);
+      } catch {
+        // body already consumed or unavailable - the status is the signal
+      }
+      throw new Error(`${key} responded ${status}${body ? `: ${body}` : ""}`);
+    }
+    return response;
+  }
+
+  /** `clickAndWait`, but a non-2xx response fails the step instead of passing silently. */
+  async clickAndExpect(key: string, group?: string, apiKey?: string, extra: Attributes = {}) {
+    const api = apiKey ? this.require("api", apiKey, group) : undefined;
+    if (!api) {
+      await this.click(key, group, extra);
+      await this.settle();
+      return undefined;
+    }
+    const [response] = await Promise.all([
+      this.expectApi(apiKey!, group),
+      this.click(key, group, extra),
+    ]);
+    return response;
+  }
+
   /** Clicks a button and waits for the API call it triggers, in one step. */
   async clickAndWait(key: string, group?: string, apiKey?: string, extra: Attributes = {}) {
     const api = apiKey ? this.require("api", apiKey, group) : undefined;
