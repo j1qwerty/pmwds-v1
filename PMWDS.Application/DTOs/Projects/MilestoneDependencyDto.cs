@@ -13,7 +13,17 @@ public record MilestoneDependencyDto(
     double? ThresholdPercentage,
     bool IsMet)
 {
-    public static MilestoneDependencyDto FromEntity(MilestoneDependency dep)
+    /// <param name="revealPrerequisiteName">
+    /// Pass false when the prerequisite milestone is outside the caller's
+    /// department scope. GET /milestones/by-project/{id} withholds those
+    /// milestones entirely, so echoing their names on a dependency row would
+    /// disclose exactly what that endpoint hides.
+    /// </param>
+    /// <param name="revealDependentName">Same, for the dependent milestone.</param>
+    public static MilestoneDependencyDto FromEntity(
+        MilestoneDependency dep,
+        bool revealPrerequisiteName = true,
+        bool revealDependentName = true)
     {
         var prerequisite = dep.PrerequisiteMilestone;
         var dependent = dep.DependentMilestone;
@@ -21,9 +31,9 @@ public record MilestoneDependencyDto(
             dep.Id,
             dep.ProjectId,
             dep.PrerequisiteMilestoneId,
-            prerequisite?.Name,
+            revealPrerequisiteName ? prerequisite?.Name : null,
             dep.DependentMilestoneId,
-            dependent?.Name,
+            revealDependentName ? dependent?.Name : null,
             dep.Type.ToString(),
             dep.ThresholdPercentage,
             dep.IsMet(prerequisite ?? throw new InvalidOperationException("Prerequisite milestone not loaded")));

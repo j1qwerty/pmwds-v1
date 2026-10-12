@@ -8,7 +8,8 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 
 interface ProjectBasicDetailsProps {
   project: Project;
-  canManage: boolean;
+  /** Inline status change → PUT /projects/{id} → Projects.Edit. */
+  canEdit: boolean;
   onViewProject?: (project: Project) => void;
   onEdit?: () => void;
   onDelete?: () => void;
@@ -38,7 +39,7 @@ const STATUS_OPTIONS = [
 
 export function ProjectBasicDetails({
   project,
-  canManage,
+  canEdit,
   onStatusChange,
   bare = false,
   users = [],
@@ -83,10 +84,10 @@ export function ProjectBasicDetails({
   }, [showStatusDropdown]);
 
   const handleStatusToggle = useCallback(() => {
-    if (canManage && onStatusChange) {
+    if (canEdit && onStatusChange) {
       setShowStatusDropdown(prev => !prev);
     }
-  }, [canManage, onStatusChange]);
+  }, [canEdit, onStatusChange]);
 
   const handleStatusSelect = useCallback((status: string) => {
     onStatusChange?.(status);
@@ -108,28 +109,28 @@ export function ProjectBasicDetails({
             <button
               type="button"
               onClick={handleStatusToggle}
-              disabled={!canManage || !onStatusChange}
+              disabled={!canEdit || !onStatusChange}
               className={`
                 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide
                 ${statusColors.badgeBg} ${statusColors.badgeText} border ${statusColors.border}
                 disabled:opacity-70 disabled:cursor-not-allowed
-                ${canManage && onStatusChange ? "hover:shadow-sm transition-all cursor-pointer" : ""}
+                ${canEdit && onStatusChange ? "hover:shadow-sm transition-all cursor-pointer" : ""}
               `}
               aria-expanded={showStatusDropdown}
               aria-haspopup="listbox"
-              title={canManage && onStatusChange ? "Change status" : project.status}
+              title={canEdit && onStatusChange ? "Change status" : project.status}
             >
               <span className="flex items-center gap-1">
                 <span className={`w-1.5 h-1.5 rounded-full ${statusColors.dot}`} />
                 {project.status}
-                {canManage && onStatusChange && (
+                {canEdit && onStatusChange && (
                   <HiOutlineChevronDown className="w-3 h-3" />
                 )}
               </span>
             </button>
 
             {/* Status dropdown */}
-            {showStatusDropdown && canManage && onStatusChange && (
+            {showStatusDropdown && canEdit && onStatusChange && (
               <div
                 className="absolute top-full mt-1 left-0 z-20 bg-white rounded-xl shadow-lg
                   border border-slate-200 py-1 min-w-[150px] view-fade"

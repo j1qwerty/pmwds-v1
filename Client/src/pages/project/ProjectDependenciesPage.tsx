@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
-import { RoleKey, hasRoleKey, PERMISSION_GROUPS } from "../../permissions";
+
 import {
   LoadingPage,
   useNavHeader,
@@ -19,15 +19,13 @@ export function ProjectDependenciesPage() {
   const { setNavHeader } = useNavHeader();
   const { addToast } = useToast();
 
-  const canManage =
-    perm.isSuperAdmin ||
-    hasRoleKey(perm.roleKeys, RoleKey.Director) ||
-    perm.hasAny(
-      PERMISSION_GROUPS.milestone.manage,
-      PERMISSION_GROUPS.milestone.create,
-      PERMISSION_GROUPS.milestone.edit,
-      PERMISSION_GROUPS.milestone.delete,
-    );
+  // Dependencies are not milestones, but the API hangs them off the milestones
+  // controller: POST/PUT /milestones/dependencies is gated on Milestones.Edit
+  // and DELETE on Milestones.Delete. Mirror those two policies exactly rather
+  // than the old manage-or-any-CRD check, which let a delete-only grant (or any
+  // milestone.create) render an "Add" button the server would reject.
+  const canEditDependencies = perm.canModule("edit", "milestone");
+  const canDeleteDependencies = perm.canModule("delete", "milestone");
   const [newRequestKey, setNewRequestKey] = useState(0);
 
   useEffect(() => {
@@ -35,7 +33,7 @@ export function ProjectDependenciesPage() {
       setNavHeader({
         title: `Dependencies · ${ws.project.name}`,
         description: "Manage milestone dependency rules",
-        actions: canManage
+        actions: canEditDependencies
           ? [
               {
                 label: "New dependency",
@@ -48,7 +46,7 @@ export function ProjectDependenciesPage() {
     } else {
       setNavHeader({ title: "Dependencies", description: "" });
     }
-  }, [setNavHeader, ws.project, canManage]);
+  }, [setNavHeader, ws.project, canEditDependencies]);
 
   const handleAdd = async (payload: Record<string, unknown>) => {
     if (!auth || !ws.project) return;
@@ -95,7 +93,8 @@ export function ProjectDependenciesPage() {
         dependencies={ws.dependencies}
         milestones={ws.milestones}
         projectId={ws.project.id}
-        canManage={canManage}
+        canEdit={canEditDependencies}
+        canDelete={canDeleteDependencies}
         onAdd={handleAdd}
         onUpdate={handleUpdate}
         onDelete={handleDelete}

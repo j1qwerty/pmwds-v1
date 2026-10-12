@@ -14,6 +14,13 @@ interface TaskSubtaskCardProps {
   task: Task;
   canEdit?: boolean;
   permissionEdit?: string;
+  /**
+   * "Add subtask" → POST /subtasks → Subtasks.Create. Separate from canEdit
+   * because a role can hold TASK edit without any subtask create grant.
+   * Defaults to canEdit for callers that predate fine-grained gating (the
+   * dashboard board, which takes a single canEdit flag).
+   */
+  canCreateSubtask?: boolean;
   onViewTask?: (task: Task) => void;
   onEditTask?: (task: Task) => void;
   getProgressColor: (progress: number) => string;
@@ -27,6 +34,7 @@ export function TaskSubtaskCard({
   task,
   canEdit,
   permissionEdit,
+  canCreateSubtask,
   onViewTask,
   onEditTask,
   getProgressColor,
@@ -37,6 +45,7 @@ export function TaskSubtaskCard({
 }: TaskSubtaskCardProps) {
   const perm = usePermission();
   const mayEdit = canEdit ?? (permissionEdit ? perm.has(permissionEdit) : false);
+  const mayCreateSubtask = canCreateSubtask ?? mayEdit;
   const { auth } = useAuth();
   const { addToast } = useToast();
   const priorityColor = getPriorityColor(task.priority);
@@ -397,7 +406,7 @@ export function TaskSubtaskCard({
           entity="subtasks"
           className="shrink-0"
           always={
-            mayEdit
+            mayCreateSubtask
               ? [
                   {
                     icon: "add",

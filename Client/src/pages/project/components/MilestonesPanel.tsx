@@ -16,7 +16,10 @@ interface MilestonesPanelProps {
   project?: Project | null;
   selectedMilestoneId: string;
   onSelectMilestone: (id: string) => void;
-  canManage: boolean;
+  /** Card edit / complete / status change → Milestones.Edit. */
+  canEdit: boolean;
+  /** Card delete → DELETE /milestones/{id} → Milestones.Delete. */
+  canDelete: boolean;
   onAdd: () => void;
   onEdit: (milestone: Milestone) => void;
   onDelete: (milestone: Milestone) => void;
@@ -25,6 +28,12 @@ interface MilestonesPanelProps {
   onAddTask: (milestoneId: string) => void;
   hideDetailPanel?: boolean;
   onViewDetail?: (milestone: Milestone) => void;
+  // Create affordances, gated on create rather than manage: "+" is
+  // POST /milestones (Milestones.Create), "Add Task" is POST /tasks
+  // (Tasks.Create). Required so no caller silently falls back to a
+  // manage-level flag.
+  canCreateMilestones: boolean;
+  canCreateTasks: boolean;
 }
 
 export function MilestonesPanel({
@@ -34,7 +43,8 @@ export function MilestonesPanel({
   project,
   selectedMilestoneId,
   onSelectMilestone,
-  canManage,
+  canEdit,
+  canDelete,
   onAdd,
   onEdit,
   onDelete,
@@ -43,6 +53,8 @@ export function MilestonesPanel({
   onAddTask,
   hideDetailPanel = false,
   onViewDetail,
+  canCreateMilestones,
+  canCreateTasks,
 }: MilestonesPanelProps) {
   const [search, setSearch] = useState("");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -116,7 +128,7 @@ export function MilestonesPanel({
             Milestones
           </span>
         </div>
-        {canManage && (
+        {canCreateMilestones && (
           <button
             type="button"
             onClick={onAdd}
@@ -153,7 +165,7 @@ export function MilestonesPanel({
                 onSelectMilestone={handleSelect}
                 onViewMilestone={onViewDetail ?? ((m) => handleSelect(m.id))}
                 onEditMilestone={onEdit}
-                canManage={canManage}
+                canEdit={canEdit}
               />
               <span className="absolute -top-1.5 -right-1.5 text-[9px] font-semibold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded-full border border-indigo-200 shadow-sm">
                 Pinned
@@ -171,7 +183,7 @@ export function MilestonesPanel({
             onSelectMilestone={handleSelect}
             onViewMilestone={onViewDetail ?? ((m) => handleSelect(m.id))}
             onEditMilestone={onEdit}
-            canManage={canManage}
+            canEdit={canEdit}
           />
         ))}
 
@@ -252,7 +264,9 @@ export function MilestonesPanel({
             onEdit={() => onEdit(selected)}
             onDelete={() => onDelete(selected)}
             onAddTask={() => onAddTask(selected.id)}
-            isAdmin={canManage}
+            canEdit={canEdit}
+            canDelete={canDelete}
+            canCreateTasks={canCreateTasks}
           />
         ) : (
           <GlassCard className="p-8">

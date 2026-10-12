@@ -14,7 +14,12 @@ interface MilestoneDetailProps {
   onEdit: () => void;
   onDelete: () => void;
   onAddTask: () => void;
-  isAdmin: boolean;
+  /** Edit / complete / status change → PUT /milestones/{id} → Milestones.Edit. */
+  canEdit: boolean;
+  /** Delete → DELETE /milestones/{id} → Milestones.Delete. */
+  canDelete: boolean;
+  /** "Add Task" → POST /tasks → Tasks.Create. */
+  canCreateTasks: boolean;
 }
 
 const progressStrokeConfig: Record<string, string> = {
@@ -41,7 +46,9 @@ export function MilestoneDetailk({
   onEdit,
   onDelete,
   onAddTask,
-  isAdmin,
+  canEdit,
+  canDelete,
+  canCreateTasks,
 }: MilestoneDetailProps) {
   const statusColors = getStatusColor(milestone.status);
   const progress = milestone.progressPercentage || 0;
@@ -88,22 +95,26 @@ export function MilestoneDetailk({
               </div>
             </div>
 
-            {isAdmin && (
+            {(canEdit || canDelete) && (
               <div className="flex items-center gap-1 shrink-0">
-                <button
-                  onClick={onEdit}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
-                  title="Edit milestone"
-                >
-                  <Icon name="edit" size={16} />
-                </button>
-                <button
-                  onClick={onDelete}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                  title="Delete milestone"
-                >
-                  <Icon name="delete" size={16} />
-                </button>
+                {canEdit && (
+                  <button
+                    onClick={onEdit}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                    title="Edit milestone"
+                  >
+                    <Icon name="edit" size={16} />
+                  </button>
+                )}
+                {canDelete && (
+                  <button
+                    onClick={onDelete}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                    title="Delete milestone"
+                  >
+                    <Icon name="delete" size={16} />
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -165,7 +176,7 @@ export function MilestoneDetailk({
           </div>
 
           {/* Status Change & Complete Actions */}
-          {isAdmin && (
+          {canEdit && (
             <div className="flex flex-wrap items-center gap-2">
               {hasTasks && (
                 <div className="w-full mb-1 p-2 rounded-lg bg-indigo-50 border border-indigo-100">
@@ -208,7 +219,7 @@ export function MilestoneDetailk({
                 {tasks.length} task{tasks.length !== 1 ? "s" : ""}
               </p>
             </div>
-            {isAdmin && (
+            {canCreateTasks && (
               <GradientButton variant="ghost" onClick={onAddTask}>
                 <Icon name="add" size={16} />
                 Add Task
@@ -222,7 +233,7 @@ export function MilestoneDetailk({
                 <TaskCard
                   key={task.id}
                   task={task}
-                  canEdit={!!isAdmin}
+                  canEdit={canEdit}
                   onViewTask={undefined}
                   onEditTask={undefined}
                   getProgressColor={(p) => {
@@ -242,7 +253,7 @@ export function MilestoneDetailk({
               </div>
               <h4 className="text-sm font-semibold text-slate-700 mb-1">No tasks yet</h4>
               <p className="text-xs text-slate-400 mb-4">Tasks for this milestone will appear here.</p>
-              {isAdmin && (
+              {canCreateTasks && (
                 <GradientButton variant="ghost" onClick={onAddTask}>
                   <Icon name="add" size={16} />
                   Create First Task

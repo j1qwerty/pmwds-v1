@@ -3,12 +3,19 @@ import type { Milestone, MilestoneDependency } from "../../../types";
 import { useToast, EmptyState, SectionCard } from "../../shared/index";
 import { Icon } from "../../../components/ui/Icon";
 import { DependencyFormModal } from "./DependencyFormModal";
+import { resolveDependencies, type DependencyEnd } from "../dependencyVisibility";
 
 interface MilestoneDependencyPanelProps {
   dependencies: MilestoneDependency[];
   milestones: Milestone[];
   projectId: string;
-  canManage: boolean;
+  /**
+   * New + Edit. Both go through POST/PUT /milestones/dependencies, which the
+   * server gates on the Milestones.Edit policy.
+   */
+  canEdit: boolean;
+  /** Row delete goes through DELETE /milestones/dependencies → Milestones.Delete. */
+  canDelete: boolean;
   onAdd: (payload: Record<string, unknown>) => Promise<void>;
   onUpdate: (id: string, payload: Record<string, unknown>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -23,7 +30,8 @@ interface MilestoneDependencyPanelProps {
 export function MilestoneDependencyPanel({
   dependencies,
   milestones,
-  canManage,
+  canEdit,
+  canDelete,
   onAdd,
   onUpdate,
   onDelete,
@@ -43,9 +51,10 @@ export function MilestoneDependencyPanel({
     }
   }, [newRequestKey]);
 
-  const getMilestoneName = (id: string) => milestones.find((m) => m.id === id)?.name || "Unknown";
-  const getMilestoneStatus = (id: string) => milestones.find((m) => m.id === id)?.status || "";
-  const getMilestoneProgress = (id: string) => milestones.find((m) => m.id === id)?.progressPercentage || 0;
+  // Milestones outside the caller's department scope are absent from
+  // `milestones`, so resolve each end to a real name or OTHER_DEPARTMENT_LABEL,
+  // and drop rows where neither end is theirs.
+  const visibleDeps = resolveDependencies(dependencies, milestones);
 
   const handleDelete = async (id: string) => {
     try {
@@ -55,14 +64,17 @@ export function MilestoneDependencyPanel({
     }
   };
 
-  const metCount = dependencies.filter((d) => d.isMet).length;
-  const blockingCount = dependencies.filter((d) => !d.isMet).length;
+  // Counts describe what is on screen, so they must exclude hidden rows.
+  const metCount = visibleDeps.filter((d) => d.dep.isMet).length;
+  const blockingCount = visibleDeps.length - metCount;
 
-  const filteredDeps = dependencies.filter((d) => {
-    if (filter === "met") return d.isMet;
-    if (filter === "blocking") return !d.isMet;
+  const filteredDeps = visibleDeps.filter(({ dep }) => {
+    if (filter === "met") return dep.isMet;
+    if (filter === "blocking") return !dep.isMet;
     return true;
   });
+
+  const hiddenCount = dependencies.length - visibleDeps.length;
 
   return (
     <>
@@ -71,7 +83,7 @@ export function MilestoneDependencyPanel({
         description="Manage which milestones block others from starting"
         icon="account_tree"
         actions={
-          canManage ? (
+          canEdit ? (
             <button
               type="button"
               onClick={() => { setEditDep(null); setModalOpen(true); }}
@@ -85,13 +97,13 @@ export function MilestoneDependencyPanel({
       >
         {/* Summary stats */}
         <div className="grid grid-cols-3 gap-2.5 mb-4">
-          <StatBox label="Total" value={dependencies.length} color="indigo" icon="link" />
+          <StatBox label="Total" value={visibleDeps.length} color="indigo" icon="link" />
           <StatBox label="Met" value={metCount} color="emerald" icon="check_circle" />
           <StatBox label="Blocking" value={blockingCount} color="red" icon="block" />
         </div>
 
         {/* Filter chips */}
-        {dependencies.length > 0 && (
+        {visibleDeps.length > 0 && (
           <div className="flex items-center gap-1 mb-3">
             {(["all", "met", "blocking"] as const).map((f) => {
               const active = filter === f;
@@ -123,10 +135,12 @@ export function MilestoneDependencyPanel({
         {filteredDeps.length === 0 ? (
           <EmptyState
             icon="account_tree"
-            title={dependencies.length === 0 ? "No dependencies defined" : "No dependencies match this filter"}
+            title={visibleDeps.length === 0 ? "No dependencies defined" : "No dependencies match this filter"}
             description={
-              dependencies.length === 0
-                ? "Add dependencies to control milestone execution order."
+              visibleDeps.length === 0
+                ? hiddenCount > 0
+                  ? `${hiddenCount} ${hiddenCount === 1 ? "dependency sits" : "dependencies sit"} entirely between other departments, so ${hiddenCount === 1 ? "it is" : "they are"} not shown here.`
+                  : "Add dependencies to control milestone execution order."
                 : "Try a different filter to see more dependencies."
             }
             compact
@@ -134,14 +148,7 @@ export function MilestoneDependencyPanel({
           />
         ) : (
           <div className="space-y-2">
-            {filteredDeps.map((dep) => {
-              const prereqProgress = getMilestoneProgress(dep.prerequisiteMilestoneId);
-              const prereqStatus = getMilestoneStatus(dep.prerequisiteMilestoneId);
-              const prereqMet =
-                dep.type === "CompletionBased"
-                  ? prereqStatus === "Completed"
-                  : prereqProgress >= (dep.thresholdPercentage || 0);
-
+            {filteredDeps.map(({ dep, prerequisite, dependent, prereqProgress, isRuleSatisfied: prereqMet, canReadPrereqState }) => {
               return (
                 <div
                   key={dep.id}
@@ -159,17 +166,9 @@ export function MilestoneDependencyPanel({
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className={`text-sm font-semibold ${
-                        dep.isMet ? "text-slate-500 line-through decoration-slate-300" : "text-slate-800"
-                      }`}>
-                        {getMilestoneName(dep.prerequisiteMilestoneId)}
-                      </span>
+                      <DependencyEndLabel end={prerequisite} strikethrough={dep.isMet} />
                       <Icon name="arrow_forward" size={13} className="text-slate-400" />
-                      <span className={`text-sm font-semibold ${
-                        dep.isMet ? "text-slate-800" : "text-red-600"
-                      }`}>
-                        {getMilestoneName(dep.dependentMilestoneId)}
-                      </span>
+                      <DependencyEndLabel end={dependent} strikethrough={false} emphasis />
                     </div>
                     <div className="flex items-center gap-2 mt-1">
                       {dep.type === "CompletionBased" ? (
@@ -179,35 +178,46 @@ export function MilestoneDependencyPanel({
                           <Icon name={prereqMet ? "task_alt" : "schedule"} size={11} />
                           Must complete
                         </span>
-                      ) : (
+                      ) : canReadPrereqState ? (
                         <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded ${
                           prereqMet ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
                         }`}>
                           <Icon name="analytics" size={10} />
                           {prereqProgress}% / {dep.thresholdPercentage}%
                         </span>
+                      ) : (
+                        // The prerequisite is outside the caller's scope, so its
+                        // real progress is unknown — don't render a fake 0%.
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                          <Icon name="analytics" size={10} />
+                          Progress threshold {dep.thresholdPercentage}%
+                        </span>
                       )}
                     </div>
                   </div>
 
-                  {canManage && (
+                  {(canEdit || canDelete) && (
                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        type="button"
-                        onClick={() => { setEditDep(dep); setModalOpen(true); }}
-                        className="size-7 rounded-md flex items-center justify-center text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
-                        title="Edit"
-                      >
-                        <Icon name="edit" size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(dep.id)}
-                        className="size-7 rounded-md flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                        title="Delete"
-                      >
-                        <Icon name="delete" size={14} />
-                      </button>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => { setEditDep(dep); setModalOpen(true); }}
+                          className="size-7 rounded-md flex items-center justify-center text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                          title="Edit"
+                        >
+                          <Icon name="edit" size={14} />
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(dep.id)}
+                          className="size-7 rounded-md flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                          title="Delete"
+                        >
+                          <Icon name="delete" size={14} />
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -226,6 +236,52 @@ export function MilestoneDependencyPanel({
         onClose={() => { setModalOpen(false); setEditDep(null); }}
       />
     </>
+  );
+}
+
+/**
+ * One end of a dependency: the milestone name, or OTHER_DEPARTMENT_LABEL when
+ * the milestone sits outside the caller's department scope. The placeholder is
+ * styled muted and italic so it never reads like a milestone actually named
+ * "Other department".
+ */
+export function DependencyEndLabel({
+  end,
+  strikethrough = false,
+  emphasis = false,
+  className = "text-sm font-semibold",
+}: {
+  end: DependencyEnd;
+  strikethrough?: boolean;
+  /** True for the dependent (right-hand) end, which is the one at risk. */
+  emphasis?: boolean;
+  className?: string;
+}) {
+  if (!end.isVisible) {
+    return (
+      <span
+        className={`${className} italic text-slate-400 bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5`}
+        title="Owned by a department you don't have access to"
+      >
+        {end.label}
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={`${className} ${
+        emphasis
+          ? strikethrough
+            ? "text-slate-800"
+            : "text-red-600"
+          : strikethrough
+            ? "text-slate-500 line-through decoration-slate-300"
+            : "text-slate-800"
+      }`}
+    >
+      {end.label}
+    </span>
   );
 }
 

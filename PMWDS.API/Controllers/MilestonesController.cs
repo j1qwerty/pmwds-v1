@@ -63,7 +63,24 @@ public class MilestonesController : BaseApiController
         }
 
         var deps = await depsQuery.ToListAsync(ct);
-        return Ok(deps.Select(MilestoneDependencyDto.FromEntity));
+
+        // Redact the names of milestones the caller cannot see. GET
+        // /milestones/by-project/{id} filters those out entirely (same
+        // CanSeeFullProjectDetailsAsync rule), so returning their names here
+        // would leak what that endpoint withholds. The dependency row itself
+        // stays visible — the caller needs to know their milestone is blocked
+        // by something outside their department.
+        var visibleDepartmentIds = await _scope.CanSeeFullProjectDetailsAsync(projectId, ct)
+            ? null
+            : (await _scope.GetDepartmentIdsAsync(ct)).ToHashSet();
+
+        bool CanReveal(Milestone? milestone) =>
+            visibleDepartmentIds is null || (milestone?.DepartmentId is Guid departmentId && visibleDepartmentIds.Contains(departmentId));
+
+        return Ok(deps.Select(dep => MilestoneDependencyDto.FromEntity(
+            dep,
+            CanReveal(dep.PrerequisiteMilestone),
+            CanReveal(dep.DependentMilestone))));
     }
 
     [HttpPost("dependencies")]
@@ -247,7 +264,21 @@ public class MilestonesController : BaseApiController
         if (!await _scope.CanAccessProjectAsync(milestone.ProjectId, ct))
             return Forbid();
 
-        var deps = milestone.DependentDependencies.Select(MilestoneDependencyDto.FromEntity).ToList();
+        // Same redaction as GetDependenciesByProject: a prerequisite outside the
+        // caller's department scope must not have its name disclosed.
+        var visibleDepartmentIds = await _scope.CanSeeFullProjectDetailsAsync(milestone.ProjectId, ct)
+            ? null
+            : (await _scope.GetDepartmentIdsAsync(ct)).ToHashSet();
+
+        bool CanReveal(Milestone? candidate) =>
+            visibleDepartmentIds is null || (candidate?.DepartmentId is Guid departmentId && visibleDepartmentIds.Contains(departmentId));
+
+        var deps = milestone.DependentDependencies
+            .Select(d => MilestoneDependencyDto.FromEntity(
+                d,
+                CanReveal(d.PrerequisiteMilestone),
+                CanReveal(d.DependentMilestone)))
+            .ToList();
         return Ok(new
         {
             isBlocked = milestone.IsBlocked,

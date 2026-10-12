@@ -1,8 +1,7 @@
 import { useEffect, useState, useMemo, type FormEvent } from "react";
 import type { Department, Milestone, Project, Task, User } from "../../../types";
-import { RoleKey, hasAnyRoleKey } from "../../../permissions";
 import { priorities } from "../../constants";
-import { Sheet, ModalCancelButton, ModalPrimaryButton, AvatarStack, ScopedUserSelect, getProjectDepartmentIds, usePermission, PERMISSION_GROUPS } from "../../shared/index";
+import { Sheet, ModalCancelButton, ModalPrimaryButton, AvatarStack, ScopedUserSelect, getProjectDepartmentIds, usePermission } from "../../shared/index";
 import { Icon } from "../../../components/ui/Icon";
 
 const getToday = () => new Date().toISOString().slice(0, 10);
@@ -115,13 +114,12 @@ export function TaskFormModal({
 
   // Sheet handles open/closed internally (stays mounted so the exit animation plays)
   const perm = usePermission();
+  // Assigning is TASK_ASSIGN, not a create/edit proxy: the server's TaskEditor
+  // policy accepts TaskAssign (and TaskManage holders expand down to it via the
+  // coverage map), but a create-only or edit-only grant must not see the
+  // assignee field. SuperAdmin is the only role short-circuit.
   const canAssignMilestone =
-    hasAnyRoleKey(roles, [RoleKey.SuperAdmin, RoleKey.Director]) ||
-    perm.hasAny(
-      PERMISSION_GROUPS.task.manage,
-      PERMISSION_GROUPS.task.create,
-      PERMISSION_GROUPS.task.edit,
-    );
+    perm.isSuperAdmin || perm.canModule("assign", "task");
   const projectMilestones = milestones.filter((m) => m.projectId === form.projectId);
   const selectedProject = projects.find((p) => p.id === form.projectId);
   const selectedDepartment = selectedProject

@@ -2,14 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../api";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
-import { RoleKey, hasRoleKey } from "../../permissions";
+
 import type { Milestone, MilestoneDependency, Task } from "../../types";
 import { classNames } from "../../lib/formatters";
 import {
   GlassCard,
   LoadingPage,
   useNavHeader,
-  PERMISSION_GROUPS,
+
   usePermission,
   useToast,
 } from "../shared/index";
@@ -36,16 +36,19 @@ export function ProjectMilestonesPage() {
   const { addToast } = useToast();
   const perm = usePermission();
   const { userOrganizationId } = useUserOrganization(appData.users, appData.departments);
-  const canManageMilestones =
-    perm.isSuperAdmin ||
-    hasRoleKey(perm.roleKeys, RoleKey.Director) ||
-    perm.hasAny(
-      PERMISSION_GROUPS.milestone.manage,
-      PERMISSION_GROUPS.milestone.create,
-      PERMISSION_GROUPS.milestone.edit,
-      PERMISSION_GROUPS.milestone.delete,
-    );
-  const canManageTasks = perm.has(PERMISSION_GROUPS.task.manage);
+  // Verb-level gates. canModule resolves `manage` → each verb through the
+  // coverage map, exactly as PermissionPolicyRegistry.AddScopedCrud does on the
+  // server (View/Create/Edit/Delete each accept `manage` plus their own code).
+  const canCreateMilestones = perm.canModule("create", "milestone");
+  const canEditMilestones = perm.canModule("edit", "milestone");
+  const canDeleteMilestones = perm.canModule("delete", "milestone");
+  const canCreateTasks = perm.canModule("create", "task");
+  const canEditTasks = perm.canModule("edit", "task");
+  const canDeleteTasks = perm.canModule("delete", "task");
+  // Dependencies hang off POST|PUT|DELETE /milestones/dependencies, which the
+  // server gates on Milestones.Edit / Milestones.Delete.
+  const canEditDependencies = canEditMilestones;
+  const canDeleteDependencies = canDeleteMilestones;
 
   const [pickedMilestoneId, setPickedMilestoneId] = useState("");
 
@@ -86,14 +89,14 @@ export function ProjectMilestonesPage() {
       return;
     }
     const actions = [];
-    if (canManageMilestones) {
+    if (canCreateMilestones) {
       actions.push({
         label: "New milestone",
         onClick: () => { setMilestoneModal({ open: true }); setMilestoneError(""); },
         icon: "flag",
       });
     }
-    if (canManageTasks) {
+    if (canCreateTasks) {
       actions.push({
         label: "New task",
         onClick: () =>
@@ -109,8 +112,8 @@ export function ProjectMilestonesPage() {
   }, [
     setNavHeader,
     ws.project,
-    canManageMilestones,
-    canManageTasks,
+    canCreateMilestones,
+    canCreateTasks,
     selectedMilestoneId,
   ]);
 
@@ -412,7 +415,10 @@ export function ProjectMilestonesPage() {
           project={ws.project}
           selectedMilestoneId={selectedMilestoneId}
           onSelectMilestone={setPickedMilestoneId}
-          canManage={canManageMilestones}
+          canCreateMilestones={canCreateMilestones}
+          canCreateTasks={canCreateTasks}
+          canEdit={canEditMilestones}
+          canDelete={canDeleteMilestones}
           onAdd={() => setMilestoneModal({ open: true })}
           onEdit={(m) => setMilestoneModal({ open: true, edit: m })}
           onDelete={setDeleteMilestone}
@@ -437,7 +443,7 @@ export function ProjectMilestonesPage() {
             </div>
           )}
 
-          {selectedMilestone && canManageTasks && milestoneTasks.length > 0 && (
+          {selectedMilestone && canCreateTasks && milestoneTasks.length > 0 && (
             <div className="flex items-center justify-between px-1">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                 Tasks for {selectedMilestone.name}
@@ -459,11 +465,11 @@ export function ProjectMilestonesPage() {
                 <Icon name="task_alt" size={32} className="mb-3 block" />
                 <p className="text-sm font-medium text-slate-600">No tasks yet</p>
                 <p className="text-xs mt-1">
-                  {canManageTasks
+                  {canCreateTasks
                     ? "Add tasks to this milestone to track its progress."
                     : "Tasks for this milestone will appear here."}
                 </p>
-                {canManageTasks && (
+                {canCreateTasks && (
                   <button
                     type="button"
                     onClick={() => setTaskModal({ open: true, milestoneId: selectedMilestoneId })}
@@ -483,7 +489,8 @@ export function ProjectMilestonesPage() {
                 <TaskSubtaskCard
                   key={task.id}
                   task={task}
-                  canEdit={canManageTasks}
+                  canEdit={canEditTasks}
+                  canCreateSubtask={perm.canModule("create", "subtask")}
                   onViewTask={(t) => setViewTask(t)}
                   onEditTask={(t) => setTaskModal({ open: true, edit: t })}
                   getProgressColor={getProgressColor}
@@ -508,7 +515,8 @@ export function ProjectMilestonesPage() {
           <DependenciesPanel
             dependencies={ws.dependencies}
             milestones={ws.milestones}
-            canManage={canManageMilestones}
+            canEdit={canEditDependencies}
+            canDelete={canDeleteDependencies}
             onNew={() => { setEditDep(null); setDepModalOpen(true); }}
             onEdit={(dep) => { setEditDep(dep); setDepModalOpen(true); }}
             onDelete={handleDeleteDependency}
@@ -580,7 +588,8 @@ export function ProjectMilestonesPage() {
         tasks={ws.tasks}
         project={ws.project}
         users={ws.users}
-        isAdmin={canManageMilestones}
+        canEdit={canEditMilestones}
+        canDelete={canDeleteMilestones}
         dependencies={ws.dependencies}
         allMilestones={ws.milestones}
         onClose={() => setViewMilestone(null)}
@@ -619,7 +628,7 @@ export function ProjectMilestonesPage() {
             : null
         }
         users={ws.users}
-        isAdmin={canManageTasks}
+        canEdit={canEditTasks}
         onClose={() => setViewTask(null)}
         onEdit={(task) => {
           setTaskModal({ open: true, edit: task });

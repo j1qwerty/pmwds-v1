@@ -25,24 +25,50 @@ public static class PermissionPolicyRegistry
             policy,
             PermissionCodes.SystemAdmin,
             PermissionCodes.ProjectManage,
+            PermissionCodes.ProjectOwnManage,
+            PermissionCodes.ProjectAllManage,
             PermissionCodes.ProjectPrimaryDepartmentManage,
-            PermissionCodes.ProjectCreate,
-            PermissionCodes.ProjectEdit,
+            PermissionCodes.ProjectOwnCreate,
+            PermissionCodes.ProjectAllCreate,
+            PermissionCodes.ProjectOwnEdit,
+            PermissionCodes.ProjectAllEdit,
             PermissionCodes.TaskManage,
-            PermissionCodes.TaskCreate,
-            PermissionCodes.TaskEdit,
+            PermissionCodes.TaskOwnManage,
+            PermissionCodes.TaskAllManage,
+            PermissionCodes.TaskOwnCreate,
+            PermissionCodes.TaskAllCreate,
+            PermissionCodes.TaskOwnEdit,
+            PermissionCodes.TaskAllEdit,
             PermissionCodes.MilestoneManage,
-            PermissionCodes.SubtaskManage));
+            PermissionCodes.MilestoneOwnManage,
+            PermissionCodes.MilestoneAllManage,
+            PermissionCodes.SubtaskManage,
+            PermissionCodes.SubtaskOwnManage,
+            PermissionCodes.SubtaskAllManage));
+        // The scoped task permissions are accepted alongside the unscoped ones:
+        // seeded roles hold TASK_OWN_* / TASK_ALL_*, and GetScopedAliases does not
+        // collapse a scoped code down to its unscoped form, so listing only the
+        // unscoped codes here locked every manager out of task editing.
         options.AddPolicy(AuthorizationPolicies.TaskEditor, policy => RequireAny(
             policy,
             PermissionCodes.SystemAdmin,
             PermissionCodes.TaskManage,
-            PermissionCodes.TaskCreate,
-            PermissionCodes.TaskEdit,
+            PermissionCodes.TaskOwnManage,
+            PermissionCodes.TaskAllManage,
+            PermissionCodes.TaskOwnCreate,
+            PermissionCodes.TaskAllCreate,
+            PermissionCodes.TaskOwnEdit,
+            PermissionCodes.TaskAllEdit,
             PermissionCodes.TaskAssign,
+            PermissionCodes.TaskOwnAssign,
+            PermissionCodes.TaskAllAssign,
             PermissionCodes.SubtaskManage,
-            PermissionCodes.SubtaskCreate,
-            PermissionCodes.SubtaskEdit));
+            PermissionCodes.SubtaskOwnManage,
+            PermissionCodes.SubtaskAllManage,
+            PermissionCodes.SubtaskOwnCreate,
+            PermissionCodes.SubtaskAllCreate,
+            PermissionCodes.SubtaskOwnEdit,
+            PermissionCodes.SubtaskAllEdit));
 
         AddCrud(options, "Organizations", PermissionCodes.OrganizationManage, PermissionCodes.OrganizationView, PermissionCodes.OrganizationCreate, PermissionCodes.OrganizationEdit, PermissionCodes.OrganizationDelete);
         AddCrud(options, "Roles", PermissionCodes.RoleManage, PermissionCodes.RoleView, PermissionCodes.RoleCreate, PermissionCodes.RoleEdit, PermissionCodes.RoleDelete);

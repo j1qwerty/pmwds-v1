@@ -36,7 +36,10 @@ interface ProjectInfoCardProps {
   milestonesCount: number;
   milestones: Milestone[];
   dependencies: MilestoneDependency[];
-  canManageProjects?: boolean;
+  /** Edit + status change → PUT /projects/{id} → Projects.Edit. */
+  canEditProject?: boolean;
+  /** Delete → DELETE /projects/{id} → Projects.Delete. */
+  canDeleteProject?: boolean;
   users?: User[];
   onProjectUpdated: () => void;
 }
@@ -46,7 +49,8 @@ export function ProjectInfoCard({
   milestonesCount,
   milestones,
   dependencies,
-  canManageProjects,
+  canEditProject,
+  canDeleteProject,
   users,
   onProjectUpdated,
 }: ProjectInfoCardProps) {
@@ -116,7 +120,7 @@ export function ProjectInfoCard({
   const hoverActions: HoverActionDef[] = [
     { icon: "view", label: "View project", onClick: () => setViewProject(true) },
   ];
-  if (canManageProjects) {
+  if (canEditProject) {
     hoverActions.push({
       icon: "edit",
       label: "Edit project",
@@ -139,6 +143,8 @@ export function ProjectInfoCard({
         setEditProjectOpen(true);
       },
     });
+  }
+  if (canDeleteProject) {
     hoverActions.push({
       icon: "delete",
       label: "Delete project",
@@ -283,7 +289,7 @@ export function ProjectInfoCard({
       {createPortal(
         <ProjectDetailModal
           project={viewProject ? project : null}
-          canManage={canManageProjects ?? false}
+          canEdit={canEditProject ?? false}
           authToken={auth?.token}
           users={users}
           milestones={milestones}

@@ -17,7 +17,8 @@ interface TaskSubtaskDetailsProps {
   milestone?: Milestone | null;
   recommendation?: any;
   delay?: any;
-  isAdmin?: boolean;
+  /** Progress/status/comment editing → PUT /tasks/{id} → Tasks.Edit. */
+  canEdit?: boolean;
   permissionEdit?: string;
   onStatusChange?: (status: string, options?: { confirmReset?: boolean }) => void;
   onEdit: (task: Task) => void;
@@ -51,7 +52,7 @@ function TaskSubtaskDetailsModalInner({
   milestone,
   recommendation,
   delay,
-  isAdmin,
+  canEdit,
   permissionEdit,
   onStatusChange = () => {},
   onEdit,
@@ -65,7 +66,7 @@ function TaskSubtaskDetailsModalInner({
   hideCloseButton = false,
 }: InnerTaskSubtaskDetailsProps) {
   const perm = usePermission();
-  const mayEdit = isAdmin ?? (permissionEdit ? perm.has(permissionEdit) : false);
+  const mayEdit = canEdit ?? (permissionEdit ? perm.has(permissionEdit) : false);
   const { auth } = useAuth();
   const { addToast } = useToast();
 

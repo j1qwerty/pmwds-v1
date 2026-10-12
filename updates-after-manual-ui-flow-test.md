@@ -80,6 +80,240 @@ indefinitely.
 | `src/pages/project/components/TaskFormModal.tsx` | Same fix. |
 | `src/pages/project/components/ProjectFormModal.tsx` | Same fix, plus the footer Save now calls `formRef.current?.requestSubmit()`. The previous `onClick={() => handleSubmit()}` invoked `onSubmit` with no event, and both parents call `e.preventDefault()` unconditionally — so it threw `TypeError: Cannot read properties of undefined (reading 'preventDefault')` and the save silently never fired. |
 
+### 2b. **Regression: every role saw every button, tab and action** (permission engine)
+Item 5 below (role checks → permission checks) exposed a latent defect in
+`coversManagedPermission` and turned the whole app into an open door. Fixed.
+
+**Symptom.** After the permission-driven rework, a TeamMember saw *New Project*,
+*New milestone*, *New task*, *New dependency*, and view/edit/delete on project
+cards; Viewer saw the same; ProjectManager saw the notification **Templates**
+and **Alert rules** tabs and user-management. Sidebar items leaked too.
+
+**Root cause.** `Client/src/permissions.ts`, inside `coversManagedPermission`:
+
+```ts
+for (const candidate of scopedVariants(requested)) {
+  if (expanded.has(candidate)) return true;
+  if (PERMISSION_COVERAGE[candidate]?.some((covered) => expanded.has(covered))) return true;  // ← this line
+}
+```
+
+`PERMISSION_COVERAGE` is a *downward* map: `MANAGE` → `[VIEW, CREATE, EDIT,
+DELETE]`, i.e. "granting X also grants what X covers". The expansion loop above
+already applies it in that direction. The second line read it **backwards** —
+"holding any one permission X covers also grants X" — which collapses the entire
+hierarchy, because every `*_MANAGE` covers `*_VIEW`:
+
+- TeamMember holds `PROJECT_OWN_VIEW` (seeded, `RolesAndPermissionsSeeder.cs`).
+  `PERMISSION_COVERAGE["PROJECT_OWN_MANAGE"]` contains `PROJECT_OWN_VIEW`
+  (reached as an alias candidate via `scopedVariants`), so
+  `perm.has(PERMISSION_GROUPS.project.manage)` returned **true**.
+- Same for `TASK_OWN_VIEW` → `TASK_MANAGE`, `MILESTONE_OWN_VIEW` →
+  `MILESTONE_MANAGE`, and `NOTIFICATION_OWN_VIEW` → `NOTIFICATION_MANAGE`
+  (whose coverage is `[view, broadcast, template manage, rule manage]` — hence
+  Templates + Alert rules).
+
+Why it looked new: `canManageMilestones` and the dependencies `canManage` were
+*role*-gated (`isSuperAdmin || Director`) before item 5, which masked the bug for
+milestones/dependencies. `canManageProjects` / `canManageTasks` were already
+permission-gated and already leaking.
+
+**Fix.** `Client/src/permissions.ts` — deleted the inverted-coverage branch.
+Matching is now exact against the expanded grant set; the only aliasing left is
+the intentional one in `scopedVariants` (a non-scoped request also matches its
+`_OWN_` / `_ALL_` variants, and an `_ALL_` grant implies its `_OWN_`
+counterpart). This matches `PermissionPolicyRegistry.AddScopedCrud` on the
+server, where `*.Create/Edit/Delete` accept `ownManage`/`allManage` but `*.View`
+does **not** accept `create`/`edit`/`delete`.
+
+**Verification.** Extracted the six seeded role permission sets from
+`RolesAndPermissionsSeeder.cs` and asserted the real `coversManagedPermission`
+against them (75 assertions: per-role manage/create/edit/delete/view, the two
+composite flags `canManageMilestones` and `canConfigureNotifications`, and every
+sidebar/route-guard permission). All 75 pass after the fix; the same script
+against the pre-fix `permissions.ts` fails 13, including exactly the reported
+symptoms:
+
+```
+FAIL  TeamMember     has(PROJECT_MANAGE) = true, expected false
+FAIL  TeamMember     has(MILESTONE_MANAGE) = true, expected false
+FAIL  TeamMember     has(TASK_MANAGE) = true, expected false
+FAIL  TeamMember     has(NOTIFICATION_MANAGE) = true, expected false
+FAIL  Viewer         has(PROJECT_MANAGE) = true, expected false
+FAIL  DepartmentHead has(NOTIFICATION_MANAGE) = true, expected false
+FAIL  ProjectManager has(USER_MANAGE) = true, expected false
+FAIL  ProjectManager has(NOTIFICATION_MANAGE) = true, expected false
+FAIL  TeamMember     canManageMilestones() = true, expected false
+FAIL  Viewer         canManageMilestones() = true, expected false
+FAIL  TeamMember     canConfigureNotifications() = true, expected false
+FAIL  Viewer         canConfigureNotifications() = true, expected false
+FAIL  ProjectManager canConfigureNotifications() = true, expected false
+```
+
+One intentional behaviour change worth flagging: **Activity Logs is now hidden
+from TeamMember and ProjectManager.** Both hold `ACTIVITY_LOG_OWN_CREATE` but no
+`ACTIVITY_LOG_OWN_VIEW`, and were only seeing the page because of this bug. The
+server already refuses them — `AuthorizationPolicies.ActivityLogsView` requires
+`ActivityLogManage`/`ActivityLogView`/`SystemAdmin`. If they are meant to have
+the page, add `ActivityLogOwnView` to those role specs in
+`RolesAndPermissionsSeeder.cs` rather than loosening the client.
+
+This was display-only: the API never leaked. Every one of those buttons would
+have 403'd on submit.
+
+### 2c. One coarse `canManage` flag was gating every verb
+Follow-on from §2b. §2b fixed *who passes a permission check*; this fixed
+*which permission each control asks for*. Every affordance in the project
+workspace hung off a single `perm.has(<MODULE>_MANAGE)` flag, which was then
+used to gate create, edit, delete, status-change and inline-add controls alike.
+
+Once §2b is in, gating on `manage` can only ever **hide** things (since
+`manage ⊇ edit ⊇ view`), never leak them — so this is precision work, not a
+security fix. The one real inversion was create actions gated on a non-create
+flag. Worth doing properly rather than patching, so the UI now asks for the
+verb it actually performs.
+
+The server's shape (`PermissionPolicyRegistry.AddScopedCrud`) is the spec:
+
+```
+X.View   = manage | view
+X.Create = manage | create
+X.Edit   = manage | edit
+X.Delete = manage | delete
+X.Manage = manage
+```
+
+`perm.canModule(verb, module)` reproduces exactly this, because the coverage
+map already expands `manage` down to every verb. So every page derives its
+flags the same way, and every prop is named for the verb it guards:
+
+| File | Change |
+|---|---|
+| `src/pages/project/ProjectsListPage.tsx` | `canCreateProjects` / `canEditProject` / `canDeleteProject`. `ProjectSummaryCard` and `ProjectListView` take `canEdit` + `canDelete` instead of one `canManage`. |
+| `src/pages/project/ProjectInfoCard.tsx` | `canManageProjects` → `canEditProject` + `canDeleteProject`; edit and delete hover actions gate separately. |
+| `src/pages/project/components/ProjectBasicDetails.tsx`, `ProjectDetailModal.tsx` | `canManage` → `canEdit` (it only ever drove the status dropdown, i.e. `PUT /projects/{id}`). |
+| `src/pages/project/ProjectOverviewPage.tsx`, `ProjectTasksPage.tsx` | Pass the split flags to `ProjectInfoCard`; dropped the now-dead `RoleKey.Director` short-circuit from `canUploadProjectDocs` — `DOCUMENT_ALL_MANAGE` already covers Director, and the `_PROJECT_UPLOAD` codes are seeded explicitly for the other roles. |
+| `src/pages/project/ProjectMilestonesPage.tsx`, `ProjectTasksPage.tsx` | Flags derived from `perm.canModule`: `canCreateMilestones`, `canEditMilestones`, `canDeleteMilestones`, `canCreateTasks`, `canEditTasks`, `canDeleteTasks`, `canCreateSubtasks`. |
+| `src/pages/project/components/MilestonesPanel.tsx` | `canManage` → `canEdit` + `canDelete`; `canCreateMilestones` / `canCreateTasks` are now **required** props, so no caller can silently fall back to a manage-level flag. |
+| `src/pages/project/components/MilestoneCard.tsx` | `canManage` → `canEdit` (it only ever guarded the edit hover action). |
+| `src/pages/project/components/MilestoneDetailk.tsx`, `MilestoneDetailModal.tsx` | `isAdmin` → `canEdit` + `canDelete`. "Add Task" gates on `canCreateTasks`, not on edit. |
+| `src/pages/project/ProjectDependenciesPage.tsx` | Replaced the `manage / create / edit / delete` OR-chain with `canEditDependencies` / `canDeleteDependencies`, matching `MilestonesController` — dependencies hang off `POST\|PUT\|DELETE /milestones/dependencies`, gated on `Milestones.Edit` / `Milestones.Delete`, **not** on `Milestones.Create`. |
+| `src/pages/project/components/MilestoneDependencyPanel.tsx`, `DependenciesPanel.tsx` | `canManage` split into `canEdit` (New + row Edit) and `canDelete` (row Delete). |
+| `src/pages/project/components/TaskSubtaskCard.tsx` | New `canCreateSubtask` gates "Add subtask" (`POST /subtasks`), separate from `canEdit`. |
+| `src/pages/project/components/TaskFormModal.tsx` | `canAssignMilestone` was `role ∈ {SuperAdmin, Director} \|\| hasAny(task.manage, task.create, task.edit)` — i.e. a **create-only** grant got the assignee field. Now `isSuperAdmin \|\| canModule("assign", "task")`, matching `AuthorizationPolicies.TaskEditor`. |
+
+### 2d. Backend: no scoped role could ever assign a task
+Surfaced by §2c. `canAssignMilestone` had been hiding the assignee field from
+Director / PM / DepartmentHead — correctly, because **the server rejected them
+too**. This is a pre-existing backend bug, not a client one.
+
+`PermissionCatalog.ManagePermissionCoverage` expands the *unscoped* `TaskManage`
+to `[view, create, edit, delete, assign, comment_create, attachment_create]`,
+but the **scoped** `TaskOwnManage` / `TaskAllManage` entries only covered
+view/create/edit/delete. Every seeded role holds a scoped `TASK_*_MANAGE` and
+none of them expands to a scoped assign, so `AuthorizationPolicies.TaskEditor`
+— which matches the unscoped `TaskAssign` — rejected all of them.
+`PermissionCatalog.GetScopedAliases` does not reduce `TASK_OWN_ASSIGN` to
+`TASK_ASSIGN` either, so the scoped assign codes were unreachable through that
+policy too. Net effect: nobody but SuperAdmin could assign a task.
+
+| File | Change |
+|---|---|
+| `PMWDS.Application/Security/PermissionCatalog.cs` | `TaskOwnManage` / `TaskAllManage` now also cover the matching `*_ASSIGN`, `*_COMMENT_CREATE`, `*_ATTACHMENT_CREATE` codes, mirroring the unscoped `TaskManage` entry. |
+| `PMWDS.API/Auth/PermissionPolicyRegistry.cs` | `AuthorizationPolicies.TaskEditor` and `.Manager` now list the scoped task/project/milestone/subtask codes alongside the unscoped ones, since `GetScopedAliases` never reduces a scoped code to its unscoped form. |
+
+Client `PERMISSION_COVERAGE` was updated to match, so both sides agree.
+
+**Verification.** Role × capability matrix over the six seeded permission sets
+(90 assertions, all passing):
+
+```
+                         SuperAdmin  Director    PM      DeptHead  TeamMember  Viewer
+  project.create    New Project (topbar/dashboard)      yes   yes   yes   yes   --    --
+  project.edit      Edit project + status dropdown      yes   yes   yes   yes   --    --
+  project.delete    Delete project                      yes   yes   yes   yes   --    --
+  milestone.create  New milestone + panel '+'           yes   yes   yes   yes   --    --
+  milestone.edit    Milestone edit/complete/status      yes   yes   yes   yes   --    --
+  milestone.delete  Milestone delete                    yes   yes   yes   yes   --    --
+  task.create       New task / Create first task        yes   yes   yes   yes   --    --
+  task.edit         Task edit / progress / comments     yes   yes   yes   yes   yes   --
+  task.delete       Task delete                         yes   yes   yes   yes   --    --
+  subtask.create    Add subtask                         yes   yes   yes   yes   yes   --
+  task.assign       TaskFormModal assignee field        yes   yes   yes   yes   --    --
+  notification.manage Templates + Alert rules tabs      yes   yes   --    --    --    --
+  user.manage       Users page write actions            yes   yes   --    yes   --    --
+  role.manage       Roles page write actions            yes   yes   --    --    --    --
+  system.manage     Settings page                       yes   --    --    --    --    --
+```
+
+`user.manage` is intentionally `yes` for DepartmentHead: they are seeded with
+`USER_OWN_MANAGE`, so they manage users inside their own department, with
+`RoleScopeService` applying the department scoping on top.
+
+`tsc -b`, `vite build` and `dotnet build PMWDS.API` are all clean.
+
+### 2e. Dependency rows showed "Unknown" for milestones in other departments
+Logged in as TeamMember on a project spanning several departments: the
+Dependencies tab showed 18 rows, most of them "Unknown → X" or "X → Unknown",
+plus one "Unknown → Unknown".
+
+**Why "Unknown".** `GET /milestones/by-project/{id}` filters milestones to the
+caller's own departments, so milestones owned by another department are simply
+absent from the client's `milestones` array. Both panels resolved names with
+`milestones.find(...)?.name || "Unknown"`, and neither distinguished "not
+visible to me" from "genuinely missing data".
+
+**Behaviour now.**
+
+| Ends | Before | After |
+|---|---|---|
+| both visible | `A → B` | `A → B` |
+| prerequisite hidden | `Unknown → B` | `Other department → B` |
+| dependent hidden | `A → Unknown` | `A → Other department` |
+| **both** hidden | `Unknown → Unknown` | **row dropped** |
+
+A row with at least one visible end is kept, because that end is the caller's
+own milestone and the rule genuinely affects their work — they need to know they
+are blocked by another team. A row where neither end is theirs says nothing
+actionable, so it is hidden rather than rendered as
+`Other department → Other department`.
+
+Two supporting details:
+
+- **Counts follow the visible set.** Total / Met / Blocking now describe what is
+  on screen. When every row is hidden, the empty state says how many were
+  withheld rather than claiming "No dependencies defined".
+- **No fake `0% / 80%`.** For a `ProgressThreshold` rule whose prerequisite is
+  out of scope, the panel renders `Progress threshold 80%` instead. The old code
+  substituted `0` for the unreadable progress and printed `0% / 80%`, which is
+  simply wrong — and the local "is this rule satisfied" computation is
+  meaningless in that case. The server's `isMet` stays authoritative for the
+  Met/Blocking chip.
+
+| File | Change |
+|---|---|
+| `src/pages/project/dependencyVisibility.ts` | *(new)* `resolveDependencies(dependencies, milestones)` — resolves each end to a real milestone or `OTHER_DEPARTMENT_LABEL`, drops both-hidden rows, and exposes `canReadPrereqState` so callers stop inventing progress. |
+| `src/pages/project/components/MilestoneDependencyPanel.tsx` | Uses the helper; new shared `DependencyEndLabel` renders the muted/italic placeholder; counts and empty state follow the visible set. |
+| `src/pages/project/components/DependenciesPanel.tsx` | Same helper and label, so the compact panel on the Milestones tab matches the Dependencies tab. |
+
+**Backend leak fixed.** The UI was only hiding the names — the API was still
+returning them. `MilestoneDependencyDto.FromEntity` populated
+`PrerequisiteMilestoneName` / `DependentMilestoneName` unconditionally, so a
+TeamMember's network tab contained every hidden milestone's real name, which is
+exactly what `GET /milestones/by-project` withholds.
+
+| File | Change |
+|---|---|
+| `PMWDS.Application/DTOs/Projects/MilestoneDependencyDto.cs` | `FromEntity` takes optional `revealPrerequisiteName` / `revealDependentName`; names become `null` when not revealed. |
+| `PMWDS.API/Controllers/MilestonesController.cs` | `GetDependenciesByProject` and `GetDependencyStatus` redact names for milestones outside the caller's scope, reusing the same `CanSeeFullProjectDetailsAsync` rule that drives `GetByProject`. The dependency row itself is still returned — the blocking relationship is not secret. |
+
+**Verification.** 18 assertions over `resolveDependencies`, using the milestone
+set and row shapes from the screenshot: both-hidden rows dropped, each one-hidden
+case labelled correctly, visible-set counts, threshold maths for visible
+prerequisites, `canReadPrereqState` false for hidden ones, a full-scope caller
+keeping all 18 rows with real names, and empty-input cases. All pass.
+`tsc -b`, `vite build` and `dotnet build PMWDS.API` are clean.
+
 ### 3. Panels rendered as ~40px slivers (Tailwind v4 token collision)
 `max-w-sm/md/lg/xl` in the size maps resolved against the **spacing** scale
 instead of the **container** scale (e.g. `max-w-xl` → `2.5rem`), so sheets and
@@ -102,6 +336,11 @@ a redundant second white surface.
 ### 5. Permission checks were role-gated instead of permission-driven
 Policy adopted during the run: **role checks only for SuperAdmin; every other
 role must be permission-driven.** Audited and fixed across the project pages.
+
+> Reworking these to be permission-driven is what surfaced the regression in
+> §2b — the permission engine itself was granting every `*_MANAGE` to anyone
+> holding the matching `*_VIEW`. The changes below are correct and stayed; the
+> engine underneath them is what was fixed.
 
 | File | Change |
 |---|---|

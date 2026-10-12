@@ -10,7 +10,8 @@ import { Icon } from "../../../components/ui/Icon";
 
 interface ProjectDetailModalProps {
   project: Project | null;
-  canManage: boolean;
+  /** Inline status change → PUT /projects/{id} → Projects.Edit. */
+  canEdit: boolean;
   onClose: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
@@ -28,7 +29,7 @@ interface ProjectDetailModalProps {
  */
 export function ProjectDetailModal({
   project,
-  canManage,
+  canEdit,
   onClose,
   onEdit,
   onDelete,
@@ -96,7 +97,7 @@ export function ProjectDetailModal({
         {/* Project basic details (status change lives here) */}
         <ProjectBasicDetails
           project={project}
-          canManage={canManage}
+          canEdit={canEdit}
           onEdit={onEdit}
           onDelete={onDelete}
           onStatusChange={handleStatusChange}

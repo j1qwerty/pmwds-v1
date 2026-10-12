@@ -28,6 +28,9 @@ export function DashboardPage() {
   const { data: appData } = useAppData();
   const { addToast } = useToast();
   const canManageProjects = perm.has(PERMISSION_GROUPS.project.manage);
+  // New Project is gated on create (not manage): mirrors the server
+  // Projects.Create policy (flat, own and all create, plus manage holders).
+  const canCreateProjects = perm.has(PERMISSION_GROUPS.project.create);
   const canViewTasks = perm.has(PERMISSION_GROUPS.task.view);
   const canEditTasks = perm.hasAny(
     PERMISSION_GROUPS.task.edit,
@@ -60,7 +63,7 @@ export function DashboardPage() {
     setNavHeader({
       title: "Dashboard",
       description: "Overview of projects, tasks, and key metrics",
-      action: canManageProjects
+      action: canCreateProjects
         ? {
             label: "New Project",
             onClick: () => setNewProjectWizardOpen(true),

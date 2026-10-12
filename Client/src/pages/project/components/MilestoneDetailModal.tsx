@@ -17,7 +17,10 @@ interface MilestoneDetailModalProps {
   onStatusChange: (status: string) => void;
   onEdit: () => void;
   onDelete: () => void;
-  isAdmin: boolean;
+  /** Edit / complete / status change → PUT /milestones/{id} → Milestones.Edit. */
+  canEdit: boolean;
+  /** Delete → DELETE /milestones/{id} → Milestones.Delete. */
+  canDelete: boolean;
   dependencies?: MilestoneDependency[];
   allMilestones?: Milestone[];
 }
@@ -32,7 +35,8 @@ export function MilestoneDetailModal({
   onStatusChange,
   onEdit,
   onDelete,
-  isAdmin,
+  canEdit,
+  canDelete,
   dependencies,
   allMilestones,
 }: MilestoneDetailModalProps) {
@@ -71,17 +75,19 @@ export function MilestoneDetailModal({
       size="lg"
       footer={
         <>
-          {isAdmin && (
+          {(canEdit || canDelete) && (
             <>
-              <button
-                type="button"
-                onClick={onEdit}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-colors"
-              >
-                <Icon name="edit" size={14} />
-                Edit
-              </button>
-              <ModalDangerButton onClick={onDelete} label="Delete" />
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={onEdit}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                >
+                  <Icon name="edit" size={14} />
+                  Edit
+                </button>
+              )}
+              {canDelete && <ModalDangerButton onClick={onDelete} label="Delete" />}
             </>
           )}
           <ModalCancelButton onClick={onClose} label="Close" />
@@ -173,7 +179,7 @@ export function MilestoneDetailModal({
         </div>
 
         {/* Status actions */}
-        {isAdmin && (
+        {canEdit && (
           <div className="space-y-2.5">
             {hasTasks && (
               <div className="p-3 rounded-lg bg-indigo-50 border border-indigo-100 flex items-start gap-2">
@@ -277,7 +283,7 @@ export function MilestoneDetailModal({
                 <TaskCard
                   key={task.id}
                   task={task}
-                  canEdit={isAdmin}
+                  canEdit={canEdit}
                   onViewTask={undefined}
                   onEditTask={undefined}
                   getProgressColor={(p) => {

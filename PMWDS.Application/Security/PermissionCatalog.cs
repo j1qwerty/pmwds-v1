@@ -56,8 +56,14 @@ public static class PermissionCatalog
             [PermissionCodes.ProjectAllManage] = new[] { PermissionCodes.ProjectAllView, PermissionCodes.ProjectAllCreate, PermissionCodes.ProjectAllEdit, PermissionCodes.ProjectAllDelete },
             [PermissionCodes.MilestoneOwnManage] = new[] { PermissionCodes.MilestoneOwnView, PermissionCodes.MilestoneOwnCreate, PermissionCodes.MilestoneOwnEdit, PermissionCodes.MilestoneOwnDelete },
             [PermissionCodes.MilestoneAllManage] = new[] { PermissionCodes.MilestoneAllView, PermissionCodes.MilestoneAllCreate, PermissionCodes.MilestoneAllEdit, PermissionCodes.MilestoneAllDelete },
-            [PermissionCodes.TaskOwnManage] = new[] { PermissionCodes.TaskOwnView, PermissionCodes.TaskOwnCreate, PermissionCodes.TaskOwnEdit, PermissionCodes.TaskOwnDelete },
-            [PermissionCodes.TaskAllManage] = new[] { PermissionCodes.TaskAllView, PermissionCodes.TaskAllCreate, PermissionCodes.TaskAllEdit, PermissionCodes.TaskAllDelete },
+            // The scoped task Manage variants must also expand to the scoped
+            // ASSIGN / COMMENT_CREATE / ATTACHMENT_CREATE codes, exactly as the
+            // unscoped TaskManage does below. Without this a role seeded with
+            // only TASK_OWN_MANAGE / TASK_ALL_MANAGE never picks up an assign
+            // grant, and AuthorizationPolicies.TaskEditor (which matches the
+            // unscoped TaskAssign) rejects it — so no manager could assign a task.
+            [PermissionCodes.TaskOwnManage] = new[] { PermissionCodes.TaskOwnView, PermissionCodes.TaskOwnCreate, PermissionCodes.TaskOwnEdit, PermissionCodes.TaskOwnDelete, PermissionCodes.TaskOwnAssign, PermissionCodes.TaskOwnCommentCreate, PermissionCodes.TaskOwnAttachmentCreate },
+            [PermissionCodes.TaskAllManage] = new[] { PermissionCodes.TaskAllView, PermissionCodes.TaskAllCreate, PermissionCodes.TaskAllEdit, PermissionCodes.TaskAllDelete, PermissionCodes.TaskAllAssign, PermissionCodes.TaskAllCommentCreate, PermissionCodes.TaskAllAttachmentCreate },
             [PermissionCodes.SubtaskOwnManage] = new[] { PermissionCodes.SubtaskOwnView, PermissionCodes.SubtaskOwnCreate, PermissionCodes.SubtaskOwnEdit, PermissionCodes.SubtaskOwnDelete },
             [PermissionCodes.SubtaskAllManage] = new[] { PermissionCodes.SubtaskAllView, PermissionCodes.SubtaskAllCreate, PermissionCodes.SubtaskAllEdit, PermissionCodes.SubtaskAllDelete },
             [PermissionCodes.UserOwnManage] = new[] { PermissionCodes.UserOwnView, PermissionCodes.UserOwnCreate, PermissionCodes.UserOwnEdit, PermissionCodes.UserOwnDelete },

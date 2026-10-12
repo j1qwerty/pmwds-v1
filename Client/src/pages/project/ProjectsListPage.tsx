@@ -7,7 +7,7 @@ import type { Project } from "../../types";
 import {
   AnimatedBackground,
   Modal,
-  PERMISSION_GROUPS,
+
   useNavHeader,
   usePermission,
   useToast,
@@ -124,7 +124,13 @@ export function ProjectsListPage() {
   const { auth } = useAuth();
   const { data: appData, refresh: refreshAppData } = useAppData();
   const perm = usePermission();
-  const canManageProjects = perm.has(PERMISSION_GROUPS.project.manage);
+  // Verb-level gates, mirroring PermissionPolicyRegistry.AddScopedCrud on the
+  // server (View/Create/Edit/Delete each accept `manage` as well as their own
+  // code). canModule resolves manage → verb through the coverage map, so a
+  // manage holder still passes every one of these.
+  const canCreateProjects = perm.canModule("create", "project");
+  const canEditProject = perm.canModule("edit", "project");
+  const canDeleteProject = perm.canModule("delete", "project");
   const isSuperAdmin = perm.isSuperAdmin;
   const { addToast } = useToast();
   const { setNavHeader } = useNavHeader();
@@ -159,7 +165,7 @@ export function ProjectsListPage() {
   const { userOrganizationId, shouldFilterByOrg } = useUserOrganization(users, departments);
 
   useEffect(() => {
-    const actions = canManageProjects
+    const actions = canCreateProjects
       ? [{ label: "New Project", onClick: () => setNewProjectWizardOpen(true), icon: "add_circle" }]
       : [];
     setNavHeader({
@@ -167,7 +173,7 @@ export function ProjectsListPage() {
       description: "Browse, search and filter every project in your workspace",
       actions,
     });
-  }, [setNavHeader, canManageProjects]);
+  }, [setNavHeader, canCreateProjects]);
 
   const loadProjects = useCallback(async () => {
     if (!auth) return;
@@ -640,7 +646,7 @@ export function ProjectsListPage() {
                   <Icon name="filter_alt_off" size={14} />
                   Clear all filters
                 </button>
-              ) : canManageProjects ? (
+              ) : canCreateProjects ? (
                 <button
                   type="button"
                   onClick={() => setNewProjectWizardOpen(true)}
@@ -662,7 +668,8 @@ export function ProjectsListPage() {
               >
                 <ProjectSummaryCard
                   project={project}
-                  canManage={canManageProjects}
+                  canEdit={canEditProject}
+                  canDelete={canDeleteProject}
                   onOpen={() => navigate(`/projects/${project.id}`)}
                   onView={setDetailProject}
                   onEdit={openProjectEdit}
@@ -675,7 +682,8 @@ export function ProjectsListPage() {
           <div key="list" className="pb-10 view-fade">
             <ProjectListView
               projects={filteredProjects}
-              canManage={canManageProjects}
+              canEdit={canEditProject}
+              canDelete={canDeleteProject}
               onOpen={(id) => navigate(`/projects/${id}`)}
               onView={setDetailProject}
               onEdit={openProjectEdit}
@@ -706,7 +714,7 @@ export function ProjectsListPage() {
       {/* Quick-view detail Sheet (HoverActions "View" on cards/rows) */}
       <ProjectDetailModal
         project={detailProject}
-        canManage={canManageProjects}
+        canEdit={canEditProject}
         authToken={auth?.token}
         users={users}
         onClose={() => setDetailProject(null)}
@@ -806,14 +814,18 @@ function ProjectsSkeleton({ view }: { view: ViewMode }) {
 
 function ProjectSummaryCard({
   project,
-  canManage,
+  canEdit,
+  canDelete,
   onOpen,
   onView,
   onEdit,
   onDelete,
 }: {
   project: Project;
-  canManage: boolean;
+  /** Edit → PUT /projects/{id} → Projects.Edit. */
+  canEdit: boolean;
+  /** Delete → DELETE /projects/{id} → Projects.Delete. */
+  canDelete: boolean;
   onOpen: () => void;
   onView: (project: Project) => void;
   onEdit: (project: Project) => void;
@@ -827,8 +839,10 @@ function ProjectSummaryCard({
   const hoverActions: HoverActionDef[] = [
     { icon: "view", label: "View project", onClick: () => onView(project) },
   ];
-  if (canManage) {
+  if (canEdit) {
     hoverActions.push({ icon: "edit", label: "Edit project", tone: "primary", onClick: () => onEdit(project) });
+  }
+  if (canDelete) {
     hoverActions.push({ icon: "delete", label: "Delete project", tone: "danger", onClick: () => onDelete(project) });
   }
 
@@ -1026,14 +1040,18 @@ function ProjectSummaryCard({
 
 function ProjectListView({
   projects,
-  canManage,
+  canEdit,
+  canDelete,
   onOpen,
   onView,
   onEdit,
   onDelete,
 }: {
   projects: Project[];
-  canManage: boolean;
+  /** Edit → PUT /projects/{id} → Projects.Edit. */
+  canEdit: boolean;
+  /** Delete → DELETE /projects/{id} → Projects.Delete. */
+  canDelete: boolean;
   onOpen: (id: string) => void;
   onView: (project: Project) => void;
   onEdit: (project: Project) => void;
@@ -1060,8 +1078,10 @@ function ProjectListView({
         const hoverActions: HoverActionDef[] = [
           { icon: "view", label: "View project", onClick: () => onView(project) },
         ];
-        if (canManage) {
+        if (canEdit) {
           hoverActions.push({ icon: "edit", label: "Edit project", tone: "primary", onClick: () => onEdit(project) });
+        }
+        if (canDelete) {
           hoverActions.push({ icon: "delete", label: "Delete project", tone: "danger", onClick: () => onDelete(project) });
         }
         return (

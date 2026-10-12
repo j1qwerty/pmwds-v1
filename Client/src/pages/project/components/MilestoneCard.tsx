@@ -10,10 +10,11 @@ interface MilestoneCardProps {
   onSelectMilestone: (id: string) => void;
   onViewMilestone?: (milestone: Milestone) => void;
   onEditMilestone?: (milestone: Milestone) => void;
-  canManage?: boolean;
+  /** Edit hover action → PUT /milestones/{id} → Milestones.Edit. */
+  canEdit?: boolean;
 }
 
-export function MilestoneCard({ milestone, isSelected, index, onSelectMilestone, onViewMilestone, onEditMilestone, canManage = false }: MilestoneCardProps) {
+export function MilestoneCard({ milestone, isSelected, index, onSelectMilestone, onViewMilestone, onEditMilestone, canEdit = false }: MilestoneCardProps) {
   const { data: appData } = useAppData();
   const statusColors = getStatusColor(milestone.status);
   const progress = milestone.progressPercentage || 0;
@@ -117,7 +118,7 @@ export function MilestoneCard({ milestone, isSelected, index, onSelectMilestone,
         ...(onViewMilestone
           ? [{ icon: "view", label: "View milestone", onClick: () => onViewMilestone(milestone) }]
           : []),
-        ...(canManage && onEditMilestone
+        ...(canEdit && onEditMilestone
           ? [{ icon: "edit", label: "Edit milestone", onClick: () => onEditMilestone(milestone) }]
           : []),
       ]}

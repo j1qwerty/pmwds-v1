@@ -3,14 +3,14 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
-import { RoleKey, hasRoleKey, Permission } from "../../permissions";
+import { Permission } from "../../permissions";
 import type { Milestone, MilestoneDependency, ProjectDocument } from "../../types";
 import {
   SectionCard,
   getStatusColor,
   LoadingPage,
   useNavHeader,
-  PERMISSION_GROUPS,
+
   usePermission,
   useToast,
   UtilizationCertificates,
@@ -69,7 +69,8 @@ export function ProjectOverviewPage() {
   const perm = usePermission();
   const { setNavHeader } = useNavHeader();
 
-  const canManageProjects = perm.has(PERMISSION_GROUPS.project.manage);
+  const canEditProject = perm.canModule("edit", "project");
+  const canDeleteProject = perm.canModule("delete", "project");
 
   const [projectDocs, setProjectDocs] = useState<ProjectDocument[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
@@ -88,9 +89,11 @@ export function ProjectOverviewPage() {
       (assignment) => assignment.departmentId === currentDepartmentId && assignment.isPrimary,
     ),
   );
+  // Server policy Documents.Upload accepts the *_PROJECT_UPLOAD codes plus
+  // SystemAdmin; a project's primary-department user is additionally allowed
+  // by RoleScopeService, hence the isPrimaryDept term.
   const canUploadProjectDocs =
     perm.isSuperAdmin ||
-    hasRoleKey(perm.roleKeys, RoleKey.Director) ||
     isPrimaryDept ||
     perm.hasAny(Permission.DocumentOwnProjectUpload, Permission.DocumentAllProjectUpload);
 
@@ -311,7 +314,8 @@ export function ProjectOverviewPage() {
           milestonesCount={ws.milestones.length}
           milestones={ws.milestones}
           dependencies={ws.dependencies}
-          canManageProjects={canManageProjects}
+          canEditProject={canEditProject}
+          canDeleteProject={canDeleteProject}
           users={ws.users}
           onProjectUpdated={() => ws.refresh()}
         />

@@ -392,8 +392,8 @@ export const PERMISSION_COVERAGE: Record<string, readonly string[]> = {
   [Permission.ProjectAllManage]: [Permission.ProjectAllView, Permission.ProjectAllCreate, Permission.ProjectAllEdit, Permission.ProjectAllDelete],
   [Permission.MilestoneOwnManage]: [Permission.MilestoneOwnView, Permission.MilestoneOwnCreate, Permission.MilestoneOwnEdit, Permission.MilestoneOwnDelete],
   [Permission.MilestoneAllManage]: [Permission.MilestoneAllView, Permission.MilestoneAllCreate, Permission.MilestoneAllEdit, Permission.MilestoneAllDelete],
-  [Permission.TaskOwnManage]: [Permission.TaskOwnView, Permission.TaskOwnCreate, Permission.TaskOwnEdit, Permission.TaskOwnDelete],
-  [Permission.TaskAllManage]: [Permission.TaskAllView, Permission.TaskAllCreate, Permission.TaskAllEdit, Permission.TaskAllDelete],
+  [Permission.TaskOwnManage]: [Permission.TaskOwnView, Permission.TaskOwnCreate, Permission.TaskOwnEdit, Permission.TaskOwnDelete, Permission.TaskOwnAssign, Permission.TaskOwnCommentCreate, Permission.TaskOwnAttachmentCreate],
+  [Permission.TaskAllManage]: [Permission.TaskAllView, Permission.TaskAllCreate, Permission.TaskAllEdit, Permission.TaskAllDelete, Permission.TaskAllAssign, Permission.TaskAllCommentCreate, Permission.TaskAllAttachmentCreate],
   [Permission.SubtaskOwnManage]: [Permission.SubtaskOwnView, Permission.SubtaskOwnCreate, Permission.SubtaskOwnEdit, Permission.SubtaskOwnDelete],
   [Permission.SubtaskAllManage]: [Permission.SubtaskAllView, Permission.SubtaskAllCreate, Permission.SubtaskAllEdit, Permission.SubtaskAllDelete],
   [Permission.UserOwnManage]: [Permission.UserOwnView, Permission.UserOwnCreate, Permission.UserOwnEdit, Permission.UserOwnDelete],
@@ -559,9 +559,20 @@ export function coversManagedPermission(
     }
   }
 
+  // Matching is exact against the expanded grant set, and nothing else.
+  //
+  // PERMISSION_COVERAGE must only ever be read in the direction "granted X also
+  // grants everything X covers" — which is what the expansion loop above does.
+  // It must NOT be read backwards as "having any covered permission of X grants
+  // X", because that collapses the whole hierarchy: e.g. a TeamMember holding
+  // only PROJECT_OWN_VIEW would pass a check for PROJECT_OWN_MANAGE, and so
+  // would pass perm.has(PERMISSION_GROUPS.project.manage) and see New Project /
+  // Edit / Delete. Same for NOTIFICATION_OWN_VIEW satisfying NOTIFICATION_MANAGE
+  // and exposing the Templates + Alert rules tabs. See scopedVariants() for the
+  // only aliasing that is intentional: a non-scoped request also matches its
+  // _OWN_ / _ALL_ variants, and an _ALL_ grant implies its _OWN_ counterpart.
   for (const candidate of scopedVariants(requested)) {
     if (expanded.has(candidate)) return true;
-    if (PERMISSION_COVERAGE[candidate]?.some((covered) => expanded.has(covered))) return true;
   }
 
   return false;
