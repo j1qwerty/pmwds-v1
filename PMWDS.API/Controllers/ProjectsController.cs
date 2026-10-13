@@ -183,6 +183,44 @@ public class ProjectsController : BaseApiController
                 project.PlannedEndDate))
             .ToList();
 
+        // Names behind each donut segment. Only name and status are projected - the chart
+        // tooltip needs nothing else, and pulling full rows for every project would make
+        // this the most expensive query on the dashboard.
+        const int bucketLimit = 25;
+
+        async Task<ProjectNameBucket> LoadBucketAsync(
+            IQueryable<Project> source,
+            CancellationToken token)
+        {
+            var total = await source.CountAsync(token);
+            var names = await source
+                .OrderByDescending(project => project.CreatedDate)
+                .Take(bucketLimit)
+                .Select(project => new ProjectSummaryDto(
+                    project.Id,
+                    project.ProjectCode,
+                    project.Name,
+                    project.Status.ToString(),
+                    project.ProgressPercentage,
+                    project.AIHealthScore,
+                    project.AIDelayRiskScore,
+                    0,
+                    project.PlannedEndDate))
+                .ToListAsync(token);
+            return new ProjectNameBucket(names, total);
+        }
+
+        // "New" is the remainder: neither in progress nor completed, exactly matching the
+        // TotalProjects - ActiveProjects - CompletedProjects arithmetic the chart renders.
+        var newProjects = await LoadBucketAsync(
+            query.Where(project =>
+                project.Status != ProjectStatus.InProgress &&
+                project.Status != ProjectStatus.Completed), ct);
+        var pendingProjects = await LoadBucketAsync(
+            query.Where(project => project.Status == ProjectStatus.InProgress), ct);
+        var doneProjects = await LoadBucketAsync(
+            query.Where(project => project.Status == ProjectStatus.Completed), ct);
+
         return Ok(new ProjectDashboardDto(
             TotalProjects: metrics?.TotalProjects ?? 0,
             ActiveProjects: metrics?.ActiveProjects ?? 0,
@@ -196,7 +234,10 @@ public class ProjectsController : BaseApiController
             TotalActualCost: metrics?.TotalActualCost ?? 0,
             RecentProjects: recentProjects,
             AtRiskProjects: atRiskProjects,
-            RecentProjectPreviews: recentProjectPreviews));
+            RecentProjectPreviews: recentProjectPreviews,
+            NewProjects: newProjects,
+            PendingProjects: pendingProjects,
+            DoneProjects: doneProjects));
     }
 
     [HttpGet]

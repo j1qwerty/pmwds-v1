@@ -364,6 +364,9 @@ export function DashboardPage() {
             newProjects={Math.max(0, (dashboard?.totalProjects ?? 0) - (dashboard?.activeProjects ?? 0) - (dashboard?.completedProjects ?? 0))}
             pendingProjects={dashboard?.activeProjects ?? 0}
             doneProjects={dashboard?.completedProjects ?? 0}
+            newProjectsList={dashboard?.newProjects}
+            pendingProjectsList={dashboard?.pendingProjects}
+            doneProjectsList={dashboard?.doneProjects}
           />
 
           <Activity

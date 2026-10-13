@@ -549,6 +549,12 @@ export interface WorkloadReport {
   generatedAt: string;
 }
 
+export interface ProjectNameBucket {
+  projects: ProjectSummary[];
+  /** How many projects the segment really contains; `projects` is capped for the tooltip. */
+  totalCount: number;
+}
+
 export interface ProjectDashboardData {
   totalProjects: number;
   activeProjects: number;
@@ -563,6 +569,9 @@ export interface ProjectDashboardData {
   recentProjects: ProjectSummary[];
   atRiskProjects: ProjectSummary[];
   recentProjectPreviews: ProjectSummary[];
+  newProjects?: ProjectNameBucket;
+  pendingProjects?: ProjectNameBucket;
+  doneProjects?: ProjectNameBucket;
 }
 
 export interface TaskDashboardPreview {
