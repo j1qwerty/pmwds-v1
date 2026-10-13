@@ -11,15 +11,18 @@ public class NotificationService : INotificationService
     private readonly IUnitOfWork _uow;
     private readonly IEmailService _email;
     private readonly ILogger<NotificationService> _logger;
+    private readonly IDataChangeNotifier _changes;
 
     public NotificationService(
         IUnitOfWork uow,
         IEmailService email,
-        ILogger<NotificationService> logger)
+        ILogger<NotificationService> logger,
+        IDataChangeNotifier changes)
     {
         _uow = uow;
         _email = email;
         _logger = logger;
+        _changes = changes;
     }
 
     public async Task SendAsync(
@@ -41,6 +44,11 @@ public class NotificationService : INotificationService
 
         await _uow.Notifications.AddAsync(notification, ct);
         await _uow.SaveChangesAsync(ct);
+
+        // A notification is only useful if it reaches the bell while the recipient is looking
+        // at the app. Without this hint the badge and red dot sat unchanged until the next
+        // full page load, even though every controller that *edited* notifications did push one.
+        await _changes.NotifyAsync(DataChangeScopes.Notifications, notification.Id.ToString(), null, ct);
 
         if (dto.Priority >= NotificationPriority.High &&
             Guid.TryParse(dto.UserId, out var userId))

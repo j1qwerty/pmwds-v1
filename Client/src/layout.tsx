@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "./auth";
 import { preloadRoute } from "./lib/routePreload";
@@ -235,7 +235,7 @@ function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const { auth, logout } = useAuth();
   const perm = usePermission();
-  const { data, refresh, loading } = useAppData();
+  const { data, refresh, loading, unreadNotificationCount } = useAppData();
 
   const [sidebarCompact, setSidebarCompact] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -260,10 +260,10 @@ function Layout({ children }: { children: React.ReactNode }) {
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
 
-  const unreadCount = useMemo(
-    () => data.notifications.filter((notification) => !notification.isRead).length,
-    [data.notifications],
-  );
+  // The server's own unread total. Counting `data.notifications` would cap the badge at the
+  // size of that list's first page, and it used to be permanently zero because the list was
+  // never populated at all - which is why the red dot and badge never appeared.
+  const unreadCount = unreadNotificationCount;
 
   // Responsive breakpoint detection. matchMedia only fires when a breakpoint is
   // actually crossed, unlike a window "resize" listener that fires every frame

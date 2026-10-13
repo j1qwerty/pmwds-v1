@@ -62,6 +62,14 @@ type AppDataContextValue = {
   initialized: boolean;
   error: string;
   refresh: () => Promise<void>;
+  /**
+   * Authoritative unread notification count for the bell badge and the red dots.
+   *
+   * Deliberately not derived from `data.notifications`: that list is a single 50-row page,
+   * so counting it would silently cap the badge for anyone with more than 50 notifications.
+   */
+  unreadNotificationCount: number;
+  refreshNotifications: () => Promise<void>;
 };
 
 const emptyData: AppData = {
@@ -128,6 +136,7 @@ function mapReferenceData(
   organizations: OrganizationRecord[],
   departments: Department[],
   users: User[],
+  notifications: NotificationItem[],
 ): AppData {
   const permissions: PermissionRecord[] = (bootstrap?.permissions ?? []).map((code) => ({
     id: code,
@@ -180,6 +189,7 @@ function mapReferenceData(
     projects: bootstrap ? mapBootstrapProjects(bootstrap) : [],
     users: usersWithCurrentUser,
     permissions,
+    notifications,
   };
 }
 
@@ -189,6 +199,8 @@ export function AppDataProvider({ children }: PropsWithChildren) {
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState("");
@@ -205,6 +217,8 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       setOrganizations([]);
       setDepartments([]);
       setUsers([]);
+      setNotifications([]);
+      setUnreadNotificationCount(0);
       setInitialized(false);
       setError("");
       return;
@@ -261,6 +275,29 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     }
   }, [auth]);
 
+  // The unread badge and the sidebar/topbar red dots are both derived from
+  // `data.notifications`. That list used to be permanently empty - it came straight from
+  // `emptyData` and nothing ever wrote to it - so the indicators could never light up.
+  const refreshNotifications = useCallback(async () => {
+    if (!auth) return;
+    try {
+      // The count comes from its own endpoint so a long notification history cannot cap the
+      // badge; the list is only the first page and is kept for consumers that render rows.
+      const [items, unread] = await Promise.all([
+        api.getNotifications(auth.token, false),
+        api.getUnreadNotificationCount(auth.token),
+      ]);
+      setNotifications(Array.isArray(items) ? items : []);
+      setUnreadNotificationCount(unread.count ?? 0);
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.status === 401) {
+        logout();
+        return;
+      }
+      setError(cause instanceof Error ? cause.message : "Notifications could not be loaded.");
+    }
+  }, [auth, logout]);
+
   useEffect(() => {
     providerMountedRef.current = true;
     return () => {
@@ -315,11 +352,36 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     };
   }, [auth, refreshReferenceData]);
 
+  // Notifications drive the bell badge and the red dots, so they load with the rest of the
+  // shell - off the critical path, behind the same delay as the user directory.
+  useEffect(() => {
+    if (!auth) return;
+
+    const timer = window.setTimeout(() => {
+      if (!providerMountedRef.current) return;
+      void refreshNotifications();
+    }, 400);
+
+    return () => window.clearTimeout(timer);
+  }, [auth, refreshNotifications]);
+
   useEffect(() => {
     if (!auth) return;
 
     let disposed = false;
     let debounceTimer: number | undefined;
+    let notificationsTimer: number | undefined;
+
+    // Notifications arrive one per recipient per broadcast, so a single bulk send can
+    // produce dozens of hints in a burst. One shared timer collapses them into one read.
+    const scheduleNotificationsRefresh = (delay: number) => {
+      if (disposed) return;
+      if (notificationsTimer !== undefined) window.clearTimeout(notificationsTimer);
+      notificationsTimer = window.setTimeout(() => {
+        notificationsTimer = undefined;
+        if (!disposed) void refreshNotifications();
+      }, delay);
+    };
 
     const scheduleRefresh = (delay: number) => {
       if (disposed) return;
@@ -333,6 +395,13 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     const stopListening = onDataChanged((notification) => {
       if (notification.scope === REALTIME_SCOPES.projects || notification.scope === REALTIME_SCOPES.roles) {
         scheduleRefresh(REALTIME_DEBOUNCE_MS);
+        return;
+      }
+
+      // Notifications were broadcast by the API but nothing in the app reacted to them, so
+      // the badge and red dots only ever moved on a manual reload.
+      if (notification.scope === REALTIME_SCOPES.notifications) {
+        scheduleNotificationsRefresh(REALTIME_DEBOUNCE_MS);
         return;
       }
 
@@ -351,9 +420,15 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     // until the retry backoff lands.
     void startRealtime(auth.token);
 
-    const onFocus = () => scheduleRefresh(FOCUS_DEBOUNCE_MS);
+    const onFocus = () => {
+      scheduleRefresh(FOCUS_DEBOUNCE_MS);
+      scheduleNotificationsRefresh(FOCUS_DEBOUNCE_MS);
+    };
     const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") scheduleRefresh(FOCUS_DEBOUNCE_MS);
+      if (document.visibilityState === "visible") {
+        scheduleRefresh(FOCUS_DEBOUNCE_MS);
+        scheduleNotificationsRefresh(FOCUS_DEBOUNCE_MS);
+      }
     };
 
     window.addEventListener("focus", onFocus);
@@ -362,11 +437,12 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     return () => {
       disposed = true;
       if (debounceTimer !== undefined) window.clearTimeout(debounceTimer);
+      if (notificationsTimer !== undefined) window.clearTimeout(notificationsTimer);
       stopListening();
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [auth, refresh]);
+  }, [auth, refresh, refreshReferenceData, refreshNotifications]);
 
   useEffect(() => {
     if (!auth) return;
@@ -375,10 +451,11 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       if (document.visibilityState !== "visible") return;
       if (isRealtimeHealthy()) return;
       void refresh();
+      void refreshNotifications();
     }, POLL_INTERVAL_MS);
 
     return () => window.clearInterval(timer);
-  }, [auth, refresh]);
+  }, [auth, refresh, refreshNotifications]);
 
   useEffect(() => {
     if (!auth) return;
@@ -414,8 +491,8 @@ export function AppDataProvider({ children }: PropsWithChildren) {
   }, [auth]);
 
   const data = useMemo(
-    () => mapReferenceData(bootstrap, organizations, departments, users),
-    [bootstrap, organizations, departments, users],
+    () => mapReferenceData(bootstrap, organizations, departments, users, notifications),
+    [bootstrap, organizations, departments, users, notifications],
   );
 
   const value = useMemo(
@@ -426,8 +503,10 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       initialized,
       error,
       refresh,
+      unreadNotificationCount,
+      refreshNotifications,
     }),
-    [data, loading, initialized, error, refresh],
+    [data, loading, initialized, error, refresh, unreadNotificationCount, refreshNotifications],
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;
