@@ -3,7 +3,15 @@ import type { Department, Milestone, Project, Task, User } from "../../../types"
 import { priorities } from "../../constants";
 import { Sheet, ModalCancelButton, ModalPrimaryButton, AvatarStack, ScopedUserSelect, getProjectDepartmentIds, usePermission } from "../../shared/index";
 import { Icon } from "../../../components/ui/Icon";
-import { formatDate, todayInputValue } from "../../../lib/datetime";
+import {
+  clampToWindow,
+  formatDate,
+  taskScheduleWindow,
+  todayInputValue,
+  validateTaskSchedule,
+  type ScheduleViolation,
+  type TaskScheduleWindow,
+} from "../../../lib/datetime";
 
 // "Today" in IST. `new Date().toISOString()` gives the UTC day, so between midnight and
 // 05:30 IST the form opened pre-filled with tomorrow.
@@ -81,22 +89,49 @@ export function TaskFormModal({
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
 
-  const selectedMilestoneDueDate = useMemo(() => {
-    if (!form.milestoneId) return "";
-    const ms = milestones.find((m) => m.id === form.milestoneId);
-    return ms?.dueDate?.slice(0, 10) || "";
-  }, [form.milestoneId, milestones]);
+  // A milestone has one date of its own: its due date. A task has a start and a due date, so
+  // the pair is checked against the *span* the milestone allows - from the milestone's
+  // creation date through to its due date - rather than against that single date. The old
+  // check compared each task date for inequality with the milestone date, so any task that
+  // did not land on exactly that one day raised a warning.
+  const selectedProject = projects.find((p) => p.id === form.projectId);
+  const selectedMilestone = useMemo(
+    () => milestones.find((m) => m.id === form.milestoneId) ?? null,
+    [form.milestoneId, milestones],
+  );
+  const scheduleWindow = useMemo(
+    () => taskScheduleWindow(selectedMilestone, selectedProject),
+    [selectedMilestone, selectedProject],
+  );
+  const scheduleViolation = useMemo(
+    () => validateTaskSchedule(form.startDate, form.dueDate, scheduleWindow),
+    [form.startDate, form.dueDate, scheduleWindow],
+  );
+
   const initialMilestoneId = initialData?.milestoneId || defaultMilestoneId;
-  const initialMilestoneDueDate = milestones.find((milestone) => milestone.id === initialMilestoneId)?.dueDate?.slice(0, 10) || "";
+  const initialMilestone = useMemo(
+    () => milestones.find((milestone) => milestone.id === initialMilestoneId) ?? null,
+    [initialMilestoneId, milestones],
+  );
 
   useEffect(() => {
     if (open) {
       setErrors({});
+      // Default the pair to a date the milestone actually allows, so opening the form never
+      // presents a warning the user has to clear.
+      const window = taskScheduleWindow(initialMilestone, selectedProject);
+      const start = clampToWindow(
+        initialData?.startDate?.slice(0, 10) || getToday(),
+        window,
+      );
       setForm({
         title: initialData?.title || "",
         description: initialData?.description || "",
-        startDate: initialData?.startDate?.slice(0, 10) || initialMilestoneDueDate || getToday(),
-        dueDate: initialData?.dueDate?.slice(0, 10) || initialMilestoneDueDate,
+        startDate: start,
+        dueDate: clampToWindow(
+          initialData?.dueDate?.slice(0, 10) || window.latestDue || start,
+          window,
+        ),
         estimatedHours: initialData?.estimatedHours || 8,
         projectId: initialData?.projectId || defaultProjectId,
         milestoneId: initialMilestoneId,
@@ -106,7 +141,13 @@ export function TaskFormModal({
         priority: initialData?.priority || "Medium",
       });
     }
-  }, [open, initialData, defaultProjectId, initialMilestoneId, initialMilestoneDueDate]);
+  }, [
+    open,
+    initialData,
+    defaultProjectId,
+    initialMilestone,
+    selectedProject,
+  ]);
 
   const assignedUsers = useMemo(() => {
     return form.assignedToUserIds.map((id) => {
@@ -124,7 +165,6 @@ export function TaskFormModal({
   const canAssignMilestone =
     perm.isSuperAdmin || perm.canModule("assign", "task");
   const projectMilestones = milestones.filter((m) => m.projectId === form.projectId);
-  const selectedProject = projects.find((p) => p.id === form.projectId);
   // Every department the project spans, not just the first. Narrowing to
   // `getProjectDepartmentIds(project)[0]` left the picker at "0 users" whenever
   // the caller's own department happened not to be that one — which is the
@@ -235,12 +275,8 @@ export function TaskFormModal({
               className={INPUT_CLASS}
             />
             {errors.startDate && <span className="text-xs text-red-600 mt-1 block">{errors.startDate}</span>}
-            {form.startDate && selectedMilestoneDueDate && form.startDate !== selectedMilestoneDueDate && (
-              <DateRangeWarning
-                direction={form.startDate < selectedMilestoneDueDate ? "before" : "after"}
-                milestoneDate={selectedMilestoneDueDate}
-                label="Start date"
-              />
+            {scheduleViolation?.field === "startDate" && (
+              <ScheduleWarning violation={scheduleViolation} window={scheduleWindow} label="Start date" />
             )}
           </div>
           <div>
@@ -252,12 +288,8 @@ export function TaskFormModal({
               className={INPUT_CLASS}
             />
             {errors.dueDate && <span className="text-xs text-red-600 mt-1 block">{errors.dueDate}</span>}
-            {form.dueDate && selectedMilestoneDueDate && form.dueDate !== selectedMilestoneDueDate && (
-              <DateRangeWarning
-                direction={form.dueDate < selectedMilestoneDueDate ? "before" : "after"}
-                milestoneDate={selectedMilestoneDueDate}
-                label="Due date"
-              />
+            {scheduleViolation?.field === "dueDate" && (
+              <ScheduleWarning violation={scheduleViolation} window={scheduleWindow} label="Due date" />
             )}
           </div>
         </div>
@@ -303,12 +335,23 @@ export function TaskFormModal({
               value={form.milestoneId || ""}
               onChange={(e) => {
                 const v = e.target.value;
-                const milestoneDate = milestones.find((milestone) => milestone.id === v)?.dueDate?.slice(0, 10) || "";
-                setForm((current) => ({
-                  ...current,
-                  milestoneId: v,
-                  ...(!initialData && milestoneDate ? { startDate: milestoneDate, dueDate: milestoneDate } : {}),
-                }));
+                // Picking a milestone seeds the schedule with a valid pair rather than
+                // pinning both dates to the milestone's single due date, which used to
+                // make every task look due on exactly the milestone day.
+                const window = taskScheduleWindow(
+                  milestones.find((milestone) => milestone.id === v) ?? null,
+                  selectedProject,
+                );
+                setForm((current) => {
+                  if (initialData) return { ...current, milestoneId: v };
+                  const start = clampToWindow(current.startDate || getToday(), window);
+                  return {
+                    ...current,
+                    milestoneId: v,
+                    startDate: start,
+                    dueDate: clampToWindow(current.dueDate || window.latestDue || start, window),
+                  };
+                });
               }}
               className={INPUT_CLASS}
             >
@@ -374,20 +417,26 @@ export function TaskFormModal({
   );
 }
 
-function DateRangeWarning({
-  direction,
-  milestoneDate,
+function ScheduleWarning({
+  violation,
+  window,
   label,
 }: {
-  direction: "before" | "after";
-  milestoneDate: string;
+  violation: Exclude<ScheduleViolation, null>;
+  window: TaskScheduleWindow;
   label: string;
 }) {
+  const message =
+    violation.kind === "before-window"
+      ? `${label} is before this milestone was created (${formatDate(window.earliestStart)}).`
+      : `${label} is after the milestone due date (${formatDate(window.latestDue)}).`;
+
   return (
     <div className="flex items-start gap-2 mt-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
       <Icon name="warning" size={13} className="shrink-0 mt-0.5" />
       <span>
-        {label} {direction === "before" ? "precedes" : "exceeds"} milestone date ({formatDate(milestoneDate)}).
+        {message} Tasks in this milestone can run from {formatDate(window.earliestStart)} to{" "}
+        {formatDate(window.latestDue)}.
       </span>
     </div>
   );

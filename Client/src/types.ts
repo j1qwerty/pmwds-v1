@@ -152,6 +152,12 @@ export interface Milestone {
   hasTasks?: boolean;
   isBlocked?: boolean;
   blockedByMessage?: string;
+  /**
+   * When the milestone was created. This is the lower bound for the start date of any task
+   * inside it - a milestone has only a due date of its own, so this plus `dueDate` is what
+   * makes a task's start/due pair checkable.
+   */
+  createdDate?: string;
 }
 
 export interface Project {
@@ -1111,6 +1117,7 @@ export interface MilestoneDto {
   isCritical: boolean;
   progressPercentage: number;
   hasTasks?: boolean;
+  createdDate?: string;
 }
 
 export interface TaskDto {

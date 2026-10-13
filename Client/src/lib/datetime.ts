@@ -116,6 +116,21 @@ function toIst(date: Date): Date {
   );
 }
 
+/**
+ * `yyyy-mm-dd` for the IST calendar day a value falls on.
+ *
+ * Use this when the value *is* an instant and the day matters - a milestone's
+ * `createdDate`, say. Reading its raw `yyyy-MM-dd` prefix instead would give the UTC day,
+ * which is the previous day for anything created between midnight and 05:30 IST.
+ *
+ * Date-only values are returned as-is, so this is safe for both kinds.
+ */
+export function calendarDayKey(value?: string | Date | null): string | null {
+  const day = calendarDayOf(value);
+  if (!day) return null;
+  return `${day.year}-${pad(day.month)}-${pad(day.day)}`;
+}
+
 /** The UTC instant at which the given IST calendar day begins. */
 export function startOfIstDay(key: string | Date): Date {
   const k = typeof key === "string" ? key : todayKey(key);
@@ -391,4 +406,110 @@ export function todayInputValue(now: Date = new Date()): string {
 /** `yyyy-mm-dd` `days` from today in IST. */
 export function inputValueFromToday(days = 0, now: Date = new Date()): string {
   return addDays(todayKey(now), days);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Task scheduling windows
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The span a task inside a milestone is allowed to occupy.
+ *
+ * A milestone records a single date of its own: its due date. Tasks record a start *and* a
+ * due date, so the pair cannot be compared against that one date - only bounded by it. The
+ * window is therefore:
+ *
+ *   earliest start = the milestone's creation date
+ *   latest due     = the milestone's due date
+ *
+ * A task may sit anywhere inside that span. Only reaching outside it is a problem.
+ */
+export interface TaskScheduleWindow {
+  /** Earliest permitted `startDate`; null when there is no usable lower bound. */
+  earliestStart: string | null;
+  /** Latest permitted `dueDate` (and `startDate`). */
+  latestDue: string | null;
+  /** True when both bounds are known and the milestone can actually be exceeded. */
+  hasBounds: boolean;
+}
+
+/**
+ * Builds the window a task may occupy, from its milestone and the project it belongs to.
+ *
+ * All three inputs are read as calendar days, so no timezone shift applies.
+ */
+export function taskScheduleWindow(
+  milestone?: { dueDate?: string | null; createdDate?: string | null } | null,
+  project?: { plannedStartDate?: string | null } | null,
+): TaskScheduleWindow {
+  const milestoneDue = toDateKey(milestone?.dueDate ?? undefined);
+  // createdDate is an instant, so it resolves to its IST day rather than its raw UTC
+  // prefix, which would be a day early for anything created before 05:30 IST.
+  const milestoneCreated = calendarDayKey(milestone?.createdDate ?? undefined);
+  const projectStart = toDateKey(project?.plannedStartDate ?? undefined);
+
+  // Whichever reference starts earliest is the real floor: a milestone created before the
+  // project's recorded start date would otherwise clamp tasks to a day they cannot be on.
+  const floors = [milestoneCreated, projectStart].filter((v): v is string => !!v).sort();
+  const earliestStart = floors.length ? floors[0] : null;
+
+  // A milestone whose due date precedes its own creation date (possible for seeded or
+  // imported data) would produce an empty window. Widening to the creation date keeps the
+  // task form usable instead of rejecting every date the user picks.
+  const latestDue =
+    milestoneDue && earliestStart && milestoneDue < earliestStart
+      ? earliestStart
+      : milestoneDue;
+
+  return {
+    earliestStart,
+    latestDue,
+    hasBounds: !!(earliestStart && latestDue),
+  };
+}
+
+/** Why a task's dates fall outside its milestone window, or null when they are fine. */
+export type ScheduleViolation =
+  | { field: "startDate"; kind: "before-window" | "after-window" }
+  | { field: "dueDate"; kind: "after-window" }
+  | null;
+
+/**
+ * Checks a task's start/due pair against its milestone window.
+ *
+ * `start <= due` is deliberately not checked here - that is a plain task-level rule the form
+ * reports on its own.
+ */
+export function validateTaskSchedule(
+  startDate: string,
+  dueDate: string,
+  window: TaskScheduleWindow,
+): ScheduleViolation {
+  if (!window.hasBounds) return null;
+
+  if (startDate) {
+    if (window.earliestStart && startDate < window.earliestStart) {
+      return { field: "startDate", kind: "before-window" };
+    }
+    if (window.latestDue && startDate > window.latestDue) {
+      return { field: "startDate", kind: "after-window" };
+    }
+  }
+
+  if (dueDate && window.latestDue && dueDate > window.latestDue) {
+    return { field: "dueDate", kind: "after-window" };
+  }
+
+  return null;
+}
+
+/**
+ * Clamps a proposed date into the window, so the form proposes a date that is already valid
+ * instead of opening with a warning.
+ */
+export function clampToWindow(value: string, window: TaskScheduleWindow): string {
+  if (!value || !window.hasBounds) return value;
+  if (window.earliestStart && value < window.earliestStart) return window.earliestStart;
+  if (window.latestDue && value > window.latestDue) return window.latestDue;
+  return value;
 }

@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { priorities } from "../../constants";
 import { GlassCard, Avatar, EmptyState } from "../../shared";
 import { getPriorityColor } from "../../shared/colors";
-import { formatDateShort, todayInputValue } from "../../../lib/datetime";
+import { formatDateShort, taskScheduleWindow, todayInputValue, validateTaskSchedule } from "../../../lib/datetime";
 import type { User } from "../../../types";
 import { Icon } from "../../../components/ui/Icon";
 
@@ -63,6 +63,22 @@ startDate: todayInputValue(),
     setShowFormForMilestone(null);
     setEditTaskId(null);
   };
+
+  // The milestone has one date of its own - its due date - so it can only bound the task
+    // from above. A task may start or end on any earlier day; only exceeding the milestone
+    // due date is a problem. Milestones here are still unsaved wizard state, so there is no
+    // creation date to bound the start from below.
+    const scheduleWindow = useMemo(
+      () => taskScheduleWindow(
+        { dueDate: showFormForMilestone ? getMilestoneDueDate(showFormForMilestone) : null },
+        null,
+      ),
+      [showFormForMilestone, milestones],
+    );
+    const scheduleViolation = useMemo(
+      () => validateTaskSchedule(form.startDate, form.dueDate, scheduleWindow),
+      [form.startDate, form.dueDate, scheduleWindow],
+    );
 
   const handleSave = () => {
     if (!form.title.trim() || !showFormForMilestone) return;
@@ -274,15 +290,15 @@ startDate: todayInputValue(),
                       onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
                       className={INPUT_CLASS}
                     />
-                    {form.dueDate && showFormForMilestone && (() => {
-                      const msDue = getMilestoneDueDate(showFormForMilestone);
-                      return msDue && form.dueDate > msDue ? (
+                    {form.dueDate && showFormForMilestone && scheduleViolation && (
                         <div className="flex items-start gap-1.5 mt-1.5 p-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
                           <Icon name="warning" size={16} className="shrink-0 mt-0.5" />
-                          <span>Due date exceeds milestone due date ({formatDateShort(msDue)})</span>
+                          <span>
+                            {scheduleViolation.field === "startDate" ? "Start date" : "Due date"}{" "}
+                            is after the milestone due date ({formatDateShort(scheduleWindow.latestDue)})
+                          </span>
                         </div>
-                      ) : null;
-                    })()}
+                      )}
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
