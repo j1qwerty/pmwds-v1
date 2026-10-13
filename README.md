@@ -287,6 +287,29 @@ Screenshots go to `tests/e2e/e2e-artifacts/screenshots` (`NN-<step>-before/after
 uploads to `tests/e2e/e2e-artifacts/uploads`. Flows build on each other, so run
 flow 1 first (or `--flows all`). Destructive — disposable database only.
 
+### Bottom dev panel (in-app demo controls)
+
+The client ships a thin bottom bar that drives the runner from inside the app:
+
+```powershell
+cd tests/e2e
+npm run control                    # control server on :5180 (the panel talks to this)
+```
+
+```powershell
+# client env (Vite only reads VITE_-prefixed vars):
+VITE_BOTTOM_DEV_PANLE=true         # default; the bar shows (only) while the control server is up
+VITE_BOTTOM_DEV_PANLE=false        # hide the bar entirely, e.g. production without demos
+VITE_E2E_CONTROL_URL=http://localhost:5180   # point the bar elsewhere if needed
+```
+
+Behaviour: Run step-by-step / Run auto, flow picker with per-flow progress,
+current flow + step + role in the bar, Back (◀) / Run (▶) / Shot / Quit at
+each gate, Pause/Resume that holds at the next step boundary, a log
+pane, and auto-hide while a step executes (pin to keep it open). Remote runs
+also wait ~1.2s after each step so a visible demo is watchable
+(`E2E_STEP_DELAY_MS` overrides, milliseconds).
+
 > Serving `client2-optmz/` instead of `client2/`? It is a performance-only
 > build of the same UI on the same port (`:5175`), so every command above
 > applies unchanged — just start that folder as the web app.

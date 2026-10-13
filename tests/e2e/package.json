@@ -12,6 +12,7 @@
     "e2e:auto:headless": "tsx run.ts --auto --mode headless",
     "e2e:auto:visible": "tsx run.ts --auto --mode visible",
     "e2e:install": "playwright install chromium",
+    "control": "tsx devserver.ts",
     "smoke": "tsx smoke.ts",
     "typecheck": "tsc --noEmit"
   },

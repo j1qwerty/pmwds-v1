@@ -32,6 +32,7 @@ import { loadMaps } from "./lib/maps.js";
 import { SessionHub, ACCOUNTS, BASE_URL, setBaseUrl } from "./lib/session.js";
 import { RunContext, Reporter } from "./lib/context.js";
 import { FLOWS } from "./flows/index.js";
+import { RemoteControl } from "./lib/remoteControl.js";
 import type { Flow, FlowApi } from "./flows/types.js";
 
 type DisplayMode = "headless" | "visible";
@@ -44,6 +45,8 @@ interface Args {
   url: string;
   flows: string[] | null;
   user: string | null;
+  /** Control server base; when set, gates are driven by the dev panel. */
+  remote: string | null;
 }
 
 function parseArgs(argv: string[]): Args {
@@ -55,6 +58,7 @@ function parseArgs(argv: string[]): Args {
     url: BASE_URL,
     flows: null,
     user: null,
+    remote: null,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -78,6 +82,8 @@ function parseArgs(argv: string[]): Args {
     else if (a.startsWith("--flows=")) args.flows = a.slice(8).split(",").map((s) => s.trim());
     else if (a === "--user") args.user = val();
     else if (a.startsWith("--user=")) args.user = a.slice(7);
+    else if (a === "--remote") args.remote = val();
+    else if (a.startsWith("--remote=")) args.remote = a.slice(9);
   }
   return args;
 }
@@ -183,9 +189,30 @@ async function main() {
     }
   }
 
-  const report = new Reporter(!args.auto, ask);
+  // Remote mode: the in-app dev panel drives the gates instead of stdin.
+  const remoteUrl = args.remote ?? process.env.E2E_CONTROL_URL ?? null;
+  const remote = remoteUrl
+    ? new RemoteControl({ baseUrl: remoteUrl, runId: process.env.E2E_RUN_ID ?? "run-1" })
+    : null;
+
+  const report = new Reporter(
+    !args.auto,
+    remote ? (q) => remote.ask(q) : ask,
+    remote
+      ? (s) => {
+          console.log(s);
+          remote.push(s);
+        }
+      : console.log,
+  );
   const ctx = new RunContext();
   ctx.notes.artifactDir = uploadDir;
+
+  void remote?.emit({
+    type: "run-start",
+    mode: visible ? "visible" : "headless",
+    flows: selectedFlows.map((f) => f.id),
+  });
 
   const hub = new SessionHub(loadMaps(), { headless: !visible, slowMo });
   const failures: string[] = [];
@@ -214,10 +241,16 @@ async function main() {
     return path;
   };
 
-  const runFlow = async (flow: Flow): Promise<boolean> => {
+  const runFlow = async (flow: Flow, flowIndex: number): Promise<boolean> => {
     report.step(`FLOW: ${flow.title}`);
     report.info(flow.description);
     report.info(`Users: ${flow.users.join(", ")}`);
+    void remote?.emit({
+      type: "flow-start",
+      flowId: flow.id,
+      index: flowIndex,
+      total: selectedFlows.length,
+    });
 
     for (const step of flow.steps) {
       stepCounter += 1;
@@ -246,14 +279,25 @@ async function main() {
         if (before) report.info(`  before: ${before}`);
       }
 
+      void remote?.emit({
+        type: "step-start",
+        flowId: flow.id,
+        stepId: step.id,
+        index: stepCounter,
+        total: totalSteps,
+        as: step.as,
+      });
+
       if (!(await api.gate())) {
         report.info("Skipped (or quit). Stopping this flow.");
+        void remote?.emit({ type: "step-end", flowId: flow.id, stepId: step.id, status: "skipped" });
         return false;
       }
 
       report.info(`as ${step.as}: ${step.title}`);
       try {
         const keepGoing = await step.run(api);
+        void remote?.emit({ type: "step-end", flowId: flow.id, stepId: step.id, status: "ok" });
         if (keepGoing === false) {
           report.info("Step returned false - stopping this flow.");
           return false;
@@ -262,10 +306,13 @@ async function main() {
         const message = err instanceof Error ? err.message : String(err);
         report.fail(message);
         failures.push(`${flow.id}/${step.id}: ${message.split("\n")[0]}`);
+        void remote?.emit({ type: "step-end", flowId: flow.id, stepId: step.id, status: "failed" });
         const shot = await snapshot(step.as, `${step.id}-FAILED`).catch(() => undefined);
         if (shot) report.info(`  failure shot: ${shot}`);
         if (!args.auto) {
-          const again = await ask("  Continue with the next step anyway? [Y/n] ");
+          const again = remote
+            ? await remote.ask("  Continue with the next step anyway? [Y/n] ")
+            : await ask("  Continue with the next step anyway? [Y/n] ");
           if (again.toLowerCase() === "n") return false;
         } else {
           report.fail("auto mode: aborting the run.");
@@ -277,13 +324,24 @@ async function main() {
         const after = await snapshot(step.as, `${step.id}-after`).catch(() => undefined);
         if (after) report.info(`  after:  ${after}`);
       }
+
+      // Pace between steps (pause-aware + a beat for watchability). Also gives
+      // auto mode its only pause point, since it has no gates.
+      await remote?.pace();
     }
     return true;
   };
 
-  for (const flow of selectedFlows) {
-    if (!(await runFlow(flow))) break;
+  for (const [flowIndex, flow] of selectedFlows.entries()) {
+    const completed = await runFlow(flow, flowIndex);
+    if (completed) {
+      void remote?.emit({ type: "flow-end", flowId: flow.id });
+    } else {
+      break;
+    }
   }
+
+  void remote?.emit({ type: "run-end", ok: failures.length === 0 });
 
   report.step("RUN COMPLETE");
   report.info(

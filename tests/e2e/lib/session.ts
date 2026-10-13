@@ -127,7 +127,13 @@ export class SessionHub {
   async as(accountId: string): Promise<Driver> {
     const account = accountById(accountId);
     const existing = this.drivers.get(accountId);
-    if (existing) return existing;
+    if (existing) {
+      // Bring the role's window/tab to the front. Each account owns its own
+      // BrowserContext, so without this a reused role stays buried behind
+      // whatever window opened last and the demo watches the wrong tab.
+      await existing.page.bringToFront().catch(() => undefined);
+      return existing;
+    }
 
     const context = await this.browser!.newContext({
       viewport: { width: 1600, height: 1000 },
@@ -141,6 +147,7 @@ export class SessionHub {
 
     await driver.goto(`${getBaseUrl()}/login`);
     await this.signIn(driver, account.email, account.password);
+    await page.bringToFront().catch(() => undefined);
     return driver;
   }
 
