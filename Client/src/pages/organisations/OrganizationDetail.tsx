@@ -3,12 +3,11 @@ import { InfoTile } from "../shared/InfoTile";
 import { DepartmentCard } from "./DepartmentCard";
 import type { OrganizationRecord, Department, User } from "../../types";
 import { Icon } from "../../components/ui/Icon";
+import { formatMonthYear } from "../../lib/datetime";
 
+// Founding dates are calendar dates, read and rendered in IST like every other date.
 function formatDate(dateStr: string | undefined | null): string {
-  if (!dateStr) return "—";
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+  return formatMonthYear(dateStr, "—");
 }
 
 interface OrganizationDetailProps {

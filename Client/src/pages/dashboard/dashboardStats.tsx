@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { isCalendarDatePast } from "../../lib/datetime";
 import type { Project, ProjectDashboardData } from "../../types";
 import { getStatusColor } from "../shared/colors";
 import { Icon } from "../../components/ui/Icon";
@@ -19,7 +20,9 @@ function isDelayedProject(project: {
 }) {
   if (project.status === "Delayed") return true;
   if (project.status === "Completed" || project.progressPercentage >= 100) return false;
-  return Boolean(project.plannedEndDate && new Date(project.plannedEndDate).getTime() < Date.now());
+  // `plannedEndDate` is a calendar day, so it is compared against today in IST. Comparing it
+  // as an instant made a project ending today look overdue from 00:00 UTC (05:30 IST).
+  return isCalendarDatePast(project.plannedEndDate);
 }
 
 function recentProjects(

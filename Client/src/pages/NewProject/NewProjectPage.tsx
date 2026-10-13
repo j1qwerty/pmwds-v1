@@ -18,6 +18,7 @@ import { useAuth } from "../../auth";
 import { useAppData } from "../../appData";
 import type { Department } from "../../types";
 import { lakhsToRupees } from "../../lib/formatters";
+import { todayInputValue } from "../../lib/datetime";
 import {
   useToast,
   LoadingPage,
@@ -166,8 +167,10 @@ export function NewProjectPage({ onClose }: { onClose?: () => void }) {
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("Medium");
   const [budget, setBudget] = useState(0);
-  const [startDate, setStartDate] = useState(() => new Date().toISOString().split("T")[0]);
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().split("T")[0]);
+  // Defaults are "today" in IST. `new Date().toISOString()` yields the *UTC* day, so between
+// midnight and 05:30 IST the wizard opened on tomorrow's date.
+const [startDate, setStartDate] = useState(() => todayInputValue());
+  const [endDate, setEndDate] = useState(() => todayInputValue());
   const [projectDocumentFile, setProjectDocumentFile] = useState<File | null>(null);
 
   // Primary department (creator) - for exec flow

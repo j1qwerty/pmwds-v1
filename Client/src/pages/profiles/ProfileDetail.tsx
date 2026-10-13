@@ -3,6 +3,7 @@ import type { User, UserProfileRecord } from "../../types";
 import { Avatar, SectionCard, StatCard } from "../shared";
 import { ProfilePictureUploader } from "../shared/ProfilePictureUploader";
 import { Icon } from "../../components/ui/Icon";
+import { formatDateLong } from "../../lib/datetime";
 import { SHOW_PROFILE_SKILLS } from "../../featureFlags";
 import { roleDisplayName, roleDisplayNames } from "../../permissions";
 
@@ -177,7 +178,7 @@ export function ProfileDetail({ user, profile, canEdit, onEdit, token, onImageUp
           <DetailItem
             icon="cake"
             label="Date of Birth"
-            value={dateOfBirth ? new Date(dateOfBirth).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }) : "Not set"}
+            value={dateOfBirth ? formatDateLong(dateOfBirth) : "Not set"}
           />
           <DetailItem icon="emergency" label="Emergency Contact" value={emergencyContact || "Not set"} />
           {linkedInUrl && (

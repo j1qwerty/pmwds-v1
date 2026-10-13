@@ -13,6 +13,7 @@ using PMWDS.Application.Features.Projects.Queries;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Domain.Entities;
 using PMWDS.Domain.Enums;
+using PMWDS.Domain.Time;
 using PMWDS.Infrastructure.Services;
 using PMWDS.Persistence.Context;
 
@@ -57,6 +58,10 @@ public class ProjectsController : BaseApiController
         }
 
         var now = DateTime.UtcNow;
+        // Planned end dates are date-only values. Overdue/delayed are therefore judged at the
+        // end of the current IST day - the same boundary the UI uses to highlight overdue
+        // rows - so a project ending today is not counted as delayed from 05:30 IST.
+        var endOfToday = AppClock.EndOfAppTodayUtc;
         var query = _db.Projects
             .AsNoTracking();
 
@@ -81,10 +86,10 @@ public class ProjectsController : BaseApiController
                     project.Status == ProjectStatus.Delayed ||
                     (project.Status != ProjectStatus.Completed &&
                      project.ProgressPercentage < 100 &&
-                     project.PlannedEndDate < now)),
+                     project.PlannedEndDate < endOfToday)),
                 OverdueProjects = group.Count(project =>
                     (project.ActualEndDate.HasValue && project.ActualEndDate > project.PlannedEndDate) ||
-                    (!project.ActualEndDate.HasValue && now > project.PlannedEndDate)),
+                    (!project.ActualEndDate.HasValue && endOfToday > project.PlannedEndDate)),
                 HighRiskProjects = group.Count(project => project.AIDelayRiskScore >= 0.7),
                 AverageHealthScore = group.Average(project => project.AIHealthScore),
                 TotalBudget = group.Sum(project => project.PlannedBudget),
@@ -189,7 +194,7 @@ public class ProjectsController : BaseApiController
         const int bucketLimit = 25;
 
         async Task<ProjectNameBucket> LoadBucketAsync(
-            IQueryable<Project> source,
+            IQueryable<PMWDS.Domain.Entities.Project> source,
             CancellationToken token)
         {
             var total = await source.CountAsync(token);
@@ -307,7 +312,7 @@ public class ProjectsController : BaseApiController
                 CompletedTasks = p.Tasks.Count(t => t.Status == PMWDS.Domain.Enums.TaskStatus.Completed),
                 OverdueTasks = p.Tasks.Count(t =>
                     t.Status != PMWDS.Domain.Enums.TaskStatus.Completed &&
-                    t.DueDate < DateTime.UtcNow),
+                    t.DueDate < AppClock.EndOfAppTodayUtc),
                 TotalMilestones = p.Milestones.Count,
                 CompletedMilestones = p.Milestones.Count(m =>
                     m.Status == PMWDS.Domain.Enums.MilestoneStatus.Completed),
@@ -1050,7 +1055,10 @@ public class ProjectsController : BaseApiController
 
     private static int GetDelayDays(DateTime? actualEndDate, DateTime plannedEndDate, DateTime now)
     {
-        var compareDate = actualEndDate ?? now;
+        // PlannedEndDate is a date-only value, so an open project is compared against the end
+        // of the current IST day. Passing the raw UTC clock instead reported a day of delay
+        // from 05:30 IST on the due date itself.
+        var compareDate = actualEndDate ?? AppClock.EndOfAppTodayUtc;
         return compareDate > plannedEndDate
             ? (int)(compareDate - plannedEndDate).TotalDays
             : 0;

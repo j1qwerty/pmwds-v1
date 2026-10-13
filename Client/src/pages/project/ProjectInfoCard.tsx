@@ -14,6 +14,7 @@ import {
 } from "./components/index";
 import { Icon } from "../../components/ui/Icon";
 import { formatDate, formatLakhs } from "../../lib/formatters";
+import { todayInputValue } from "../../lib/datetime";
 import { Avatar } from "../shared/Avatar";
 
 const emptyProjectForm = (): ProjectFormState => ({
@@ -21,7 +22,7 @@ const emptyProjectForm = (): ProjectFormState => ({
   name: "",
   description: "",
   category: "Monitoring",
-  plannedStartDate: new Date().toISOString().split("T")[0],
+  plannedStartDate: todayInputValue(),
   plannedEndDate: "",
   plannedBudget: 0,
   organizationId: "",

@@ -6,13 +6,14 @@
  * components are gone, so nothing imports this as JSX any more.
  */
 
+import { formatDate as formatCalendarDate } from "./datetime";
+
 export function formatDate(value?: string | null) {
-  if (!value) return "Not set";
-  return new Date(value).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  // Delegated so every date in the app goes through one timezone policy. The previous
+  // `new Date(value).toLocaleDateString(...)` resolved date-only values (task and milestone
+  // due dates, project planned dates) in the *browser's* zone, which rendered a date stored
+  // as 1 Jul as 30 Jun for anyone east of UTC - and showed a different day per user.
+  return formatCalendarDate(value);
 }
 
 const RUPEE_SYMBOL = "\u20B9";

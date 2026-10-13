@@ -3,6 +3,7 @@ import type { Task, User } from "../../../types";
 import { priorities } from "../../constants";
 import { Sheet, ModalCancelButton, ModalPrimaryButton, ScopedUserSelect } from "../../shared/index";
 import { Icon } from "../../../components/ui/Icon";
+import { formatDateShort } from "../../../lib/datetime";
 
 interface SubtaskFormModalProps {
   open: boolean;
@@ -136,7 +137,7 @@ export function SubtaskFormModal({
               <div className="flex items-start gap-1.5 mt-2 p-2 rounded-md bg-amber-50 border border-amber-200 text-[10px] text-amber-800 leading-relaxed">
                 <Icon name="warning" size={12} className="text-amber-600 shrink-0 mt-0.5" />
                 <span>
-                  Exceeds parent task due date ({new Date(parentTask.dueDate!).toLocaleDateString()})
+                  Exceeds parent task due date ({formatDateShort(parentTask.dueDate!)})
                 </span>
               </div>
             )}

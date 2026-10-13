@@ -1,5 +1,6 @@
 import type { Task } from "../../../types";
 import { getPriorityColor, getStatusColor } from "../colors";
+import { formatDateShort } from "../../../lib/datetime";
 
 type HighRiskInterventionsProps = {
   tasks?: Task[];
@@ -33,7 +34,7 @@ export function HighRiskInterventions({ tasks = [], onOpenTask }: HighRiskInterv
           const detail = [
             task.projectName || "General",
             task.assignedToUserName,
-            task.dueDate && `Due ${new Date(task.dueDate).toLocaleDateString()}`,
+            task.dueDate && `Due ${formatDateShort(task.dueDate)}`,
           ]
             .filter(Boolean)
             .join(" • ");

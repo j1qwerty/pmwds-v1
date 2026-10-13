@@ -2,6 +2,7 @@ import type { Milestone } from "../../../types";
 import { useAppData } from "../../../appData";
 import { getStatusColor, HoverActions } from "../../shared/index";
 import { Icon } from "../../../components/ui/Icon";
+import { formatDateShort } from "../../../lib/datetime";
 
 interface MilestoneCardProps {
   milestone: Milestone;
@@ -99,7 +100,7 @@ export function MilestoneCard({ milestone, isSelected, index, onSelectMilestone,
       )}
       {milestone.dueDate && (
         <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap">
-          Due {new Date(milestone.dueDate).toLocaleDateString()}
+          Due {formatDateShort(milestone.dueDate)}
         </span>
       )}
       {milestone.isCritical && (

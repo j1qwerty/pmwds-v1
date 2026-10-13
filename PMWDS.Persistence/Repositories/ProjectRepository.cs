@@ -60,7 +60,7 @@ public class ProjectRepository
     p.Status == ProjectStatus.InProgress
 
 
-    && p.PlannedEndDate < DateTime.UtcNow)
+    && p.PlannedEndDate < PMWDS.Domain.Time.AppClock.EndOfAppTodayUtc)
     .OrderBy(p => p.PlannedEndDate)
     .ToListAsync(ct);
     public async Task<IEnumerable<Project>>

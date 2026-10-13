@@ -9,6 +9,7 @@ import type {
 import { api } from "../../../api";
 import { Permission, usePermission } from "../../shared/RoleGate";
 import { onDataChanged } from "../../../realtime";
+import { formatDate } from "../../../lib/datetime";
 import { DOCUMENT_SCOPES } from "../../../realtimeScopes";
 import {
   UtilizationCertificates,
@@ -69,9 +70,7 @@ function formatFileSize(bytes: number) {
 }
 
 function formatUploadedDate(value: string) {
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return formatDate(value, "");
 }
 
 export function DocumentsSection({

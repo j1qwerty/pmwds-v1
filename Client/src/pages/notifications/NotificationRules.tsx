@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { formatDate, formatDateTimeLong, parseInstant } from "../../lib/datetime";
 import type { AlertRuleRecord } from "../../types";
 import {
   FilterBar,
@@ -32,9 +33,11 @@ const SORT_OPTIONS: { value: string; label: string }[] = [
 
 /* ── Relative timestamps (inline, no new deps) ───────────────────── */
 
+// Timestamps come from the API in UTC and are rendered in IST via lib/datetime, rather than
+// being re-parsed with `new Date(value)`, which let the browser guess the offset.
 function formatRelativeTime(value: string): string {
-  const time = new Date(value).getTime();
-  if (Number.isNaN(time)) return "";
+  const time = parseInstant(value)?.getTime();
+  if (time === undefined) return "";
   const minutes = Math.floor((Date.now() - time) / 60000);
   if (minutes < 1) return "just now";
   if (minutes < 60) return `${minutes}m ago`;
@@ -42,13 +45,11 @@ function formatRelativeTime(value: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
-  return new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return formatDate(value);
 }
 
 function formatAbsoluteTime(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+  return parseInstant(value) ? formatDateTimeLong(value) : "";
 }
 
 /* ── Small presentational helpers ────────────────────────────────── */
@@ -160,8 +161,8 @@ export function NotificationRules({
     else if (sortKey === "nameDesc") sorted.sort((a, b) => b.name.localeCompare(a.name));
     else if (sortKey === "recent") {
       sorted.sort((a, b) => {
-        const at = a.lastTriggered ? new Date(a.lastTriggered).getTime() : 0;
-        const bt = b.lastTriggered ? new Date(b.lastTriggered).getTime() : 0;
+        const at = a.lastTriggered ? (parseInstant(a.lastTriggered)?.getTime() ?? 0) : 0;
+        const bt = b.lastTriggered ? (parseInstant(b.lastTriggered)?.getTime() ?? 0) : 0;
         return bt - at;
       });
     }

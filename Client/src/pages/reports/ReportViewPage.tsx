@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import type { AiReportResponse, StoredReportRecord } from "../../types";
 import { useAuth } from "../../auth";
+import { formatDateTime } from "../../lib/datetime";
 import { api } from "../../api";
 import {
   AnimatedBackground,
@@ -169,7 +170,7 @@ export function ReportViewPage() {
 
   useEffect(() => {
     if (report) {
-      setNavHeader({ title: report.title, description: `Generated ${new Date(report.generatedAt).toLocaleString()}` });
+      setNavHeader({ title: report.title, description: `Generated ${formatDateTime(report.generatedAt)}` });
     }
   }, [report, setNavHeader]);
 
@@ -264,7 +265,7 @@ export function ReportViewPage() {
             <div className="hidden sm:block min-w-0">
               <h1 className="text-sm font-bold text-slate-900 truncate">{report.title}</h1>
               <p className="text-[11px] text-slate-500">
-                Generated {new Date(report.generatedAt).toLocaleString()}
+                Generated {formatDateTime(report.generatedAt)}
               </p>
             </div>
           </div>

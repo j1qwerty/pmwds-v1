@@ -3,6 +3,7 @@ import { api } from "../../api";
 import type { AIModel, AIProvider, AIProviderTestResult, AISettingsResponse } from "../../types";
 import { SectionCard, EmptyState } from "../shared";
 import { Icon } from "../../components/ui/Icon";
+import { parseInstant } from "../../lib/datetime";
 
 // ─── localStorage helpers ──────────────────────────────────────────
 
@@ -854,7 +855,9 @@ function ModelList({
 // ─── Time ago helper ──────────────────────────────────────────────
 
 function formatTimeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
+  const time = parseInstant(iso)?.getTime();
+  if (time === undefined) return "";
+  const diff = Date.now() - time;
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return "just now";
   if (mins < 60) return `${mins}m ago`;

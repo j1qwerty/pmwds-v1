@@ -143,7 +143,8 @@ public class GetWorkloadDistributionQueryHandler
  List<Domain.Entities.ProjectTask> activeTasks,
  double availabilityPercentage)
  {
- var overdueCount = activeTasks.Count(t => t.DueDate < DateTime.UtcNow);
+ // Overdue at the end of the current IST day - the same rule the cards and tables apply.
+ var overdueCount = activeTasks.Count(t => t.DueDate < PMWDS.Domain.Time.AppClock.EndOfAppTodayUtc);
  var escalatedCount = activeTasks.Count(t => t.IsEscalated);
  var availabilityPressure = Math.Max(0, 100 - availabilityPercentage) * 0.2;
  var score = workloadScore * 0.65 + overdueCount * 7 + escalatedCount * 10 + availabilityPressure;

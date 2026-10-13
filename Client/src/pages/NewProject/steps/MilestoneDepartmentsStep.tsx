@@ -1,6 +1,7 @@
 import type { Department, OrganizationRecord } from "../../../types";
 import { GlassCard, EmptyState } from "../../shared";
 import { Icon } from "../../../components/ui/Icon";
+import { formatDateShort } from "../../../lib/datetime";
 
 interface MilestoneEntry {
   id: string;
@@ -98,7 +99,7 @@ export function MilestoneDepartmentsStep({
             </div>
             <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
               {milestone.description && <span className="truncate">{milestone.description}</span>}
-              {milestone.dueDate && <span>Due: {new Date(milestone.dueDate).toLocaleDateString()}</span>}
+              {milestone.dueDate && <span>Due: {formatDateShort(milestone.dueDate)}</span>}
             </div>
           </div>
 

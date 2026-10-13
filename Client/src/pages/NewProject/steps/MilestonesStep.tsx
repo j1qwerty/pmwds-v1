@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { GlassCard, EmptyState } from "../../shared";
 import { Icon } from "../../../components/ui/Icon";
+import { formatDate, formatDateShort } from "../../../lib/datetime";
 
 interface MilestoneEntry {
   id: string;
@@ -89,7 +90,7 @@ export function MilestonesStep({ milestones, onChange, projectEndDate }: Milesto
                 </div>
                 <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
                   {m.description && <span className="truncate max-w-60">{m.description}</span>}
-                  {m.dueDate && <span>Due: {new Date(m.dueDate).toLocaleDateString()}</span>}
+                  {m.dueDate && <span>Due: {formatDateShort(m.dueDate)}</span>}
                 </div>
               </div>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
@@ -152,7 +153,7 @@ export function MilestonesStep({ milestones, onChange, projectEndDate }: Milesto
               {form.dueDate && projectEndDate && form.dueDate > projectEndDate && (
                 <div className="flex items-start gap-1.5 mt-1.5 p-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
                   <Icon name="warning" size={16} className="shrink-0 mt-0.5" />
-                  <span>Due date exceeds project end date ({new Date(projectEndDate).toLocaleDateString()})</span>
+                  <span>Due date exceeds project end date ({formatDate(projectEndDate)})</span>
                 </div>
               )}
             </div>

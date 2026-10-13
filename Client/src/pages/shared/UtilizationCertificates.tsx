@@ -11,6 +11,7 @@ import { Permission, usePermission } from "./RoleGate";
 import { useToast } from "./Toast";
 import { useAuth } from "../../auth";
 import { formatRupees } from "../../lib/formatters";
+import { formatDate as formatDateValue } from "../../lib/datetime";
 
 /**
  * Self-contained overlay, portalled to <body>.
@@ -975,9 +976,7 @@ function ActionButton({
   );
 }
 
+// Certificate periods are calendar dates; read them in IST without an offset shift.
 function formatDate(value: string) {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return formatDateValue(value, "—");
 }

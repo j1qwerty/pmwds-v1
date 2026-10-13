@@ -2,6 +2,7 @@ import { useMemo, useState, useRef, useEffect } from "react";
 import type { Department, Project, Task } from "../../../types";
 import { getStatusColor, getPriorityColor } from "../colors";
 import { Icon } from "../../../components/ui/Icon";
+import { formatDate } from "../../../lib/datetime";
 
 export type TaskPerformanceQuery = {
   page: number;
@@ -507,7 +508,7 @@ export default function TaskPerformanceTable({
                   <td className="py-4 px-2">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColor.bg} ${priorityColor.text}`}>{task.priority}</span>
                   </td>
-                  <td className="py-4 px-2 text-slate-500">{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "Not set"}</td>
+                  <td className="py-4 px-2 text-slate-500">{formatDate(task.dueDate, "Not set")}</td>
                   <td className="py-4 px-2">
                     <div className="flex items-center gap-0.5">
                       <button

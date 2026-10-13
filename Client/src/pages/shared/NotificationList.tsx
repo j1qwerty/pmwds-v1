@@ -1,4 +1,15 @@
+import { useCallback, useState } from "react";
+import { createPortal } from "react-dom";
+import { formatRelativeTime } from "../../lib/datetime";
 import type { NotificationItem } from "../../types";
+
+interface TooltipState {
+  item: NotificationItem;
+  icon: string;
+  iconColor: string;
+  x: number;
+  y: number;
+}
 
 export function NotificationList({
   items,
@@ -10,6 +21,17 @@ export function NotificationList({
   onOpen?: (item: NotificationItem) => void | Promise<void>;
 }) {
   const itemsArray = Array.isArray(items) ? items : [];
+  const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+
+  const showTooltip = useCallback((item: NotificationItem, icon: string, iconColor: string, e: React.MouseEvent) => {
+    // The list scrolls inside a fixed-height, overflow-hidden card, so an in-flow tooltip
+    // would be clipped. Tracking the pointer and rendering through a portal keeps the full
+    // text readable no matter where the row sits in the list.
+    if (!hasHiddenText(item)) return;
+    setTooltip({ item, icon, iconColor, x: e.clientX, y: e.clientY });
+  }, []);
+
+  const hideTooltip = useCallback(() => setTooltip(null), []);
 
   if (!itemsArray.length) {
     return (
@@ -70,19 +92,10 @@ export function NotificationList({
     }
   };
 
-  const formatTime = (dateStr: string) => {
-    if (!dateStr) return "";
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const minutes = Math.floor(diff / 60000);
-    if (minutes < 1) return "Just now";
-    if (minutes < 60) return `${minutes} minutes ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours === 1) return "1 hour ago";
-    if (hours < 24) return `${hours} hours ago`;
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  };
+  // Relative for the last week, then the IST date. Goes through the shared helper so the
+  // timestamp is read as UTC and the date rendered in IST, instead of being guessed from
+  // the browser's zone.
+  const formatTime = (dateStr: string) => formatRelativeTime(dateStr);
 
   const unreadCount = itemsArray.filter(item => !item.isRead).length;
 
@@ -122,6 +135,18 @@ export function NotificationList({
               key={item.id}
               type="button"
               onClick={() => void onOpen?.(item)}
+              onMouseMove={(e) => showTooltip(item, config.icon, config.iconColor, e)}
+              onMouseLeave={hideTooltip}
+              onFocus={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                showTooltip(item, config.icon, config.iconColor, {
+                  clientX: rect.left + rect.width / 2,
+                  clientY: rect.bottom,
+                } as React.MouseEvent);
+              }}
+              onBlur={hideTooltip}
+              // No native `title` here: it would fire alongside the hover card a second
+              // later and the user would see the same text twice.
               className="w-full text-left flex gap-3 items-start p-3 rounded-xl hover:bg-surface-container-low cursor-pointer transition-all duration-200 border border-transparent hover:border-outline-variant/30 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               <div className={`w-9 h-9 rounded-xl ${config.bg} flex items-center justify-center shrink-0 shadow-sm`}>
@@ -161,6 +186,69 @@ export function NotificationList({
             </button>
           );
         })}
+      </div>
+
+      {tooltip &&
+        createPortal(
+          <FullTextTooltip
+            key={tooltip.item.id}
+            tooltip={tooltip}
+            onDismiss={hideTooltip}
+          />,
+          document.body,
+        )}
+    </div>
+  );
+}
+
+/** True when the row's one-line title / two-line message hides part of the text. */
+function hasHiddenText(item: NotificationItem) {
+  return (item.title?.length ?? 0) > 40 || (item.message?.length ?? 0) > 80;
+}
+
+function FullTextTooltip({
+  tooltip,
+  onDismiss,
+}: {
+  tooltip: TooltipState;
+  onDismiss: () => void;
+}) {
+  const CARD_WIDTH = 352;
+  const ESTIMATED_HEIGHT = 168;
+  const GAP = 12;
+
+  // Flip to the left of the pointer near the right edge, and above it near the bottom.
+  const left = tooltip.x + GAP + CARD_WIDTH > window.innerWidth
+    ? Math.max(GAP, tooltip.x - GAP - CARD_WIDTH)
+    : tooltip.x + GAP;
+  const top = tooltip.y + GAP + ESTIMATED_HEIGHT > window.innerHeight
+    ? Math.max(GAP, tooltip.y - GAP - ESTIMATED_HEIGHT)
+    : tooltip.y + GAP;
+
+  return (
+    <div
+      role="tooltip"
+      onMouseLeave={onDismiss}
+      style={{ left, top, width: CARD_WIDTH }}
+      className="fixed z-[100] pointer-events-auto rounded-xl border border-outline-variant/40 bg-surface-container-lowest p-3 text-left shadow-2xl"
+    >
+      <div className="flex items-start gap-2">
+        <span
+          className={`material-symbols-outlined ${tooltip.iconColor} text-[16px] mt-px shrink-0`}
+          style={{ fontVariationSettings: "'FILL' 1" }}
+        >
+          {tooltip.icon}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-semibold text-on-surface break-words whitespace-pre-wrap">
+            {tooltip.item.title}
+          </p>
+          {tooltip.item.message && (
+            <p className="mt-1 text-[12px] text-on-surface-variant break-words whitespace-pre-wrap">
+              {tooltip.item.message}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

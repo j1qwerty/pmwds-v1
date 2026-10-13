@@ -69,7 +69,9 @@ public class TaskRepository
     CancellationToken ct = default)
     => await _dbSet
     .Where(t =>
-    t.DueDate < DateTime.UtcNow
+    // Overdue at the end of the current IST day, matching ProjectTask.IsOverdue and the
+    // UI's own overdue styling.
+    t.DueDate < PMWDS.Domain.Time.AppClock.EndOfAppTodayUtc
     && t.Status != Domain.Enums.TaskStatus.Completed
     && t.Status != Domain.Enums.TaskStatus.Cancelled)
     .Include(t => t.Project)

@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useNavHeader, type NavHeaderAction } from "./NavHeaderContext";
 import { Icon } from "../../components/ui/Icon";
+import { formatDateLong, todayKey, weekdayShort } from "../../lib/datetime";
 
 /**
  * Colored back button for the topbar (icon "arrow-back" + optional
@@ -26,6 +27,9 @@ function NavBackButton({ to, label }: { to: string; label?: string }) {
 
 export function NavHeader() {
   const { title, backTo, backLabel } = useNavHeader();
+  // Today's date in IST, matching every other date in the app. Previously read from the
+  // browser clock, so the topbar could show a different day than the rest of the page.
+  const today = todayKey();
 
   return (
     <div className="flex items-center min-w-0" style={{ gap: 'clamp(8px, 1.5vw, 16px)' }}>
@@ -36,7 +40,7 @@ export function NavHeader() {
       ) : (
         <>
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 whitespace-nowrap hidden lg:inline">
-            {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+            {`${weekdayShort(today)}, ${formatDateLong(today)}`}
           </span>
           <div className="w-px bg-surface-variant hidden lg:block" style={{ height: 'clamp(14px, 2vw, 20px)' }} />
         </>

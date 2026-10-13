@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { formatDate, formatDateTimeLong, isToday as isTodayInIst, parseInstant } from "../../lib/datetime";
 import type { NotificationItem } from "../../types";
 import {
   FilterBar,
@@ -49,9 +50,12 @@ const PRIORITY_RANK: Record<string, number> = {
 
 /* ── Relative timestamps (inline, no new deps) ───────────────────── */
 
+// Compact forms for the dense list. Both go through lib/datetime, which reads the API's
+// UTC timestamps correctly and renders in IST - the previous `new Date(value)` relied on
+// the browser guessing the offset, so a "Today" row could disagree with the server's day.
 function formatRelativeTime(value: string): string {
-  const time = new Date(value).getTime();
-  if (Number.isNaN(time)) return "";
+  const time = parseInstant(value)?.getTime();
+  if (time === undefined) return "";
   const minutes = Math.floor((Date.now() - time) / 60000);
   if (minutes < 1) return "Just now";
   if (minutes < 60) return `${minutes}m ago`;
@@ -59,18 +63,15 @@ function formatRelativeTime(value: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
-  return new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return formatDate(value);
 }
 
 function formatAbsoluteTime(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+  return parseInstant(value) ? formatDateTimeLong(value) : "";
 }
 
 function isToday(value: string): boolean {
-  const date = new Date(value);
-  return !Number.isNaN(date.getTime()) && date.toDateString() === new Date().toDateString();
+  return isTodayInIst(value);
 }
 
 /* ── Small presentational helpers ────────────────────────────────── */
@@ -180,12 +181,12 @@ export function NotificationInbox({
     if (sortKey === "newest") {
       sorted.sort(
         (a, b) =>
-          new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime()
+          (parseInstant(b.createdDate)?.getTime() ?? 0) - (parseInstant(a.createdDate)?.getTime() ?? 0)
       );
     } else if (sortKey === "oldest") {
       sorted.sort(
         (a, b) =>
-          new Date(a.createdDate).getTime() - new Date(b.createdDate).getTime()
+          (parseInstant(a.createdDate)?.getTime() ?? 0) - (parseInstant(b.createdDate)?.getTime() ?? 0)
       );
     } else if (sortKey === "priority") {
       sorted.sort(

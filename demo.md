@@ -1,173 +1,227 @@
-# PMWDS Demo — Human Walkthrough (client2 UI)
+# PMWDS Demo — Human Walkthrough
 
-Step-by-step instructions for a human driving the app in a browser. No test
-runner, no code — just the running API + **client2** UI.
+The same journey the automated E2E suite drives (`tests/e2e`), written out for a
+person clicking through the browser. Follow the flows in order — each one builds
+on the state the previous ones created.
 
-Automated coverage of the same journey lives in `tests.md` (browser E2E) and
-`browser-tests/`. This file is the manual version.
+**7 flows · 20 steps**
 
-## 0. Before you start
+| # | Flow | Steps | Who signs in |
+|---|---|---|---|
+| 1 | Project creation wizard | 5 | Project Manager |
+| 2 | Director adds a Procurement milestone | 1 | Director |
+| 3 | Department head creates tasks, PM adds subtasks | 2 | Dept Head (Civil), then PM |
+| 4 | Team member checks work and updates progress | 3 | Team Member |
+| 5 | Document + certificate uploads | 4 | Project Manager |
+| 6 | Edit and delete a milestone, delete a task | 3 | Director, then PM |
+| 7 | Edit and delete the project | 2 | Project Manager |
 
-You need two terminals running:
+All accounts share the password `Pmwds@123`.
 
-```powershell
-# terminal 1 - API (required)
-dotnet run --project PMWDS.API --urls http://localhost:5179
+| Role | Email |
+|---|---|
+| Project Manager | `manager@org1.com` |
+| Director | `admin@org1.com` |
+| Dept Head — Civil | `head.eng@org1.com` |
+| Team Member | `member@org1.com` |
 
-# terminal 2 - client2 UI (required)
-cd client2
-npm install
-npm run dev -- --host 127.0.0.1 --port 5175
+`<STAMP>` below is today's date and time as `YYYYMMDD-HHMMSS` (e.g.
+`20261013-142530`). Use one value for the whole run so every name lines up.
+
+---
+
+## Flow 1 — Project creation wizard (5 steps)
+
+*Project Manager — `manager@org1.com`*
+
+### 1. Open the wizard
+Sidebar → **Projects** → **New Project**.
+
+### 2. Step 1 of 4 — Project Details
+- Name: `E2E Water Works <STAMP>`
+- Description: `Automated end-to-end test project created <STAMP>. Safe to delete.`
+- Priority: `High`
+- Budget: `120` (lakhs)
+- Start date: today · End date: today + 120 days
+
+→ **Next**
+
+### 3. Step 2 of 4 — Milestones
+Add three, one per department. → **Add milestone**, fill, **Add milestone**.
+
+| Name | Description | Due | Critical | Department (set in step 3) |
+|---|---|---|---|---|
+| `Survey & Design <STAMP>` | Site survey, drawings and design sign-off. | today + 25 days | ✔ | PWD Civil Division (PWDC) |
+| `Execution Phase 1 <STAMP>` | First construction package. | today + 55 days | ✘ | Public Works Department (PWD) |
+| `Procurement Handover <STAMP>` | Vendor selection and material release. | today + 85 days | ✘ | Procurement & Finance (PROC) |
+
+→ **Next**
+
+### 4. Step 3 of 4 — Assign Departments
+One department per milestone, in the same order as above: **PWDC**, **PWD**,
+**PROC**. → **Next**
+
+> Every department used later must be assigned here. A milestone whose
+> department is not on the project is rejected by the API with a 400.
+
+### 5. Step 4 of 4 — Dependencies
+- **New dependency**
+- Prerequisite `Survey & Design <STAMP>` → Dependent `Execution Phase 1 <STAMP>`
+- Rule: `Must complete` → **Add dependency**
+
+→ **Create project**. You land on the project page.
+
+---
+
+## Flow 2 — Director adds a Procurement milestone (1 step)
+
+*Director — `admin@org1.com`*
+
+### 6. Create the milestone
+**Milestones** tab → **New milestone**
+- Name: `Procurement Package <STAMP>`
+- Description: `Deliverables owned by Procurement.`
+- Due date: today + 45 days
+- Department: `Procurement & Finance`
+
+→ **Create milestone**
+
+---
+
+## Flow 3 — Tasks and subtasks (2 steps)
+
+### 7. Department head creates two tasks
+
+*Dept Head — Civil — `head.eng@org1.com`*
+
+**Tasks** tab → **New task**, twice:
+
+| Title | Description | Start | Due | Priority | Milestone |
+|---|---|---|---|---|---|
+| `Task head-civil-1 <STAMP>` | Task created by head-civil during e2e run. | today | today + 14 days | High | `Survey & Design <STAMP>` |
+| `Task head-civil-2 <STAMP>` | Task created by head-civil during e2e run. | today | today + 21 days | Medium | `Survey & Design <STAMP>` |
+
+In **Assignees** search for and add **Ananya Patel**, then **Rohan Iyer**.
+→ **Create task**.
+
+### 8. Project manager adds subtasks
+
+*Project Manager — `manager@org1.com`*
+
+Open `Task head-civil-1 <STAMP>` → **Add subtask**, twice:
+
+| Title | Assignee |
+|---|---|
+| `Subtask head-civil-1.1` | Ananya Patel |
+| `Subtask head-civil-1.2` | Ananya Patel |
+
+---
+
+## Flow 4 — Team member progress (3 steps)
+
+*Team Member — `member@org1.com`*
+
+### 9. Confirm the task is visible
+**Tasks** tab. You can see `Task head-civil-1 <STAMP>` because you are assigned
+to it.
+
+### 10. Raise a subtask to 40%
+Open `Subtask head-civil-1.1` → set progress to `40` → comment
+`Progress moved to 40% by member during e2e run.` → **Update** → close.
+
+### 11. Move a subtask to In Progress
+Open `Subtask head-civil-1.2` → status dropdown → **In progress** → **Update** →
+close.
+
+---
+
+## Flow 5 — Documents and certificate (4 steps)
+
+*Project Manager — `manager@org1.com`*
+
+Create a small text file to upload, e.g. `e2e-dummy.txt`:
+
+```
+PMWDS end-to-end test attachment.
+Generated: <today's timestamp>
+This is a dummy file used to exercise the document upload path.
+------------------------------------------------------------
 ```
 
-Then open:
+And a small PDF named `e2e-dummy-cert.pdf` for the certificate.
 
-```text
-client2: http://localhost:5175
-API swagger (optional): http://localhost:5179/swagger
-```
+### 12. Upload at project level
+**Documents** tab → **Upload document** → choose `e2e-dummy.txt` → level
+`Project` → **Upload**.
 
-> Only one of `Client/` / `client2/` can hold port `5175` at a time. If the page
-> does not load, stop the other client first.
+### 13. Upload at milestone level
+→ **Upload document** → `e2e-dummy.txt` → level `Milestone` → pick the first
+milestone → **Upload**.
 
-Seeded password for every account below:
+### 14. Upload at task level
+→ **Upload document** → `e2e-dummy.txt` → level `Task` → pick the first task →
+**Upload**.
 
-```text
-Pmwds@123
-```
+### 15. Submit a utilization certificate
+Click the **UC** filter chip → **Submit UC**
+- Number: `UC-E2E-12345`
+- Funding source: `Government Grant (e2e)`
+- Amount claimed: `500000`
+- Amount utilized: `250000`
+- Period: today → today + 30 days
+- File: `e2e-dummy-cert.pdf`
 
-If login fails for all accounts, the seed password is wrong — check
-`Seed__DefaultPassword` in the repository `.env` (the seeder and the E2E runner
-both read it).
+→ save as draft.
 
-## 1. Log in
+---
 
-1. Go to `http://localhost:5175/login`.
-2. Enter any account from the table below + password `Pmwds@123`.
-3. Click **Sign In**. You land on `/` (Dashboard).
-4. The login page also offers **Dev Quick Login** buttons — clicking one fills
-   the form and submits it.
+## Flow 6 — Edit and delete (3 steps)
 
-### Demo accounts (password `Pmwds@123` for all)
+### 16. Director edits the Procurement milestone
 
-| Who | Email | What to show |
-|---|---|---|
-| SuperAdmin | `superadmin@org1.com` | Everything; final delete at the end |
-| Director / Admin | `admin@org1.com` | Milestone + task creation, project edits |
-| Project Manager | `manager@org1.com` | Creates the demo project |
-| Chief Engineer | `rajesh.verma@pwd.up.gov.in` | Project visibility (PM view) |
-| Dept Head A — Civil | `head.eng@org1.com` | Scoped milestone/task work (PWDC) |
-| Dept Head B — PMO | `head.pmo@org1.com` | Scoped work (PWD) |
-| Dept Head C — Operations | `head.ops@org1.com` | Scoped work + task deletion (PROC) |
-| Team Member A | `member@org1.com` | Subtask progress, document upload |
-| Team Member B | `dinesh.kumar@pwd.up.gov.in` | Subtask progress, document upload |
-| Team Member C | `manoj.tiwari@up.gov.in` | Subtask progress, document upload |
-| Viewer | `viewer@org1.com` | Read-only: sees the project, no New buttons |
+*Director — `admin@org1.com`*
 
-## 2. Guided demo script (~15 minutes)
+**Milestones** tab → hover `Procurement Package <STAMP>` → **Edit** → rename to
+`Procurement Package <STAMP> (edited)`, due date today + 50 days → **Save**.
 
-### Act 1 — Project Manager creates the project (3 min)
+### 17. Director deletes it
+Same tab → open `Procurement Package <STAMP> (edited)` → **Delete** →
+**Delete Permanently**.
 
-1. Log in as **Project Manager** (`manager@org1.com`).
-2. Sidebar → **Projects** (`/projects`) → **New Project**.
-3. **Step 1 — Project Details:** name it `Demo <today's date>`, description
-   `Demo lifecycle project.`, Priority `High`, budget `12.5` (lakhs), start
-   `2026-11-01`, end `2027-06-30`. Click **Next**.
-4. **Step 2 — Milestones:** leave empty for now (Director adds them later).
-   Click **Next**.
-5. **Step 3 — Assign Departments:** leave empty. Click **Next**.
-6. **Step 4 — Dependencies:** leave empty. Click **Next** — or **Create
-   project** if it is the last visible step. (The wizard persists a draft in
-   `localStorage`; **History** restores it.)
-7. If a Departments step appears, tick **Public Works Department**,
-   **PWD Civil Division**, **Procurement & Finance** — milestones later must
-   belong to a department assigned to the project, or the API rejects them (400).
-8. Finish. You land on `/projects/<id>` (overview / milestones tab). Note the
-   project name — every later act uses it.
-9. Go back to **Projects** and confirm the new card is listed.
+> Deleting a milestone deletes its tasks and subtasks too.
 
-### Act 2 — Director adds structure (4 min)
+### 18. Project manager deletes a task
 
-1. Log out (avatar → logout) and log in as **Director** (`admin@org1.com`).
-2. **Projects** → open the demo project → **Milestones** tab
-   (`/projects/<id>/milestones`).
-3. **New milestone** × 3:
-   - `PWD Coordination Milestone` — Department `Public Works Department`, due `2027-03-31`
-   - `Civil Works Milestone` — Department `PWD Civil Division`, due `2027-03-31`
-   - `Procurement Milestone` — Department `Procurement & Finance`, due `2027-03-31`
-4. Edit `PWD Coordination Milestone` → rename to
-   `PWD Coordination Milestone Updated` → **Save**.
-5. Open a milestone → **New task** × 4 (title, description, start `2026-11-05`,
-   due `2027-02-28`, `24` est. hours, Priority `High`):
-   - `Civil Site Review Task`, `Civil Quality Review Task` (under Civil milestone)
-   - `Coordination Review Task` (under PWD milestone)
-   - `Procurement Review Task` (under Procurement milestone)
-6. **Tasks** tab (`/projects/<id>/tasks`) — confirm all four tasks render.
-7. **Dependencies** tab (`/projects/<id>/dependencies`) → **New** → Prerequisite
-   `PWD Coordination Milestone Updated`, Dependent `Civil Works Milestone` →
-   **Add**.
+*Project Manager — `manager@org1.com`*
 
-### Act 3 — Department Heads do scoped work (3 min)
+**Tasks** tab → open `Task head-civil-2 <STAMP>` → **Delete** → confirm.
 
-Repeat per head (log out/in each time):
+---
 
-| Head | Sees | Does |
-|---|---|---|
-| A — Civil (`head.eng@org1.com`) | Civil milestone + its tasks | Open task → **Add subtask** (`<task> Subtask`) → edit task description → Save |
-| B — PMO (`head.pmo@org1.com`) | PWD milestone + Coordination task | Same: subtask + edit |
-| C — Operations (`head.ops@org1.com`) | Procurement milestone + task | Same: subtask + edit |
+## Flow 7 — Edit and delete the project (2 steps)
 
-Note: some heads intentionally have no **New milestone** button — that is the
-scoped-permission behaviour, not a bug.
+*Project Manager — `manager@org1.com`*
 
-### Act 4 — Team Members execute (3 min)
+### 19. Edit the project
+Project page → **Overview** tab → **Edit project** → pencil
+- Name: `E2E Water Works <STAMP> [edited]`
+- Description: `E2E Water Works <STAMP> - description edited by pm during the e2e run.`
+- Priority: `Critical`
 
-Repeat per member:
+→ **Save**.
 
-| Member | Task | Does |
-|---|---|---|
-| A (`member@org1.com`) | `Civil Site Review Task` | Open task → open subtask → drag progress to ~65 → add comment → Enter |
-| B (`dinesh.kumar@pwd.up.gov.in`) | `Civil Quality Review Task` | Same |
-| C (`manoj.tiwari@up.gov.in`) | `Procurement Review Task` | Same + upload: **Documents** tab → **Upload document** → pick any small `.txt` → level `task` → select the task → **Upload** |
+### 20. Delete the project
+Project page → **Overview** tab → **Delete project** → **Delete Permanently** →
+you return to `/projects` and the project is gone.
 
-### Act 5 — Verify, edit, clean up (2 min)
+---
 
-1. Log in as **Chief Engineer** → Projects → open the demo project (visibility check).
-2. Log in as **Viewer** (`viewer@org1.com`) → open the project → confirm **no**
-   New task / New milestone buttons (read-only).
-3. Log in as **Dept Head C** → Milestones tab → open `Procurement Review Task`
-   → Delete task → **Delete Permanently** → confirm it disappears.
-4. Log in as **Project Manager** → project page → **Edit project** (pencil) →
-   change Description → **Save**.
-5. Log in as **Director** → **Edit project** → change Name → **Save**.
-6. Log in as **SuperAdmin** → project page → **Delete project** →
-   **Delete Permanently** → you return to `/projects`.
-7. On **Projects**, confirm the demo project is gone.
+## Things that look wrong but are not
 
-## 3. Other pages worth opening
-
-Sidebar (visibility is permission-gated, so some roles hide some entries):
-
-- `/` Dashboard — stats, charts, activity
-- `/projects` Projects list (+ per-project tabs: overview, milestones, tasks, dependencies, documents)
-- `/notificationsPage` Notifications (inbox, templates, rules, broadcast)
-- `/organizationStructure` Organizations
-- `/departmentsPage` Departments
-- `/users`, `/profiles` Users and profiles
-- `/ai` AI Insights (allocation, delay, burnout)
-- `/reports`, `/reports/view` Reports
-- `/roles` Roles and permissions
-- `/activity-logs` Activity log
-- `/settings` Settings (admin only)
-
-## 4. If something looks wrong
-
-- Blank login / endless spinner → API not running. Start it (terminal 1) and retry.
-- `localhost:5175` refuses connection → client2 not running, or `Client/` is
-  holding the port. Run `cd client2; npm run dev` and stop the other client.
-- Invalid email or password → wrong `Seed__DefaultPassword`. All seeded accounts
-  share the `.env` value.
-- Empty department/user dropdowns in the wizard → hard-refresh; the wizard merges
-  live + cached reference data.
-- Want the scripted version of this exact journey? See `tests.md` →
-  `pnpm btest` (headless) or `pnpm btest:headed` (watch it happen).
+- Some roles have no **New milestone** button — milestone management is scoped
+  by permission, and the ProjectManager creates milestones through the wizard
+  instead.
+- A milestone must belong to a department already assigned to the project, or
+  the API answers 400.
+- A dependency row may read **Other department** on one side — that is another
+  team's milestone which you are not permitted to see, not missing data.

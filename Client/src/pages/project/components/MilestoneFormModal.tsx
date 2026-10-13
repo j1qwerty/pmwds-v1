@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import type { Department, Milestone, OrganizationRecord } from "../../../types";
 import { Sheet, ModalCancelButton, ModalPrimaryButton } from "../../shared/index";
 import { Icon } from "../../../components/ui/Icon";
+import { formatDate } from "../../../lib/datetime";
 
 interface MilestoneFormModalProps {
   open: boolean;
@@ -171,7 +172,7 @@ export function MilestoneFormModal({ open, projectId, initialData, departments, 
           {form.dueDate && projectEndDate && form.dueDate > projectEndDate && (
             <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800 mt-2">
               <Icon name="warning" size={13} className="shrink-0 mt-0.5" />
-              <span>Due date exceeds project end date ({new Date(projectEndDate).toLocaleDateString()})</span>
+              <span>Due date exceeds project end date ({formatDate(projectEndDate)})</span>
             </div>
           )}
         </div>

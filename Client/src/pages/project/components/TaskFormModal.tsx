@@ -3,8 +3,11 @@ import type { Department, Milestone, Project, Task, User } from "../../../types"
 import { priorities } from "../../constants";
 import { Sheet, ModalCancelButton, ModalPrimaryButton, AvatarStack, ScopedUserSelect, getProjectDepartmentIds, usePermission } from "../../shared/index";
 import { Icon } from "../../../components/ui/Icon";
+import { formatDate, todayInputValue } from "../../../lib/datetime";
 
-const getToday = () => new Date().toISOString().slice(0, 10);
+// "Today" in IST. `new Date().toISOString()` gives the UTC day, so between midnight and
+// 05:30 IST the form opened pre-filled with tomorrow.
+const getToday = () => todayInputValue();
 
 interface TaskFormModalProps {
   open: boolean;
@@ -384,7 +387,7 @@ function DateRangeWarning({
     <div className="flex items-start gap-2 mt-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
       <Icon name="warning" size={13} className="shrink-0 mt-0.5" />
       <span>
-        {label} {direction === "before" ? "precedes" : "exceeds"} milestone date ({new Date(milestoneDate).toLocaleDateString()}).
+        {label} {direction === "before" ? "precedes" : "exceeds"} milestone date ({formatDate(milestoneDate)}).
       </span>
     </div>
   );

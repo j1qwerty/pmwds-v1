@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
+import { endOfIstDay, isToday, parseInstant, startOfIstDay } from "../../lib/datetime";
 import type { ActivityLogRecord, User } from "../../types";
 import {
   AnimatedBackground,
@@ -132,26 +133,29 @@ export function ActivityLogsPage() {
       });
     }
 
-    if (dateRange.from) {
-      result = result.filter((l) => new Date(l.timestamp) >= new Date(dateRange.from));
+    // Date-range filters are calendar days chosen by the user, so they are bounded by the IST
+// day they name. The old `new Date(l.timestamp)` comparisons let the browser decide the
+// offset, so a log could fall outside the very day it was filtered for.
+if (dateRange.from) {
+      const from = startOfIstDay(dateRange.from).getTime();
+      result = result.filter((l) => (parseInstant(l.timestamp)?.getTime() ?? 0) >= from);
     }
     if (dateRange.to) {
-      const toDate = new Date(dateRange.to);
-      toDate.setHours(23, 59, 59, 999);
-      result = result.filter((l) => new Date(l.timestamp) <= toDate);
+      const to = endOfIstDay(dateRange.to).getTime();
+      result = result.filter((l) => (parseInstant(l.timestamp)?.getTime() ?? 0) < to);
     }
 
     return result;
   }, [logs, users, selectedType, searchTerm, dateRange]);
 
-  // KPI stats derived from the loaded logs
+  // KPI stats derived from the loaded logs. "Today" is today in IST, so the count lines up
+  // with the timestamps shown next to each entry.
   const stats = useMemo(() => {
-    const todayKey = new Date().toDateString();
     let today = 0;
     let created = 0;
     let updated = 0;
     for (const log of logs) {
-      if (new Date(log.timestamp).toDateString() === todayKey) today += 1;
+      if (isToday(log.timestamp)) today += 1;
       const type = log.activityType.toLowerCase();
       if (type.includes("create") || type.includes("add")) created += 1;
       if (type.includes("update") || type.includes("edit")) updated += 1;

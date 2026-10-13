@@ -34,6 +34,13 @@ import { LazyNewProjectPage, WizardBoundary, useWarmWizard, preloadWizard } from
 import { Icon } from "../../components/ui/Icon";
 import { formatLakhs } from "../../lib/formatters";
 import {
+  formatDateCompact,
+  formatDateLong,
+  isCalendarDatePast,
+  toDateKey,
+  todayInputValue,
+} from "../../lib/datetime";
+import {
   ProjectDetailModal,
   ProjectFormModal,
   ConfirmDeleteModal,
@@ -81,19 +88,17 @@ const STATUS_LABELS: Record<string, string> = {
 /** Status chip order for the filter row (only statuses present in data appear). */
 const STATUS_ORDER = ["NotStarted", "InProgress", "OnHold", "Delayed", "Completed", "Cancelled"];
 
+/** A `yyyy-mm-dd` value for an API date, read as a calendar day in IST. */
 function toIsoDate(value: string): string {
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
+  return toDateKey(value) ?? "";
 }
-
-const SESSION_NOW = Date.now();
 
 const emptyProjectForm = (): ProjectFormState => ({
   projectCode: "",
   name: "",
   description: "",
   category: "Monitoring",
-  plannedStartDate: new Date().toISOString().split("T")[0],
+  plannedStartDate: todayInputValue(),
   plannedEndDate: "",
   plannedBudget: 0,
   organizationId: "",
@@ -264,11 +269,10 @@ export function ProjectsListPage() {
     if (priorityFilter) list = list.filter((p) => p.priority === priorityFilter);
 
     if (overdueOnly) {
+      // A planned end date is a calendar day, so "overdue" means the day has passed in IST -
+      // not that an instant earlier than right now has been reached.
       list = list.filter(
-        (p) =>
-          p.status !== "Completed" &&
-          !!p.plannedEndDate &&
-          new Date(p.plannedEndDate).getTime() < SESSION_NOW
+        (p) => p.status !== "Completed" && isCalendarDatePast(p.plannedEndDate)
       );
     }
 
@@ -851,26 +855,9 @@ function ProjectSummaryCard({
     : [project.departmentName || ""]
   ).filter(Boolean);
 
-  const compactDate = (date?: string | Date) => {
-    if (!date) return "—";
-    const d = new Date(date);
-    if (isNaN(d.getTime())) return "—";
-    const day = d.getDate();
-    const month = d.toLocaleString("en-GB", { month: "short" });
-    const sameYear = d.getFullYear() === new Date().getFullYear();
-    return sameYear ? `${day} ${month}` : `${day} ${month} ${String(d.getFullYear()).slice(-2)}`;
-  };
+  const compactDate = (date?: string | Date) => formatDateCompact(date);
 
-  const fullDate = (date?: string | Date) => {
-    if (!date) return "Not set";
-    const d = new Date(date);
-    if (isNaN(d.getTime())) return "Not set";
-    return d.toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-  };
+  const fullDate = (date?: string | Date) => formatDateLong(date);
 
   return (
     <div
@@ -1057,15 +1044,7 @@ function ProjectListView({
   onEdit: (project: Project) => void;
   onDelete: (project: Project) => void;
 }) {
-  const compactDate = (date?: string | Date) => {
-    if (!date) return "—";
-    const d = new Date(date);
-    if (isNaN(d.getTime())) return "—";
-    const day = d.getDate();
-    const month = d.toLocaleString("en-GB", { month: "short" });
-    const sameYear = d.getFullYear() === new Date().getFullYear();
-    return sameYear ? `${day} ${month}` : `${day} ${month} ${String(d.getFullYear()).slice(-2)}`;
-  };
+  const compactDate = (date?: string | Date) => formatDateCompact(date);
 
   return (
     <div className="rounded-2xl border border-slate-200/60 bg-white/97  shadow-sm overflow-hidden divide-y divide-slate-100">

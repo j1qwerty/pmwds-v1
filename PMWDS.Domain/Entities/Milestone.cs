@@ -1,5 +1,6 @@
 using PMWDS.Domain.Common;
 using PMWDS.Domain.Enums;
+using PMWDS.Domain.Time;
 using TaskStatus = PMWDS.Domain.Enums.TaskStatus;
 namespace PMWDS.Domain.Entities;
 
@@ -128,9 +129,11 @@ public class Milestone : AuditableEntity
         && _tasks.All(t => t.Status == TaskStatus.Completed);
     public bool HasTasks => _tasks.Count > 0;
     public bool IsOverdue() => Status != MilestoneStatus.Completed
-    && DateTime.UtcNow > DueDate;
+    && AppClock.IsDueDatePassed(DueDate);
     public int GetDaysRemaining()
-    => (int)(DueDate - DateTime.UtcNow).TotalDays;
+    // Whole calendar days left in IST, so a milestone due tomorrow reads "1", not "0.8".
+    => (int)Math.Ceiling(
+    (AppClock.EndOfDayUtc(DateOnly.FromDateTime(DueDate).ToDateTime(TimeOnly.MinValue)) - AppClock.EndOfAppTodayUtc).TotalDays);
 
     public bool IsBlocked
     {

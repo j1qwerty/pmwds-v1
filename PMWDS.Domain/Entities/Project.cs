@@ -1,6 +1,7 @@
 using PMWDS.Domain.Common;
 using PMWDS.Domain.Enums;
 using PMWDS.Domain.Events;
+using PMWDS.Domain.Time;
 namespace PMWDS.Domain.Entities;
 
 public class Project : AuditableEntity, IHasDomainEvents
@@ -279,7 +280,7 @@ public class Project : AuditableEntity, IHasDomainEvents
    => PlannedBudget - ActualCost;
    public int GetDelayDays()
    {
-      var compareDate = ActualEndDate ?? DateTime.UtcNow;
+      var compareDate = ActualEndDate ?? AppClock.EndOfAppTodayUtc;
       return compareDate > PlannedEndDate
       ? (int)(compareDate - PlannedEndDate).TotalDays
       : 0;

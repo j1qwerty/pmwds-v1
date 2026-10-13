@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FiChevronDown, FiCheck, FiPlus, FiMessageSquare } from "react-icons/fi";
 import type { Task } from "../../../types";
 import { StatusBadge, HoverActions } from "../../shared/index";
+import { formatDate } from "../../../lib/datetime";
 import { StatusDropdown } from "./StatusDropdown";
 import { SubtaskProgressBar } from "./SubtaskProgressBar";
 
@@ -189,7 +190,7 @@ export function SubtasksSection({
                   {subtaskForm.dueDate && parentTaskDueDate && subtaskForm.dueDate > parentTaskDueDate.slice(0, 10) && (
                     <div className="flex items-start gap-1.5 mt-1.5 p-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
                       <span className="material-symbols-outlined text-base shrink-0 mt-0.5">warning</span>
-                      <span>Due date exceeds parent task due date ({new Date(parentTaskDueDate).toLocaleDateString()})</span>
+                      <span>Due date exceeds parent task due date ({formatDate(parentTaskDueDate)})</span>
                     </div>
                   )}
                 </div>

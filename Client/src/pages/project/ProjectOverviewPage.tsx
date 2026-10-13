@@ -23,6 +23,7 @@ import { Avatar } from "../shared/Avatar";
 import { TaskStatusDonut, MilestoneTimeline, BudgetBar } from "./components/OverviewCharts";
 import { OverviewAIInsights } from "./components/OverviewAIInsights";
 import { formatLakhs } from "../../lib/formatters";
+import { formatDateShort, isCalendarDatePast } from "../../lib/datetime";
 
 function KpiCard({
   label,
@@ -370,7 +371,7 @@ export function ProjectOverviewPage() {
                           : pinnedMilestone.status === "In Progress"
                             ? "bg-blue-500 ring-2 ring-blue-200"
                             : "bg-slate-300"
-                        } ${pinnedMilestone.status !== "Completed" && new Date(pinnedMilestone.dueDate).getTime() < Date.now() ? "animate-pulse ring-2 ring-red-200" : ""}`} />
+                        } ${pinnedMilestone.status !== "Completed" && isCalendarDatePast(pinnedMilestone.dueDate) ? "animate-pulse ring-2 ring-red-200" : ""}`} />
 
                       <div className="ml-5 relative">
                         <button
@@ -415,9 +416,9 @@ export function ProjectOverviewPage() {
 
                               <div className="flex items-center gap-2 mt-1.5">
                                 <span className="text-[9px] text-slate-500">
-                                  {new Date(pinnedMilestone.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                                  {formatDateShort(pinnedMilestone.dueDate)}
                                 </span>
-                                {pinnedMilestone.status !== "Completed" && new Date(pinnedMilestone.dueDate).getTime() < Date.now() && (
+                                {pinnedMilestone.status !== "Completed" && isCalendarDatePast(pinnedMilestone.dueDate) && (
                                   <span className="text-[8px] font-bold text-red-500 animate-pulse">OVERDUE</span>
                                 )}
                               </div>
@@ -440,8 +441,7 @@ export function ProjectOverviewPage() {
                     </div>
                   ) : (
                     visibleSortedMilestones.map((m, index) => {
-                      const due = new Date(m.dueDate).getTime();
-                      const overdue = m.status !== "Completed" && due < Date.now();
+                      const overdue = m.status !== "Completed" && isCalendarDatePast(m.dueDate);
                       const isLast = index === visibleSortedMilestones.length - 1 && remaining === 0;
 
                       return (
@@ -498,7 +498,7 @@ export function ProjectOverviewPage() {
 
                                   <div className="flex items-center gap-2 mt-1">
                                     <span className="text-[9px] text-slate-400">
-                                      {new Date(m.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                                      {formatDateShort(m.dueDate)}
                                     </span>
                                     {overdue && (
                                       <span className="text-[8px] font-bold text-red-500">OVERDUE</span>
@@ -894,7 +894,7 @@ export function ProjectOverviewPage() {
                             </td>
                             <td className="px-3 py-2 text-right text-slate-500">v{doc.version}</td>
                             <td className="px-3 py-2 text-right text-slate-500">
-                              {new Date(doc.createdDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                              {formatDateShort(doc.createdDate)}
                             </td>
                           </tr>
                         ))}

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { priorities } from "../../constants";
 import { GlassCard, Avatar, EmptyState } from "../../shared";
 import { getPriorityColor } from "../../shared/colors";
+import { formatDateShort, todayInputValue } from "../../../lib/datetime";
 import type { User } from "../../../types";
 import { Icon } from "../../../components/ui/Icon";
 
@@ -47,7 +48,8 @@ export function TasksStep({ milestones, tasks, onChange, users }: TasksStepProps
     priority: "Medium",
     assignedToUserIds: [] as string[],
     estimatedHours: 8,
-    startDate: new Date().toISOString().split("T")[0],
+    // Today in IST, not the UTC day.
+startDate: todayInputValue(),
     dueDate: "",
   });
 
@@ -57,7 +59,7 @@ export function TasksStep({ milestones, tasks, onChange, users }: TasksStepProps
   };
 
   const resetForm = (defaultDueDate = "") => {
-    setForm({ title: "", description: "", priority: "Medium", assignedToUserIds: [], estimatedHours: 8, startDate: new Date().toISOString().split("T")[0], dueDate: defaultDueDate });
+    setForm({ title: "", description: "", priority: "Medium", assignedToUserIds: [], estimatedHours: 8, startDate: todayInputValue(), dueDate: defaultDueDate });
     setShowFormForMilestone(null);
     setEditTaskId(null);
   };
@@ -185,10 +187,10 @@ export function TasksStep({ milestones, tasks, onChange, users }: TasksStepProps
                             <span className="text-[10px] text-slate-400">{task.estimatedHours}h</span>
                           )}
                           {task.startDate && (
-                            <span className="text-[10px] text-slate-400">Start: {new Date(task.startDate).toLocaleDateString()}</span>
+                            <span className="text-[10px] text-slate-400">Start: {formatDateShort(task.startDate)}</span>
                           )}
                           {task.dueDate && (
-                            <span className="text-[10px] text-slate-400">Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+                            <span className="text-[10px] text-slate-400">Due: {formatDateShort(task.dueDate)}</span>
                           )}
                         </div>
                       </div>
@@ -277,7 +279,7 @@ export function TasksStep({ milestones, tasks, onChange, users }: TasksStepProps
                       return msDue && form.dueDate > msDue ? (
                         <div className="flex items-start gap-1.5 mt-1.5 p-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
                           <Icon name="warning" size={16} className="shrink-0 mt-0.5" />
-                          <span>Due date exceeds milestone due date ({new Date(msDue).toLocaleDateString()})</span>
+                          <span>Due date exceeds milestone due date ({formatDateShort(msDue)})</span>
                         </div>
                       ) : null;
                     })()}

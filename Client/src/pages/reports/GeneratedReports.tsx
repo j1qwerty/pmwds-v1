@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { formatDate, parseInstant } from "../../lib/datetime";
 import type { StoredReportRecord } from "../../types";
 import {
   SectionCard,
@@ -72,10 +73,7 @@ function dateRangeLabel(record: StoredReportRecord): string | null {
   const start = typeof record.parameters?.startDate === "string" ? record.parameters.startDate : "";
   const end = typeof record.parameters?.endDate === "string" ? record.parameters.endDate : "";
   if (!start && !end) return null;
-  const fmt = (value: string) => {
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString();
-  };
+  const fmt = (value: string) => formatDate(value, value);
   if (start && end) return `${fmt(start)} → ${fmt(end)}`;
   return fmt(start || end);
 }
@@ -142,14 +140,14 @@ export function GeneratedReports({ reports, onView, onDownload, onDelete, loadin
     if (sortKey === "newest") {
       sorted.sort(
         (a, b) =>
-          new Date(b.generatedDate).getTime() -
-          new Date(a.generatedDate).getTime()
+          (parseInstant(b.generatedDate)?.getTime() ?? 0) -
+          (parseInstant(a.generatedDate)?.getTime() ?? 0)
       );
     } else if (sortKey === "oldest") {
       sorted.sort(
         (a, b) =>
-          new Date(a.generatedDate).getTime() -
-          new Date(b.generatedDate).getTime()
+          (parseInstant(a.generatedDate)?.getTime() ?? 0) -
+          (parseInstant(b.generatedDate)?.getTime() ?? 0)
       );
     } else if (sortKey === "nameAsc") {
       sorted.sort((a, b) => {
@@ -185,7 +183,7 @@ export function GeneratedReports({ reports, onView, onDownload, onDelete, loadin
         </span>
         <span className="text-[10px] text-slate-400 flex items-center gap-1">
           <Icon name="calendar_today" size={11} />
-          {new Date(report.generatedDate).toLocaleDateString()}
+          {formatDate(report.generatedDate)}
         </span>
         <span className="text-[10px] text-slate-400">{formatSize(report.sizeBytes)}</span>
         {range && (

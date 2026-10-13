@@ -12,6 +12,7 @@ using PMWDS.Application.Features.AI.Queries;
 using PMWDS.Application.Features.Tasks.Commands;
 using PMWDS.Application.Interfaces.Services;
 using PMWDS.Domain.Entities;
+using PMWDS.Domain.Time;
 using PMWDS.Infrastructure.Services;
 using PMWDS.Persistence.Context;
 using TaskDependency = PMWDS.Domain.Entities.TaskDependency;
@@ -151,6 +152,11 @@ public class TasksController : BaseApiController
             .AsNoTracking()
             .Where(task => allowedProjectIds.Contains(task.ProjectId) && task.ParentTaskId == null);
 
+        // Due dates are date-only values, so "delayed" is judged at the end of the current
+        // IST day. Comparing against the raw UTC clock counted work due later the same day
+        // as delayed, and the count disagreed with the UI's overdue highlighting.
+        var endOfToday = AppClock.EndOfAppTodayUtc;
+
         var counts = await query
             .GroupBy(task => 1)
             .Select(group => new
@@ -161,7 +167,7 @@ public class TasksController : BaseApiController
                 Completed = group.Count(task => task.Status == TaskStatus.Completed),
                 Delayed = group.Count(task =>
                     task.Status == TaskStatus.Delayed ||
-                    (task.Status != TaskStatus.Completed && task.DueDate < DateTime.UtcNow))
+                    (task.Status != TaskStatus.Completed && task.DueDate < endOfToday))
             })
             .FirstOrDefaultAsync(ct);
 
@@ -192,7 +198,7 @@ public class TasksController : BaseApiController
         var completed = await LoadRecentAsync(query.Where(task => task.Status == TaskStatus.Completed));
         var delayed = await LoadRecentAsync(query.Where(task =>
             task.Status == TaskStatus.Delayed ||
-            (task.Status != TaskStatus.Completed && task.DueDate < DateTime.UtcNow)));
+            (task.Status != TaskStatus.Completed && task.DueDate < endOfToday)));
 
         return Ok(new TaskDashboardStatsDto(
             counts?.Total ?? 0,
@@ -716,7 +722,7 @@ public class TasksController : BaseApiController
         var query = _db.Tasks.AsNoTracking()
             .Where(task =>
                 allowedProjectIds.Contains(task.ProjectId) &&
-                task.DueDate < DateTime.UtcNow &&
+                task.DueDate < AppClock.EndOfAppTodayUtc &&
                 task.Status != TaskStatus.Completed &&
                 task.Status != TaskStatus.Cancelled)
             .Include(task => task.Project);

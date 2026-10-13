@@ -5,6 +5,7 @@ import { Sheet, ModalCancelButton, ModalPrimaryButton, useToast } from "..";
 import { ProgressStatusEditor } from "../../project/components/ProgressStatusEditor";
 import { priorities } from "../../constants";
 import { Icon } from "../../../components/ui/Icon";
+import { formatDate } from "../../../lib/datetime";
 
 interface SubtaskEditModalProps {
   subtask: Task;
@@ -128,7 +129,7 @@ export function SubtaskEditModal({
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-50 border border-slate-200">
               <FiCalendar className="w-3.5 h-3.5 text-slate-400" />
               <span>
-                Due <strong className="text-slate-700">{new Date(subtask.dueDate).toLocaleDateString()}</strong>
+                Due <strong className="text-slate-700">{formatDate(subtask.dueDate)}</strong>
               </span>
             </div>
           )}

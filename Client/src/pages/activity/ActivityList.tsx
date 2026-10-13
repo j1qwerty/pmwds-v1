@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatDate, formatDateTime, parseInstant } from "../../lib/datetime";
 import type { ActivityLogRecord, User } from "../../types";
 import { Avatar, EmptyState, GlassCard, type ViewMode } from "../shared";
 import { Icon } from "../../components/ui/Icon";
@@ -87,8 +88,8 @@ export function getActivityVisual(type: string): ActivityVisual {
 
 /** Tiny relative-time formatter: "just now", "5m ago", "2h ago", "3d ago", falls back to a date. */
 export function relTime(timestamp: string | Date): string {
-  const date = new Date(timestamp);
-  if (isNaN(date.getTime())) return "—";
+  const date = typeof timestamp === "string" ? parseInstant(timestamp) : timestamp;
+  if (!date || isNaN(date.getTime())) return "—";
   const diffMs = Date.now() - date.getTime();
   const suffix = diffMs >= 0 ? "ago" : "from now";
   const absMinutes = Math.floor(Math.abs(diffMs) / 60000);
@@ -98,26 +99,13 @@ export function relTime(timestamp: string | Date): string {
   if (hours < 24) return `${hours}h ${suffix}`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ${suffix}`;
-  const sameYear = date.getFullYear() === new Date().getFullYear();
-  return date.toLocaleDateString(
-    "en-GB",
-    sameYear
-      ? { day: "numeric", month: "short" }
-      : { day: "numeric", month: "short", year: "numeric" }
-  );
+  // Past a week show the calendar day. Read in IST, matching the rest of the app.
+  return formatDate(date);
 }
 
-/** Absolute timestamp for title attributes: "5 Mar 2025, 14:32". */
+/** Absolute timestamp for title attributes: "5 Mar 2025, 2:32 pm IST". */
 function absoluteTime(timestamp: string | Date): string {
-  const date = new Date(timestamp);
-  if (isNaN(date.getTime())) return "—";
-  return date.toLocaleString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatDateTime(timestamp, "—");
 }
 
 function formatMetadata(metadata: Record<string, unknown> | null): string | null {

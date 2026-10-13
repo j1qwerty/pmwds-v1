@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { resolveNotificationTarget } from "../../lib/notificationTarget";
+import { addDays, parseInstant, todayKey, weekdayShort } from "../../lib/datetime";
 import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
 import { onDataChanged } from "../../realtime";
@@ -294,21 +295,21 @@ export function DashboardPage() {
   // project and milestone events, ...) by calendar day over the last 7 days. Labels carry
   // the actual date, so a spike always means something happened that day - unlike plain
   // weekday buckets, which lump every event ever created on e.g. a Saturday into one bar.
+  // Buckets are IST calendar days, matching the timestamps shown on each event, so "today"
+  // means the same day everywhere in the app.
   const activityData = useMemo(() => {
-    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const today = todayKey();
     const days: {
       key: string;
       label: string;
       value: number;
       events: Map<string, number>;
     }[] = [];
-    const now = new Date();
     for (let offset = 6; offset >= 0; offset--) {
-      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - offset);
-      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      const key = addDays(today, -offset);
       days.push({
         key,
-        label: `${dayNames[d.getDay()]} ${d.getDate()}`,
+        label: `${weekdayShort(key)} ${Number(key.slice(8, 10))}`,
         value: 0,
         events: new Map<string, number>(),
       });
@@ -323,10 +324,9 @@ export function DashboardPage() {
     // Counted over the same logs and the same window as the chart, so a day's
     // detail can never report a different total than the line above it.
     sourceLogs.forEach((log) => {
-      const at = new Date(log.timestamp);
-      if (Number.isNaN(at.getTime())) return;
-      const key = `${at.getFullYear()}-${at.getMonth()}-${at.getDate()}`;
-      const bucket = byKey.get(key);
+      const at = parseInstant(log.timestamp);
+      if (!at) return;
+      const bucket = byKey.get(todayKey(at));
       if (!bucket) return;
 
       bucket.value++;

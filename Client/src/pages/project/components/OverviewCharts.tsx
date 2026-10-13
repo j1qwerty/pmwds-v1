@@ -1,6 +1,11 @@
 import { Icon } from "../../../components/ui/Icon";
 import { getStatusColor } from "../../shared/index";
 import { formatLakhs } from "../../../lib/formatters";
+import {
+  formatDateShort,
+  isCalendarDatePast,
+  toCalendarDayNumber,
+} from "../../../lib/datetime";
 
 const statusHexColors: Record<string, string> = {
   Planning: "#06b6d4",
@@ -181,16 +186,18 @@ export function MilestoneTimeline({
     return <div className="text-center text-slate-400 text-xs py-8">No milestones defined</div>;
   }
 
-  const start = new Date(startDate).getTime();
-  const end = new Date(endDate).getTime();
-  const range = end - start || 1;
-  const now = Date.now();
+  // Timeline positions come from calendar day numbers, not instants. Comparing the stored
+  // instants let the UTC/IST offset push a milestone due on the last day of the project
+  // window past the end of the bar.
+  const start = toCalendarDayNumber(startDate);
+  const end = toCalendarDayNumber(endDate);
+  const range = (end ?? 0) - (start ?? 0) || 1;
 
   return (
     <div className="space-y-3">
       {milestones.map((m) => {
-        const due = new Date(m.dueDate).getTime();
-        const overdue = m.status !== "Completed" && due < now;
+        const due = toCalendarDayNumber(m.dueDate);
+        const overdue = m.status !== "Completed" && isCalendarDatePast(m.dueDate);
         const color = getStatusColor(m.status);
 
         return (
@@ -222,16 +229,16 @@ export function MilestoneTimeline({
               </div>
             </div>
             <div className="text-[10px] text-slate-400 shrink-0 text-right w-20">
-              {new Date(m.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              {formatDateShort(m.dueDate)}
             </div>
           </div>
         );
       })}
       {/* Timeline range hint */}
       <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-100">
-        <span>{new Date(start).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+        <span>{formatDateShort(startDate)}</span>
         <span>Project window</span>
-        <span>{new Date(end).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+        <span>{formatDateShort(endDate)}</span>
       </div>
     </div>
   );
