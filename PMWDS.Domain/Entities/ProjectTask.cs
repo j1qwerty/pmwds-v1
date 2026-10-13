@@ -1,6 +1,7 @@
 using PMWDS.Domain.Common;
 using PMWDS.Domain.Enums;
 using PMWDS.Domain.Events;
+using PMWDS.Domain.Time;
 using TaskStatus = PMWDS.Domain.Enums.TaskStatus;
 namespace PMWDS.Domain.Entities;
 
@@ -154,8 +155,53 @@ public class ProjectTask : AuditableEntity, IHasDomainEvents
         ProgressPercentage = Math.Clamp(percentage, 0, 100);
         if (!string.IsNullOrEmpty(notes))
             CompletionNotes = notes;
-        if (percentage >= 100) Complete();
+        // Progress is the source of truth for the workflow state. Without this the status
+        // stayed "NotStarted" forever once a task or subtask had any progress recorded.
+        SyncStatusFromProgress();
     }
+
+    /// <summary>
+    /// Derives the workflow status from the recorded progress.
+    ///
+    /// Progress was previously written without ever touching <see cref="Status"/>, so a task
+    /// at 80% still reported "Not Started" on every card, board and dashboard until someone
+    /// set the status by hand. From here on progress is the source of truth and the status
+    /// follows it:
+    ///
+    /// <list type="bullet">
+    /// <item>100% → Completed (raising the usual completion event)</item>
+    /// <item>1–99% → In Progress</item>
+    /// <item>0% → Not Started</item>
+    /// </list>
+    ///
+    /// Only <see cref="TaskStatus.OnHold"/> and <see cref="TaskStatus.Cancelled"/> are
+    /// preserved, because those are deliberate human decisions that a progress edit must not
+    /// silently undo. Rolling progress back below 100 does reopen a completed task, which
+    /// mirrors what setting the status to In Progress by hand would have done.
+    /// </summary>
+    public void SyncStatusFromProgress()
+    {
+        // Deliberate human decisions - a progress edit must not quietly undo them.
+        if (Status is TaskStatus.OnHold or TaskStatus.Cancelled)
+            return;
+
+        var clamped = Math.Clamp(ProgressPercentage, 0, 100);
+
+        if (clamped >= 100)
+        {
+            if (Status != TaskStatus.Completed)
+            {
+                Complete();
+            }
+            return;
+        }
+
+        Status = clamped > 0 ? TaskStatus.InProgress : TaskStatus.NotStarted;
+
+        // Progress was rolled back below 100, so the completion stamp is no longer valid.
+        CompletedDate = null;
+    }
+
     public void RecalculateProgressFromSubtasks()
     {
         if (_subTasks.Count == 0)
@@ -165,6 +211,9 @@ public class ProjectTask : AuditableEntity, IHasDomainEvents
         var total = _subTasks.Count;
         var sum = _subTasks.Sum(st => Math.Clamp(st.ProgressPercentage, 0, 100));
         ProgressPercentage = Math.Round(sum / total, 1);
+        // A parent task is derived entirely from its subtasks, so its status has to be
+        // derived too - otherwise the parent stayed "Not Started" while its subtasks ran.
+        SyncStatusFromProgress();
     }
     public bool HasSubTasks => _subTasks.Count > 0;
     public void AddComment(TaskComment comment)
@@ -229,8 +278,12 @@ public class ProjectTask : AuditableEntity, IHasDomainEvents
         AIRecommendedAssigneeId = recommendedAssigneeId;
     }
     public bool IsOverdue()
+        // Judged against the end of the current IST day, not `DateTime.UtcNow`. A task due
+        // today is not overdue: the stored due date is midnight, so comparing it with the
+        // raw UTC clock flagged work from 00:00 UTC (05:30 IST) every single morning.
         => Status != TaskStatus.Completed
-        && DateTime.UtcNow > DueDate;
+        && Status != TaskStatus.Cancelled
+        && AppClock.IsDueDatePassed(DueDate);
     public void ClearDomainEvents()
         => _domainEvents.Clear();
 }

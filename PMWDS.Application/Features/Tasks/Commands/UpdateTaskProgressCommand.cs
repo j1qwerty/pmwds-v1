@@ -41,12 +41,10 @@ public class UpdateTaskProgressCommandHandler
         _currentUser.UserId ?? "system");
         await _uow.SaveChangesAsync(ct);
 
-        if (req.Dto.ProgressPercentage >= 100)
-        {
-            task.Complete();
-            await _uow.SaveChangesAsync(ct);
-        }
-
+        // A subtask's progress rolls straight up into its parent, so the parent task's own
+        // progress AND status are recalculated here (RecalculateProgressFromSubtasks now
+        // derives the status too). Without the parent rollup the parent card kept showing
+        // the old percentage and "Not Started" until the page was reloaded.
         if (task.ParentTaskId.HasValue)
         {
             var parent = await _uow.Tasks
@@ -54,10 +52,6 @@ public class UpdateTaskProgressCommandHandler
             if (parent != null)
             {
                 parent.RecalculateProgressFromSubtasks();
-                if (parent.ProgressPercentage >= 100)
-                {
-                    parent.MarkSubtaskCompleted();
-                }
                 parent.SetModified(_currentUser.UserId ?? "system");
                 await _uow.SaveChangesAsync(ct);
             }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../../../api";
 import { useAuth } from "../../../auth";
 import type { Task, User } from "../../../types";
@@ -52,11 +52,28 @@ export function TaskSubtaskCard({
   const statusColors = getStatusColor(task.status);
 
   const [expanded, setExpanded] = useState(false);
-  const [subtasks, setSubtasks] = useState<Task[]>(task.subTasks ?? []);
+  // Subtasks are derived straight from the task, never copied into local state.
+  //
+  // This used to be `useState(task.subTasks ?? [])`, which latched the value from the very
+  // first render. A realtime refresh hands this card a brand new `task` object carrying the
+  // new subtask list, but the state was never re-read from it - so a freshly created subtask
+  // (and every subtask progress/status edit) stayed invisible until a full page reload.
+  const subtasks = task.subTasks ?? [];
   const [showSubtaskModal, setShowSubtaskModal] = useState(false);
-  const [editSubtask, setEditSubtask] = useState<Task | null>(null);
+  // Held by id, not by object, so the open edit modal keeps rendering the live subtask
+  // after a refresh instead of the stale copy captured when it was opened.
+  const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
+  const editSubtask = editingSubtaskId
+    ? subtasks.find((s) => s.id === editingSubtaskId) ?? null
+    : null;
   const [showEditModal, setShowEditModal] = useState(false);
+
+  // Optimistic progress for the immediate edit, re-synced whenever the server value moves
+  // (realtime refresh, or a subtask rollup recalculating this task).
   const [cardProgress, setCardProgress] = useState(task.progressPercentage);
+  useEffect(() => {
+    setCardProgress(task.progressPercentage);
+  }, [task.progressPercentage]);
 
   const getStrokeColor = (progress: number): string => {
     if (progress === 100) return '#10b981';
@@ -66,7 +83,7 @@ export function TaskSubtaskCard({
     return '#cbd5e1';
   };
 
-  const hasSubtasks = (task.subTasks?.length ?? 0) > 0 || subtasks.length > 0;
+  const hasSubtasks = subtasks.length > 0;
 
   const userMap = useMemo(() => {
     const map = new Map<string, User>();
@@ -89,15 +106,6 @@ export function TaskSubtaskCard({
     [task.assignees, userMap],
   );
 
-  const recalcProgress = (list: Task[]) => {
-    if (list.length === 0) {
-      setCardProgress(task.progressPercentage);
-      return;
-    }
-    const avg = Math.round(list.reduce((sum, s) => sum + (s.progressPercentage || 0), 0) / list.length);
-    setCardProgress(avg);
-  };
-
   const handleCreateSubtask = async (form: Record<string, unknown>) => {
     if (!auth) return;
     try {
@@ -112,7 +120,7 @@ export function TaskSubtaskCard({
 
   const handleSubtaskUpdate = async (subtaskId: string, data: { progress: number; status: string; priority: string }) => {
     if (!auth) return;
-    const original = subtasks.find((s) => s.id === subtaskId);
+    const original = task.subTasks?.find((s) => s.id === subtaskId);
     if (!original) return;
     try {
       if (data.progress !== (original.progressPercentage || 0)) {
@@ -325,13 +333,13 @@ export function TaskSubtaskCard({
               <div
                 key={sub.id}
                 className="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
-                onClick={() => setEditSubtask(sub)}
+                onClick={() => setEditingSubtaskId(sub.id)}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    setEditSubtask(sub);
+                    setEditingSubtaskId(sub.id);
                   }
                 }}
               >
@@ -431,7 +439,7 @@ export function TaskSubtaskCard({
         <SubtaskEditModal
           subtask={editSubtask}
           mayEdit={mayEdit}
-          onClose={() => setEditSubtask(null)}
+          onClose={() => setEditingSubtaskId(null)}
           onUpdate={handleSubtaskUpdate}
           onAddComment={handleSubtaskAddComment}
           onDelete={handleDeleteSubtask}
