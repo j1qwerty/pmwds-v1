@@ -4,6 +4,7 @@ using PMWDS.Application.DTOs.Controllers;
 using PMWDS.Application.Exceptions;
 using PMWDS.Application.Interfaces.Repositories;
 using PMWDS.Application.Interfaces.Services;
+using PMWDS.Application.Security;
 using PMWDS.Domain.Entities;
 using PMWDS.Persistence.Context;
 
@@ -224,6 +225,101 @@ public sealed class TaskWorkflowService : ITaskWorkflowService
 
         return currentUserId.HasValue &&
             (task.AssignedToUserId == currentUserId || task.HasAssignment);
+    }
+
+    public async Task<bool> CanCreateSubtaskAsync(Guid parentTaskId, CancellationToken ct)
+    {
+        // Nullable value types do not narrow on a null comparison, so unwrap by pattern.
+        if (await LoadScopeAsync(parentTaskId, ct) is not { } scope) return false;
+
+        return await _scope.CanCreateProjectChildAsync(
+            scope.ProjectId,
+            scope.DepartmentId,
+            ct,
+            PermissionCodes.SubtaskOwnCreate,
+            PermissionCodes.SubtaskAllCreate,
+            PermissionCodes.SubtaskOwnManage,
+            PermissionCodes.SubtaskAllManage);
+    }
+
+    public async Task<bool> CanModifySubtaskAsync(Guid subtaskId, CancellationToken ct)
+    {
+        if (await LoadScopeAsync(subtaskId, ct) is not { } scope) return false;
+
+        if (await _scope.CanModifyProjectChildAsync(
+                scope.ProjectId,
+                scope.DepartmentId,
+                ct,
+                PermissionCodes.SubtaskOwnEdit,
+                PermissionCodes.SubtaskAllEdit,
+                PermissionCodes.SubtaskOwnManage,
+                PermissionCodes.SubtaskAllManage))
+        {
+            return true;
+        }
+
+        // Someone with no Subtask grant can still work on a subtask assigned to them - or
+        // on one under a task assigned to them. Without this the assignee of the *parent*
+        // task could not touch their own subtasks at all.
+        return await IsAssignedToTaskOrItsParentAsync(subtaskId, ct);
+    }
+
+    public async Task<bool> CanWorkOnSubtaskAsync(Guid subtaskId, CancellationToken ct)
+    {
+        return await CanModifySubtaskAsync(subtaskId, ct);
+    }
+
+    /// <summary>
+    /// The project and department a task belongs to, used for department-scoped checks.
+    /// The milestone's department wins over the project's, because that is the department
+    /// actually doing the work on a cross-department project.
+    /// </summary>
+    private async Task<(Guid ProjectId, Guid? DepartmentId)?> LoadScopeAsync(
+        Guid taskId,
+        CancellationToken ct)
+    {
+        var task = await _db.Tasks
+            .Where(item => item.Id == taskId)
+            .Select(item => new { item.ProjectId, item.MilestoneId })
+            .FirstOrDefaultAsync(ct);
+
+        if (task == null) return null;
+
+        var departmentId = task.MilestoneId.HasValue
+            ? await _db.Milestones
+                .Where(milestone => milestone.Id == task.MilestoneId.Value)
+                .Select(milestone => milestone.DepartmentId)
+                .FirstOrDefaultAsync(ct)
+            : await _db.Projects
+                .Where(project => project.Id == task.ProjectId)
+                .Select(project => (Guid?)project.DepartmentId)
+                .FirstOrDefaultAsync(ct);
+
+        return (task.ProjectId, departmentId);
+    }
+
+    /// <summary>
+    /// True when the caller is assigned to the task, or to the parent task when the task is
+    /// a subtask. Subtasks are normally assigned independently, but a member who owns the
+    /// parent task has to be able to work through its subtasks too.
+    /// </summary>
+    private async Task<bool> IsAssignedToTaskOrItsParentAsync(Guid taskId, CancellationToken ct)
+    {
+        if (!Guid.TryParse(_currentUser.UserId, out var currentUserId))
+        {
+            return false;
+        }
+
+        return await _db.Tasks
+            .Where(item => item.Id == taskId)
+            .AnyAsync(item =>
+                item.AssignedToUserId == currentUserId ||
+                item.Assignments.Any(assignment => assignment.UserId == currentUserId) ||
+                (item.ParentTaskId.HasValue && _db.Tasks.Any(parent =>
+                    parent.Id == item.ParentTaskId.Value &&
+                    (parent.AssignedToUserId == currentUserId ||
+                     parent.Assignments.Any(assignment => assignment.UserId == currentUserId)))),
+                ct);
     }
 
     public async Task<HashSet<Guid>> GetAccessibleProjectIdsAsync(CancellationToken ct)

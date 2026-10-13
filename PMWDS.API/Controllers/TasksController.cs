@@ -828,7 +828,11 @@ public class TasksController : BaseApiController
         if (parentTask == null)
             return NotFound();
 
-        if (!await _taskWorkflow.CanWorkOnTaskAsync(parentTask.Id, ct))
+        // Department-scoped Subtask create permission. The previous check required the
+        // caller to either manage the whole project or be the assignee of the parent task,
+        // which ignored the SubtaskOwnCreate grant entirely - so a team member holding it
+        // for their own department was refused unless they happened to be the assignee.
+        if (!await _taskWorkflow.CanCreateSubtaskAsync(parentTask.Id, ct))
         {
             return Forbid();
         }
@@ -901,8 +905,15 @@ public class TasksController : BaseApiController
             return Forbid();
         }
 
-        if (!await _scope.CanManageProjectAsync(task.ProjectId, ct) &&
-            task.AssignedToUserId != _scope.CurrentUserId)
+        // Department-scoped Subtask edit permission, or assignment to the subtask or to its
+        // parent task.
+        //
+        // This previously required the caller to manage the entire project or be the
+        // subtask's direct assignee, so it never consulted SubtaskOwnEdit at all. A team
+        // member holding exactly that permission for their own department was refused -
+        // which is why subtasks were visible and editable in the UI but every save came
+        // back 403.
+        if (!await _taskWorkflow.CanModifySubtaskAsync(id, ct))
         {
             return Forbid();
         }
@@ -936,9 +947,14 @@ public class TasksController : BaseApiController
     }
 
     [HttpPatch("subtasks/{id:guid}/progress")]
+    [Authorize(Policy = AuthorizationPolicies.SubtasksEdit)]
     public async Task<IActionResult> UpdateSubtaskProgress(Guid id, [FromBody] UpdateTaskProgressDto dto, CancellationToken ct)
     {
-        if (!await _taskWorkflow.CanWorkOnTaskAsync(id, ct))
+        // Previously CanWorkOnTaskAsync, which only accepted a project manager or the
+        // subtask's direct assignee - it never consulted the Subtask edit permission and
+        // never looked at the parent task. A member assigned the parent task could see
+        // their own subtasks but could not move their progress.
+        if (!await _taskWorkflow.CanWorkOnSubtaskAsync(id, ct))
         {
             return Forbid();
         }
@@ -951,13 +967,18 @@ public class TasksController : BaseApiController
     }
 
     [HttpPatch("subtasks/{id:guid}/status")]
+    [Authorize(Policy = AuthorizationPolicies.SubtasksEdit)]
     public async Task<IActionResult> UpdateSubtaskStatus(Guid id, [FromBody] UpdateTaskStatusRequest req, CancellationToken ct)
     {
         var task = await _uow.Tasks.GetWithDetailsAsync(id, ct);
         if (task == null || task.ParentTaskId == null)
             return NotFound();
 
-        if (!await _scope.CanAccessProjectAsync(task.ProjectId, ct))
+        // The Subtask edit permission or assignment to the subtask or its parent. This
+        // endpoint previously accepted anyone who could merely see the project, so it was
+        // both too loose for managers and the reason status changes behaved inconsistently
+        // against progress updates on the same subtask.
+        if (!await _taskWorkflow.CanModifySubtaskAsync(id, ct))
         {
             return Forbid();
         }
@@ -978,7 +999,7 @@ public class TasksController : BaseApiController
             return BadRequest(new { message = "Assignee is required." });
         }
 
-        if (!await _taskWorkflow.CanManageTaskAsync(id, ct))
+        if (!await _taskWorkflow.CanModifySubtaskAsync(id, ct))
         {
             return Forbid();
         }
