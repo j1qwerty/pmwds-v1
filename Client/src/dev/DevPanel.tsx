@@ -115,10 +115,6 @@ export function DevPanel() {
 
   const hidden = !pinned && !peek && !expanded && (stepExecuting || (running && !waiting));
 
-  // The panel only exists while the control server is reachable. No server, no
-  // panel - it never shows an "offline" bar.
-  if (online !== "online") return null;
-
   const start = useCallback(
     (stepGates: boolean) => {
       const chosen = [...selected];
@@ -142,6 +138,11 @@ export function DevPanel() {
       return next;
     });
   }, []);
+
+  // The panel only exists while the control server is reachable. No server, no
+  // panel - it never shows an "offline" bar. This sits below every hook call
+  // so the hook order never changes between renders.
+  if (online !== "online") return null;
 
   // Online is always "online" here (we return null otherwise), so the dot only
   // reflects run status.
