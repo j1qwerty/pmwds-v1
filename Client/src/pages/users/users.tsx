@@ -5,6 +5,7 @@ import { useAuth } from "../../auth";
 import type { Department, OrganizationRecord, SkillRecord, User } from "../../types";
 import {
   ROLE_DISPLAY_NAMES,
+  RoleKey,
   normalizeRoleKey,
   roleDisplayName,
   roleDisplayNames,
@@ -61,15 +62,24 @@ const SORT_OPTIONS: { value: string; label: string }[] = [
   { value: "status", label: "Active first" },
 ];
 
-const ROLE_FILTER_OPTIONS: { value: string; label: string }[] = (
-  Object.keys(ROLE_DISPLAY_NAMES) as RoleKeyCode[]
-).map((key) => ({ value: key, label: ROLE_DISPLAY_NAMES[key] }));
+const ALL_ROLE_KEYS = Object.keys(ROLE_DISPLAY_NAMES) as RoleKeyCode[];
+
+/**
+ * Role filter choices. The Super Admin role is only offered to super admins;
+ * everyone else never sees it listed, matching the edit modal.
+ */
+function roleFilterOptions(canSeeSuperAdmin: boolean): { value: string; label: string }[] {
+  return ALL_ROLE_KEYS
+    .filter((key) => canSeeSuperAdmin || key !== RoleKey.SuperAdmin)
+    .map((key) => ({ value: key, label: ROLE_DISPLAY_NAMES[key] }));
+}
 
 export function UsersPage() {
   const { auth } = useAuth();
   const perm = usePermission();
   const { data: appData } = useAppData();
   const isAdmin = perm.isAdmin;
+  const roleOptions = useMemo(() => roleFilterOptions(isAdmin), [isAdmin]);
   const canManageUsers = perm.has(PERMISSION_GROUPS.user.manage);
 
   const userMaxLevel = useMemo(() => {
@@ -97,7 +107,7 @@ export function UsersPage() {
   const [selectedDept, setSelectedDept] = useState("");
   const [selectedOrg, setSelectedOrg] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("nameAsc");
-  const [view, setView] = useState<ViewMode>("card");
+  const [view, setView] = useState<ViewMode>("table");
 
   const { setNavHeader } = useNavHeader();
 
@@ -360,7 +370,7 @@ export function UsersPage() {
                   onChange={setRoleFilter}
                   label="Role"
                   icon="badge"
-                  options={ROLE_FILTER_OPTIONS}
+                  options={roleOptions}
                   width="min-w-[150px]"
                 />
                 <SortDropdown value={sortKey} onChange={(v) => setSortKey(v as SortKey)} options={SORT_OPTIONS} />

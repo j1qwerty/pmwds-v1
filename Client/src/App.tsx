@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, useLayoutEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth";
 import { AppDataProvider, useAppData } from "./appData";
@@ -11,6 +11,8 @@ import { RoutePermissionGuard } from "./pages/shared/PermissionControls";
 import { PERMISSION_GROUPS, Permission } from "./permissions";
 import { lazyPage, whenIdle } from "./lib/lazyPage";
 import { registerRoutePreload } from "./lib/routePreload";
+import { bindActionVisibilityUser } from "./pages/shared/ActionVisibilityContext";
+import { bindUserPreferences } from "./lib/userPreferences";
 
 // Overview
 
@@ -97,7 +99,6 @@ const ROUTE_GUARDS = {
   ai: PERMISSION_GROUPS.ai.view,
   roles: PERMISSION_GROUPS.role.view,
   activityLogs: PERMISSION_GROUPS.activityLog.view,
-  settings: Permission.SystemAdmin,
 } as const;
 
 function Guarded({ permission, children }: { permission?: string; children: React.ReactNode }) {
@@ -110,6 +111,13 @@ function Guarded({ permission, children }: { permission?: string; children: Reac
 
 function AppRoutes() {
   const { auth } = useAuth();
+
+  // Per-user UI preferences (row & card actions, motion) follow the signed-in
+  // user. Layout effect so the switch lands before the next paint.
+  useLayoutEffect(() => {
+    bindActionVisibilityUser(auth?.userId ?? null);
+    bindUserPreferences(auth?.userId ?? null);
+  }, [auth?.userId]);
 
   return (
     <Routes>
@@ -182,7 +190,7 @@ function AppRoutes() {
                 />
                 <Route
                   path="/settings"
-                  element={<Guarded permission={ROUTE_GUARDS.settings}><SettingsPage /></Guarded>}
+                  element={<SettingsPage />}
                 />
 
                 <Route path="*" element={<NoAccessPage />} />

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getUserPreferences } from "./lib/userPreferences";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "./auth";
 import { preloadRoute } from "./lib/routePreload";
@@ -237,7 +238,7 @@ function Layout({ children }: { children: React.ReactNode }) {
   const perm = usePermission();
   const { data, refresh, loading, unreadNotificationCount } = useAppData();
 
-  const [sidebarCompact, setSidebarCompact] = useState(false);
+  const [sidebarCompact, setSidebarCompact] = useState(() => getUserPreferences().sidebarCompact);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Live-update status. Shown as a hint rather than an error: while the socket is down
@@ -320,7 +321,9 @@ function Layout({ children }: { children: React.ReactNode }) {
       items: [
         { path: "/roles", label: "Roles", icon: "roles", permissions: [PERMISSION_GROUPS.role.view] },
         { path: "/activity-logs", label: "Activity Logs", icon: "activity", permissions: [PERMISSION_GROUPS.activityLog.view] },
-        { path: "/settings", label: "Settings", icon: "settings", permissions: [PERMISSION_GROUPS.system.manage] },
+        // Settings is open to every signed-in user (profile, display preferences). Admin-only
+        // tabs (AI, database, background) are gated inside the page.
+        { path: "/settings", label: "Settings", icon: "settings", permissions: [] },
       ],
     },
   ];

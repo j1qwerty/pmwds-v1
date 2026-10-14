@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import type { DatabaseStatus } from "../../types";
@@ -15,8 +16,9 @@ import { ProfileSettings } from "./ProfileSettings";
 import { AISettings } from "./AISettings";
 import { DatabaseStatusSection } from "./DatabaseStatusSection";
 import { ActionVisibilitySettings } from "./ActionVisibilitySettings";
+import { PreferencesSettings } from "./PreferencesSettings";
 
-type SettingsTab = "profile" | "actions" | "ai" | "database" | "background";
+type SettingsTab = "profile" | "actions" | "preferences" | "ai" | "database" | "background";
 
 interface TabDef {
   id: SettingsTab;
@@ -31,7 +33,14 @@ export function SettingsPage() {
   const canManageSystem = perm.has(PERMISSION_GROUPS.system.manage);
 
   const { addToast } = useToast();
-  const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get("tab") as SettingsTab | null;
+  const [activeTab, setActiveTabState] = useState<SettingsTab>(requestedTab ?? "profile");
+  // Keep the tab in the URL so a settings section can be linked to or reloaded.
+  const setActiveTab = (tab: SettingsTab) => {
+    setActiveTabState(tab);
+    setSearchParams(tab === "profile" ? {} : { tab }, { replace: true });
+  };
   const [databaseStatus, setDatabaseStatus] = useState<DatabaseStatus | null>(null);
   const [databaseLoading, setDatabaseLoading] = useState(false);
   const [databaseError, setDatabaseError] = useState("");
@@ -39,8 +48,13 @@ export function SettingsPage() {
   const { setNavHeader } = useNavHeader();
 
   useEffect(() => {
-    setNavHeader({ title: "Settings", description: "Manage your profile, AI configuration, and provider settings" });
-  }, [setNavHeader]);
+    setNavHeader({
+      title: "Settings",
+      description: canManageSystem
+        ? "Manage your profile, display preferences, AI configuration, and system settings"
+        : "Manage your profile and how the app looks and behaves for you",
+    });
+  }, [setNavHeader, canManageSystem]);
 
   const fetchDatabaseStatus = async () => {
     if (!auth || !canManageSystem) return;
@@ -62,6 +76,7 @@ export function SettingsPage() {
   const tabs: TabDef[] = [
     { id: "profile", label: "Profile", icon: "person", description: "Personal information & account" },
     { id: "actions", label: "Row & card actions", icon: "visibility", description: "Hover vs always-visible actions" },
+    { id: "preferences", label: "Preferences", icon: "tune", description: "Motion and sidebar" },
     ...(canManageSystem
       ? ([
           { id: "ai", label: "AI Settings", icon: "auto_awesome", description: "Providers, models & risk threshold" },
@@ -71,7 +86,10 @@ export function SettingsPage() {
       : []),
   ];
 
-  const activeTabDef = tabs.find((t) => t.id === activeTab);
+  // A link to a tab the person cannot open (e.g. ?tab=database for a non-admin)
+  // falls back to Profile instead of rendering an empty page.
+  const activeTabDef = tabs.find((t) => t.id === activeTab) ?? tabs[0];
+  const currentTab = activeTabDef.id;
 
   return (
     <div className="relative">
@@ -86,7 +104,7 @@ export function SettingsPage() {
           {/* Mobile: horizontal chip scroller */}
           <div className="flex gap-1.5 overflow-x-auto pb-1 lg:hidden -mx-1 px-1">
             {tabs.map((tab) => {
-              const active = activeTab === tab.id;
+              const active = currentTab === tab.id;
               return (
                 <button
                   key={tab.id}
@@ -109,7 +127,7 @@ export function SettingsPage() {
           {/* Desktop: vertical rail */}
           <div className="hidden lg:flex flex-col gap-1 p-2 bg-white/97  border border-slate-200/60 rounded-2xl shadow-sm">
             {tabs.map((tab) => {
-              const active = activeTab === tab.id;
+              const active = currentTab === tab.id;
               return (
                 <button
                   key={tab.id}
@@ -159,8 +177,8 @@ export function SettingsPage() {
             </div>
           )}
 
-          <div key={activeTab} className="view-fade">
-            {activeTab === "profile" && (
+          <div key={currentTab} className="view-fade">
+            {currentTab === "profile" && (
               <ProfileSettings
                 auth={auth}
                 onSave={() => { addToast("Profile settings saved!"); }}
@@ -168,18 +186,20 @@ export function SettingsPage() {
               />
             )}
 
-            {activeTab === "actions" && (
+            {currentTab === "actions" && (
               <ActionVisibilitySettings />
             )}
 
-            {activeTab === "ai" && canManageSystem && (
+            {currentTab === "preferences" && <PreferencesSettings />}
+
+            {currentTab === "ai" && canManageSystem && (
               <AISettings
                 auth={auth}
                 onSaveComplete={(msg) => addToast(msg)}
               />
             )}
 
-            {activeTab === "database" && canManageSystem && (
+            {currentTab === "database" && canManageSystem && (
               <DatabaseStatusSection
                 status={databaseStatus}
                 loading={databaseLoading}
@@ -188,7 +208,7 @@ export function SettingsPage() {
               />
             )}
 
-            {activeTab === "background" && (
+            {currentTab === "background" && (
               <BgControls />
             )}
           </div>

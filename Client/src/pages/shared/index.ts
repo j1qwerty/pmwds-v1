@@ -56,6 +56,8 @@ export {
   useActionVisibility,
   ACTION_VISIBILITY_ENTITIES,
   ACTION_VISIBILITY_STORAGE_KEY,
+  bindActionVisibilityUser,
+  actionVisibilityKeyFor,
   type ActionVisibilityEntity,
   type ActionVisibilityMode,
   type ActionVisibilitySettings,

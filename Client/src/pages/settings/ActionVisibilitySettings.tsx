@@ -1,5 +1,6 @@
 import { Icon } from "../../components/ui/Icon";
 import {
+  usePermission,
   SectionCard,
   HoverActions,
   getStatusColor,
@@ -10,6 +11,7 @@ import {
   type ActionVisibilityEntity,
   type ActionVisibilityMode,
 } from "../shared";
+import { ENTITY_ACCESS } from "./entityAccess";
 
 /**
  * Settings → "Row & card actions"
@@ -106,12 +108,23 @@ function EffectiveBadge({ mode }: { mode: ActionVisibilityMode }) {
 function ActionVisibilitySettingsBody() {
   const { settings, modeFor, setGlobal, setEntity, reset } = useActionVisibility();
   const { addToast } = useToast();
+  const perm = usePermission();
+
+  // Only the areas this person can open. Overrides saved for an area they later
+  // lose access to are kept, just not shown.
+  const accessibleEntities = ACTION_VISIBILITY_ENTITIES.filter((entity) =>
+    perm.hasAny(...ENTITY_ACCESS[entity]),
+  );
+  // The live preview follows the first area the person has, so it never shows a
+  // setting they cannot change.
+  const previewEntity: ActionVisibilityEntity = accessibleEntities[0] ?? "projects";
+  const previewMeta = ENTITY_META[previewEntity];
 
   const demoAction = (label: string) => () =>
-    addToast(`Demo only — "${label}" (live preview of the Projects setting)`);
+    addToast(`Demo only — "${label}" (live preview of the ${previewMeta.label} setting)`);
 
   const planning = getStatusColor("Planning");
-  const previewEffective = modeFor("projects");
+  const previewEffective = modeFor(previewEntity);
 
   return (
     <SectionCard
@@ -154,8 +167,15 @@ function ActionVisibilitySettingsBody() {
         <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
           Per-area overrides
         </p>
+        <p className="text-xs text-slate-400 mt-0.5">Only areas your role can open are listed.</p>
         <div className="mt-1 divide-y divide-slate-100">
-          {ACTION_VISIBILITY_ENTITIES.map((entity) => {
+          {accessibleEntities.length === 0 && (
+            <p className="py-4 text-xs text-slate-500">
+              Your role does not open any pages with row or card actions yet. The global setting above still applies
+              if that changes.
+            </p>
+          )}
+          {accessibleEntities.map((entity) => {
             const meta = ENTITY_META[entity];
             const override = settings.entities[entity]; // undefined = inherit
             return (
@@ -198,21 +218,21 @@ function ActionVisibilitySettingsBody() {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Project
+                {previewMeta.label}
               </p>
               <h4 className="text-sm font-bold text-slate-800 leading-tight mt-0.5 truncate">
-                Website Redesign
+                Sample {previewMeta.label.toLowerCase()} card
               </h4>
-              <p className="text-xs text-slate-500 mt-0.5">8 tasks · 3 milestones · due Aug 30</p>
+              <p className="text-xs text-slate-500 mt-0.5">{previewMeta.hint}</p>
             </div>
             <HoverActions
-              entity="projects"
+              entity={previewEntity}
               align="right"
               size="sm"
               always={[
                 {
                   icon: "delete",
-                  label: "Delete project (demo)",
+                  label: `Delete ${previewMeta.label.toLowerCase()} (demo)`,
                   tone: "danger",
                   onClick: demoAction("Delete"),
                 },
@@ -220,13 +240,13 @@ function ActionVisibilitySettingsBody() {
               onHover={[
                 {
                   icon: "view",
-                  label: "View project (demo)",
+                  label: `View ${previewMeta.label.toLowerCase()} (demo)`,
                   tone: "default",
                   onClick: demoAction("View"),
                 },
                 {
                   icon: "edit",
-                  label: "Edit project (demo)",
+                  label: `Edit ${previewMeta.label.toLowerCase()} (demo)`,
                   tone: "primary",
                   onClick: demoAction("Edit"),
                 },
@@ -249,7 +269,7 @@ function ActionVisibilitySettingsBody() {
         </div>
 
         <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-          This demo card uses the <span className="font-semibold text-slate-700">Projects</span>{" "}
+          This demo card uses the <span className="font-semibold text-slate-700">{previewMeta.label}</span>{" "}
           setting above — switch between Default / Hover / Always and watch it update live.
         </p>
       </div>

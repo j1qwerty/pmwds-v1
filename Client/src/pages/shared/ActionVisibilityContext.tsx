@@ -14,7 +14,7 @@ import type { JSX, ReactNode } from "react";
  *              actions area itself) is hovered / keyboard-focused
  *   "always" → secondary actions are always visible
  *
- * Stored in localStorage under "pmwds.actionVisibility.v1" as:
+ * Stored in localStorage PER USER under "pmwds.actionVisibility.v1:<userId>" as:
  *   { global: ActionVisibilityMode, entities: Partial<Record<ActionVisibilityEntity, ActionVisibilityMode>> }
  *
  * Architecture: the source of truth is a module-level store (single source,
@@ -38,7 +38,35 @@ export type ActionVisibilityEntity =
 
 export type ActionVisibilityMode = "hover" | "always";
 
+/**
+ * Legacy, browser-wide key. Settings used to be shared by everyone who signed in
+ * on the same browser; they are now stored per user. The legacy value is copied
+ * to the first user who binds after the upgrade, then removed (see migrateLegacy).
+ */
 export const ACTION_VISIBILITY_STORAGE_KEY = "pmwds.actionVisibility.v1";
+
+/** Same key the AuthProvider persists the session under (auth.tsx). */
+const AUTH_STORAGE_KEY = "pmwds-client-auth";
+
+export function actionVisibilityKeyFor(userId: string | null | undefined): string {
+  return userId ? `${ACTION_VISIBILITY_STORAGE_KEY}:${userId}` : ACTION_VISIBILITY_STORAGE_KEY;
+}
+
+/**
+ * The signed-in user's id, read straight from the persisted session. Needed at
+ * module load so the very first paint already uses the right user's settings,
+ * before React (and therefore useAuth) exists.
+ */
+function peekStoredUserId(): string | null {
+  try {
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { userId?: unknown };
+    return typeof parsed.userId === "string" && parsed.userId ? parsed.userId : null;
+  } catch {
+    return null;
+  }
+}
 
 /** Canonical entity order (used by the settings section and callers). */
 export const ACTION_VISIBILITY_ENTITIES: readonly ActionVisibilityEntity[] = [
@@ -110,17 +138,39 @@ function parseSettings(raw: string | null): ActionVisibilitySettings {
   }
 }
 
-function readStoredSettings(): ActionVisibilitySettings {
+/**
+ * One-time upgrade: hand the old browser-wide value to the first user who needs
+ * it, then delete it so the next user on this browser starts from defaults
+ * instead of inheriting someone else's choices.
+ */
+function migrateLegacy(userKey: string): string | null {
+  if (userKey === ACTION_VISIBILITY_STORAGE_KEY) return null;
   try {
-    return parseSettings(localStorage.getItem(ACTION_VISIBILITY_STORAGE_KEY));
+    const legacy = localStorage.getItem(ACTION_VISIBILITY_STORAGE_KEY);
+    if (!legacy) return null;
+    localStorage.setItem(userKey, legacy);
+    localStorage.removeItem(ACTION_VISIBILITY_STORAGE_KEY);
+    return legacy;
+  } catch {
+    return null;
+  }
+}
+
+function readStoredSettings(key: string): ActionVisibilitySettings {
+  try {
+    const raw = localStorage.getItem(key) ?? migrateLegacy(key);
+    return parseSettings(raw);
   } catch {
     return freshDefaults();
   }
 }
 
+/** Storage key of the user the module store is currently bound to. */
+let activeKey = actionVisibilityKeyFor(peekStoredUserId());
+
 function persist(next: ActionVisibilitySettings): void {
   try {
-    localStorage.setItem(ACTION_VISIBILITY_STORAGE_KEY, JSON.stringify(next));
+    localStorage.setItem(activeKey, JSON.stringify(next));
   } catch {
     // localStorage unavailable / full — in-memory state still updates for this session
   }
@@ -128,7 +178,7 @@ function persist(next: ActionVisibilitySettings): void {
 
 // ─── Module-level store (single source of truth) ────────────────────
 
-let store: ActionVisibilitySettings = readStoredSettings();
+let store: ActionVisibilitySettings = readStoredSettings(activeKey);
 const listeners = new Set<() => void>();
 
 function subscribe(listener: () => void): () => void {
@@ -184,10 +234,24 @@ function reset(): void {
   updateStore(() => freshDefaults());
 }
 
+/**
+ * Point the store at a user. Call whenever the signed-in user changes (login,
+ * logout, account switch) so one person's settings never leak into another's
+ * session on a shared browser. Passing null (signed out) resets to defaults
+ * in memory without touching anyone's saved settings.
+ */
+export function bindActionVisibilityUser(userId: string | null | undefined): void {
+  const nextKey = actionVisibilityKeyFor(userId);
+  if (nextKey === activeKey) return;
+  activeKey = nextKey;
+  store = userId ? readStoredSettings(nextKey) : freshDefaults();
+  notify();
+}
+
 // Cross-tab sync (nice-to-have): react to writes from other tabs.
 if (typeof window !== "undefined") {
   window.addEventListener("storage", (event: StorageEvent) => {
-    if (event.key !== ACTION_VISIBILITY_STORAGE_KEY) return;
+    if (event.key !== activeKey) return;
     store = event.newValue ? parseSettings(event.newValue) : freshDefaults();
     notify();
   });
