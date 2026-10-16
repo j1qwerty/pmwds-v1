@@ -142,6 +142,7 @@ export function UtilizationCertificates({
   tasks = [],
 }: UtilizationCertificatesProps) {
   const { auth } = useAuth();
+  const token = auth?.token;
   const perm = usePermission();
   const { addToast } = useToast();
 
@@ -178,15 +179,15 @@ export function UtilizationCertificates({
   );
 
   const load = useCallback(async () => {
-    if (!auth?.token || !projectId || !canView) {
+    if (!token || !projectId || !canView) {
       setLoading(false);
       return;
     }
     setLoading(true);
     try {
       const [items, capabilities] = await Promise.all([
-        api.getProjectUtilizationCertificates(auth.token, projectId),
-        api.getUtilizationCertificateUploadCapabilities(auth.token, projectId),
+        api.getProjectUtilizationCertificates(token, projectId),
+        api.getUtilizationCertificateUploadCapabilities(token, projectId),
       ]);
       setCertificates(items);
       setUploadCapabilities(capabilities);
@@ -196,7 +197,7 @@ export function UtilizationCertificates({
     } finally {
       setLoading(false);
     }
-  }, [auth?.token, projectId, canView]);
+  }, [token, projectId, canView]);
 
   useEffect(() => {
     void load();
