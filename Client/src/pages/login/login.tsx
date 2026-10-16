@@ -561,7 +561,6 @@ function DemoAccountsPanel({
   groups,
   onPick,
   loading,
-  variant,
 }: {
   groups: typeof demoAccountGroups;
   onPick: (email: string) => void;

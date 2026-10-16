@@ -73,7 +73,6 @@ export default function TaskPerformanceTable({
 }: TaskPerformanceProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [canDelete, setCanDelete] = useState(false);
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
@@ -223,7 +222,7 @@ export default function TaskPerformanceTable({
 
     const query = searchTerm.toLowerCase();
     
-    let result = tasks.filter(task => {
+    const result = tasks.filter(task => {
       if (task.parentTaskId) return false;
       
       // Search filter
@@ -254,11 +253,12 @@ export default function TaskPerformanceTable({
           case "progress":
             comparison = (a.progressPercentage || 0) - (b.progressPercentage || 0);
             break;
-          case "dueDate":
+          case "dueDate": {
             const dateA = a.dueDate ? new Date(a.dueDate).getTime() : 0;
             const dateB = b.dueDate ? new Date(b.dueDate).getTime() : 0;
             comparison = dateA - dateB;
             break;
+          }
         }
         
         return sortDirection === "asc" ? comparison : -comparison;
