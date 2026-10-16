@@ -37,7 +37,7 @@ function CodeString({ config }: { config: BgConfig }) {
     lines.push(`    patterns: {`);
     for (const { key } of activePatterns) {
       const p = config.patterns[key];
-      lines.push(`      ${key}: { enabled: true, color: "${p.color}", opacity: ${p.opacity}, size: ${p.size}, strokeWidth: ${p.strokeWidth}${'angle' in p ? `, angle: ${(p as any).angle}` : ''} },`);
+      lines.push(`      ${key}: { enabled: true, color: "${p.color}", opacity: ${p.opacity}, size: ${p.size}, strokeWidth: ${p.strokeWidth}${'angle' in p ? `, angle: ${p.angle}` : ''} },`);
     }
     lines.push(`    },`);
   }
@@ -177,7 +177,7 @@ export function BgControls() {
                     <RangeInput label="Size" value={p.size} min={8} max={120} step={1} onChange={(v) => updatePattern(key, { size: v })} unit="px" />
                     <RangeInput label="Stroke" value={p.strokeWidth} min={0.1} max={3} step={0.1} onChange={(v) => updatePattern(key, { strokeWidth: v })} unit="px" />
                     {'angle' in p && (
-                      <RangeInput label="Angle" value={(p as any).angle} min={0} max={360} step={1} onChange={(v) => updatePattern(key, { angle: v })} unit="deg" />
+                      <RangeInput label="Angle" value={p.angle} min={0} max={360} step={1} onChange={(v) => updatePattern(key, { angle: v })} unit="deg" />
                     )}
                   </div>
                 );
