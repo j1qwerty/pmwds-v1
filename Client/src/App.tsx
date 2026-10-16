@@ -8,7 +8,7 @@ import { LoadingPage } from "./pages/shared";
 import { PageSkeleton } from "./pages/shared/Skeleton";
 import { NoAccessPage } from "./pages/shared/NoAccessPage";
 import { RoutePermissionGuard } from "./pages/shared/PermissionControls";
-import { PERMISSION_GROUPS, Permission } from "./permissions";
+import { PERMISSION_GROUPS } from "./permissions";
 import { lazyPage, whenIdle } from "./lib/lazyPage";
 import { registerRoutePreload } from "./lib/routePreload";
 import { bindActionVisibilityUser } from "./pages/shared/ActionVisibilityContext";

@@ -19,5 +19,11 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // Keep existing effect-driven UI state updates visible during migration.
+      "react-hooks/set-state-in-effect": "warn",
+      // Shared context modules export hooks and helpers alongside components.
+      "react-refresh/only-export-components": "warn",
+    },
   },
 ])

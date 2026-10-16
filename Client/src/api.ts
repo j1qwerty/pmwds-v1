@@ -12,7 +12,6 @@ import type {
   AuthResponse,
   BurnoutRiskRecord,
   ChatResponse,
-  DashboardData,
   ProjectDashboardData,
   DatabaseStatus,
   DashboardRecord,
