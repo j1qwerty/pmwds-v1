@@ -71,7 +71,6 @@ export function TaskFormModal({
   milestones,
   users,
   organizationId,
-  roles = [],
   onSubmit,
   onClose,
 }: TaskFormModalProps) {

@@ -1,4 +1,4 @@
-import type { Project } from "../../../types";
+import type { Project, User } from "../../../types";
 import { formatDate, formatLakhs } from "../../../lib/formatters";
 import { GlassCard, getStatusColor, getPriorityColor } from "../../shared/index";
 import { Avatar } from "../../shared/Avatar";
@@ -15,7 +15,7 @@ interface ProjectBasicDetailsProps {
   onDelete?: () => void;
   onStatusChange?: (status: string) => void;
   bare?: boolean;
-  users?: any[];
+  users?: User[];
   milestonesCount?: number;
   onClose?: () => void;
   pendingWarning?: {
@@ -48,14 +48,13 @@ export function ProjectBasicDetails({
   setPendingWarning,
   handleForceComplete,
 }: ProjectBasicDetailsProps) {
-  const [animatedProgress, setAnimatedProgress] = useState(0);
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
 
   const statusColors = useMemo(() => getStatusColor(project.status), [project.status]);
   const priorityColors = useMemo(() => getPriorityColor(project.priority), [project.priority]);
 
   const manager = useMemo(
-    () => users?.find((u: any) => u.id === project.projectManagerId),
+    () => users?.find((u) => u.id === project.projectManagerId),
     [users, project.projectManagerId]
   );
 
@@ -63,10 +62,6 @@ export function ProjectBasicDetails({
     () => Math.min(Math.max(project.progressPercentage || 0, 0), 100),
     [project.progressPercentage]
   );
-
-  useEffect(() => {
-    setAnimatedProgress(progressPercentage);
-  }, [progressPercentage]);
 
   // Close dropdown on outside click
   useEffect(() => {

@@ -50,10 +50,6 @@ function sortModels(models: AIModel[], favIds: string[]): AIModel[] {
   });
 }
 
-function modelKey(m: AIModel) {
-  return `${m.provider}::${m.id}`;
-}
-
 // ─── Component ──────────────────────────────────────────────────────
 
 interface AISettingsProps {

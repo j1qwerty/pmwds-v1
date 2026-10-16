@@ -35,7 +35,6 @@ export function TaskSubtaskCard({
   canEdit,
   permissionEdit,
   canCreateSubtask,
-  onViewTask,
   onEditTask,
   getProgressColor,
   onAddSubtask,

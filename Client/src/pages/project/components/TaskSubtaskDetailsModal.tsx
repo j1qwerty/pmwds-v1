@@ -15,8 +15,8 @@ interface TaskSubtaskDetailsProps {
   users: User[];
   project?: Project | null;
   milestone?: Milestone | null;
-  recommendation?: any;
-  delay?: any;
+  recommendation?: unknown;
+  delay?: unknown;
   /** Progress/status/comment editing → PUT /tasks/{id} → Tasks.Edit. */
   canEdit?: boolean;
   permissionEdit?: string;
@@ -57,7 +57,6 @@ function TaskSubtaskDetailsModalInner({
   onStatusChange = () => {},
   onEdit,
   onUpdateProgress = () => {},
-  onAddComment = () => {},
   onRefresh = () => {},
   onEscalate,
   onMessage,
@@ -103,7 +102,7 @@ function TaskSubtaskDetailsModalInner({
     setProgress(Math.max(0, Math.min(100, pct)));
   };
 
-  const handleProgressDrag = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleProgressDrag = () => {
     if (!mayEdit || hasSubTasks) return;
     const onMouseMove = (moveEvent: MouseEvent) => {
       if (!progressBarRef.current) return;
