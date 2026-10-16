@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import { useAppData } from "../../appData";
-import type { Department, OrganizationRecord, User, UserProfileRecord } from "../../types";
+import type { Department, User, UserProfileRecord } from "../../types";
 import { roleDisplayNames } from "../../permissions";
 import { Icon } from "../../components/ui/Icon";
 import {
