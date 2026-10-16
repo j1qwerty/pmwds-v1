@@ -117,7 +117,6 @@ export function BgControls() {
     saveCustomPreset(saveName.trim(), config);
     setSavedPresets(loadSavedPresets());
     setSaveName('');
-    setShowSave(false);
   };
 
   const handleDelete = (id: string) => {
