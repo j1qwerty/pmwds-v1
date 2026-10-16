@@ -30,7 +30,7 @@ import {
   getDepartmentColor,
 } from "../shared/index";
 import { useUserOrganization } from "../shared/useUserOrganization";
-import { LazyNewProjectPage, WizardBoundary, useWarmWizard, preloadWizard } from "../NewProject/lazyWizard";
+import { LazyNewProjectPage, WizardBoundary, useWarmWizard } from "../NewProject/lazyWizard";
 import { Icon } from "../../components/ui/Icon";
 import { formatLakhs } from "../../lib/formatters";
 import {

@@ -28,8 +28,10 @@ export function ProgressStatusEditor({ progress, status, mayEdit, onChange, enti
   const progressInputRef = useRef(progressInput);
   const selectedStatusRef = useRef(selectedStatus);
 
-  progressInputRef.current = progressInput;
-  selectedStatusRef.current = selectedStatus;
+  useEffect(() => {
+    progressInputRef.current = progressInput;
+    selectedStatusRef.current = selectedStatus;
+  }, [progressInput, selectedStatus]);
 
   const currentProgress = Math.min(100, Math.max(0, Number(progressInput) || 0));
   const progressGradient = getProgressGradient(currentProgress);

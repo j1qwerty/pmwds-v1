@@ -5,7 +5,7 @@ import { useAuth } from "./auth";
 import { preloadRoute } from "./lib/routePreload";
 import { useAppData } from "./appData";
 import { onStatusChanged, type RealtimeStatus } from "./realtime";
-import { Avatar, NavHeaderProvider, NavHeader, NavActionButton, usePermission, BgRenderer, CommandPaletteProvider, useCommandPalette } from "./pages/shared";
+import { Avatar, NavHeaderProvider, NavHeader, NavActionButton, usePermission, CommandPaletteProvider, useCommandPalette } from "./pages/shared";
 import { PERMISSION_GROUPS } from "./permissions";
 import { SHOW_CHAT_BUTTON, SHOW_SKILLS_PAGE } from "./featureFlags";
 import { roleDisplayNames } from "./permissions";
@@ -236,7 +236,7 @@ function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const { auth, logout } = useAuth();
   const perm = usePermission();
-  const { data, refresh, loading, unreadNotificationCount } = useAppData();
+  const { refresh, loading, unreadNotificationCount } = useAppData();
 
   const [sidebarCompact, setSidebarCompact] = useState(() => getUserPreferences().sidebarCompact);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -257,34 +257,20 @@ function Layout({ children }: { children: React.ReactNode }) {
   const realtimeOffline =
     realtimeStatus === "disconnected" || realtimeStatus === "reconnecting";
 
-  // Track screen size for responsive behavior
-  const [isMobile, setIsMobile] = useState(false);
-  const [isTablet, setIsTablet] = useState(false);
-
   // The server's own unread total. Counting `data.notifications` would cap the badge at the
   // size of that list's first page, and it used to be permanently zero because the list was
   // never populated at all - which is why the red dot and badge never appeared.
   const unreadCount = unreadNotificationCount;
 
-  // Responsive breakpoint detection. matchMedia only fires when a breakpoint is
-  // actually crossed, unlike a window "resize" listener that fires every frame
-  // of a drag.
+  // Auto-collapse the sidebar when the viewport enters tablet range.
   useEffect(() => {
-    const mobileQuery = window.matchMedia("(max-width: 767px)");
     const tabletQuery = window.matchMedia("(min-width: 768px) and (max-width: 1023px)");
     const apply = () => {
-      setIsMobile(mobileQuery.matches);
-      setIsTablet(tabletQuery.matches);
-      // Auto-collapse sidebar on tablet
       if (tabletQuery.matches) setSidebarCompact(true);
     };
     apply();
-    mobileQuery.addEventListener("change", apply);
     tabletQuery.addEventListener("change", apply);
-    return () => {
-      mobileQuery.removeEventListener("change", apply);
-      tabletQuery.removeEventListener("change", apply);
-    };
+    return () => tabletQuery.removeEventListener("change", apply);
   }, []);
 
   const navGroups: Array<{

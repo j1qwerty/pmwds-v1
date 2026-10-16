@@ -4,7 +4,7 @@ import { useAppData } from "../../appData";
 import { useAuth } from "../../auth";
 import { onDataChanged } from "../../realtime";
 import { REALTIME_SCOPES } from "../../realtimeScopes";
-import type { BurnoutRiskRecord, Project, ProjectHealth, Task } from "../../types";
+import type { BurnoutRiskRecord, DelayPrediction, Project, ProjectHealth, Task } from "../../types";
 import {
   LoadingPage,
   OrganizationDepartmentFilter,
@@ -44,7 +44,7 @@ export function AIPage() {
   const [escalated, setEscalated] = useState<Task[]>([]);
   const [burnout, setBurnout] = useState<BurnoutRiskRecord[]>([]);
   const [health, setHealth] = useState<ProjectHealth | null>(null);
-  const [delay, setDelay] = useState<any>(null);
+  const [delay, setDelay] = useState<DelayPrediction | null>(null);
   const [provider, setProvider] = useState("OpenRouter");
   const [model, setModel] = useState("");
   const [chatPrompt, setChatPrompt] = useState("Summarize the highest operational risk in the current delivery portfolio.");

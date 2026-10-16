@@ -1,8 +1,13 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from "react";
 
-type Loader<T extends ComponentType<any>> = () => Promise<{ default: T }>;
+// React's ComponentType is contravariant in props. This alias accepts lazy components
+// with different prop signatures while preserving each component's inferred type.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyComponent = ComponentType<any>;
 
-export type PreloadableLazy<T extends ComponentType<any>> = LazyExoticComponent<T> & {
+type Loader<T extends AnyComponent> = () => Promise<{ default: T }>;
+
+export type PreloadableLazy<T extends AnyComponent> = LazyExoticComponent<T> & {
   preload: () => Promise<unknown>;
 };
 
@@ -10,7 +15,7 @@ export type PreloadableLazy<T extends ComponentType<any>> = LazyExoticComponent<
  * React.lazy + a preload handle. Call `Component.preload()` on hover/focus/idle
  * so the chunk is already in cache by the time the user clicks.
  */
-export function lazyPage<T extends ComponentType<any>>(loader: Loader<T>): PreloadableLazy<T> {
+export function lazyPage<T extends AnyComponent>(loader: Loader<T>): PreloadableLazy<T> {
   let cached: Promise<{ default: T }> | null = null;
   // Drop a failed import (e.g. stale chunk after a deploy) so the next try refetches.
   const load = () =>

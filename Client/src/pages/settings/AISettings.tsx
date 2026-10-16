@@ -50,10 +50,6 @@ function sortModels(models: AIModel[], favIds: string[]): AIModel[] {
   });
 }
 
-function modelKey(m: AIModel) {
-  return `${m.provider}::${m.id}`;
-}
-
 // ─── Component ──────────────────────────────────────────────────────
 
 interface AISettingsProps {
@@ -95,7 +91,9 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
   const [modelCache, setModelCache] = useState<ModelCache>(() => LS.get<ModelCache>(LS.CACHE, {}));
 
   const settingsRef = useRef(aiSettings);
-  settingsRef.current = aiSettings;
+  useEffect(() => {
+    settingsRef.current = aiSettings;
+  }, [aiSettings]);
 
   // ── Load on mount ──
   useEffect(() => {

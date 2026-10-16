@@ -21,7 +21,6 @@ import { lakhsToRupees } from "../../lib/formatters";
 import { todayInputValue } from "../../lib/datetime";
 import {
   useToast,
-  LoadingPage,
   usePermission,
 } from "../shared";
 import { Icon } from "../../components/ui/Icon";
@@ -517,7 +516,7 @@ const [startDate, setStartDate] = useState(() => todayInputValue());
   };
 
   const scopedDepartments = useMemo(() => {
-    let filtered = allDepartments;
+    const filtered = allDepartments;
     if (shouldFilterByOrg && userOrganizationId) {
       const orgFiltered = filtered.filter((d) => d.organizationId === userOrganizationId);
       // Fall back to the full server-scoped list instead of an empty
@@ -597,7 +596,6 @@ const [startDate, setStartDate] = useState(() => todayInputValue());
             {visibleSteps.map((step, idx) => {
               const completed = idx < currentStep;
               const active = idx === currentStep;
-              const pending = idx > currentStep;
               const clickable = idx < currentStep || isStepComplete(currentStep);
 
               return (

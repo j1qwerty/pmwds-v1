@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import type { BgConfig, BgPreset, BgPatternType } from './types';
+import type { BgConfig, BgPreset, BgPatternType, BgDiagonalPatternConfig } from './types';
 import { BgRenderer } from './BgRenderer';
-import { DEFAULT_CONFIG, BUILTIN_PRESETS, loadSavedPresets, saveCustomPreset, deleteCustomPreset } from './presets';
+import { DEFAULT_CONFIG, loadSavedPresets, saveCustomPreset, deleteCustomPreset } from './presets';
 
 const ANIM_OPTIONS: { value: string; label: string }[] = [
   { value: 'none', label: 'None' },
@@ -37,7 +37,7 @@ function CodeString({ config }: { config: BgConfig }) {
     lines.push(`    patterns: {`);
     for (const { key } of activePatterns) {
       const p = config.patterns[key];
-      lines.push(`      ${key}: { enabled: true, color: "${p.color}", opacity: ${p.opacity}, size: ${p.size}, strokeWidth: ${p.strokeWidth}${'angle' in p ? `, angle: ${(p as any).angle}` : ''} },`);
+      lines.push(`      ${key}: { enabled: true, color: "${p.color}", opacity: ${p.opacity}, size: ${p.size}, strokeWidth: ${p.strokeWidth}${'angle' in p ? `, angle: ${p.angle}` : ''} },`);
     }
     lines.push(`    },`);
   }
@@ -102,13 +102,11 @@ export function BgControls() {
   const [savedPresets, setSavedPresets] = useState<BgPreset[]>([]);
   const [showCode, setShowCode] = useState(false);
   const [saveName, setSaveName] = useState('');
-  const [showSave, setShowSave] = useState(false);
 
   useEffect(() => { setSavedPresets(loadSavedPresets()); }, []);
 
-  const update = <K extends keyof BgConfig>(key: K, value: BgConfig[K]) => setConfig((prev) => ({ ...prev, [key]: value }));
   const updateGradient = <K extends keyof BgConfig['gradient']>(key: K, value: BgConfig['gradient'][K]) => setConfig((prev) => ({ ...prev, gradient: { ...prev.gradient, [key]: value } }));
-  const updatePattern = (name: BgPatternType, patch: Partial<BgConfig['patterns'][BgPatternType]>) => setConfig((prev) => ({ ...prev, patterns: { ...prev.patterns, [name]: { ...prev.patterns[name], ...patch } } }));
+  const updatePattern = (name: BgPatternType, patch: Partial<BgDiagonalPatternConfig>) => setConfig((prev) => ({ ...prev, patterns: { ...prev.patterns, [name]: { ...prev.patterns[name], ...patch } } }));
   const updateWaves = <K extends keyof BgConfig['waves']>(key: K, value: BgConfig['waves'][K]) => setConfig((prev) => ({ ...prev, waves: { ...prev.waves, [key]: value } }));
   const updateBlobs = <K extends keyof BgConfig['blobs']>(key: K, value: BgConfig['blobs'][K]) => setConfig((prev) => ({ ...prev, blobs: { ...prev.blobs, [key]: value } }));
 
@@ -119,7 +117,6 @@ export function BgControls() {
     saveCustomPreset(saveName.trim(), config);
     setSavedPresets(loadSavedPresets());
     setSaveName('');
-    setShowSave(false);
   };
 
   const handleDelete = (id: string) => {
@@ -147,7 +144,7 @@ export function BgControls() {
           <div className="space-y-1 border-b border-gray-200 pb-4">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Pattern Overlays</h3>
             {PATTERN_LIST.map(({ key, label }) => (
-              <Toggle key={key} label={label} enabled={config.patterns[key].enabled} onChange={(v) => updatePattern(key, { enabled: v } as any)} />
+              <Toggle key={key} label={label} enabled={config.patterns[key].enabled} onChange={(v) => updatePattern(key, { enabled: v })} />
             ))}
           </div>
 
@@ -155,7 +152,7 @@ export function BgControls() {
           {config.gradient.enabled && (
             <div className="space-y-3 border-b border-gray-200 pb-4">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Gradient Settings</h3>
-              <SelectInput label="Type" value={config.gradient.type} options={GRADIENT_TYPES} onChange={(v) => updateGradient('type', v as any)} />
+              <SelectInput label="Type" value={config.gradient.type} options={GRADIENT_TYPES} onChange={(v) => updateGradient('type', v as BgConfig['gradient']['type'])} />
               <ColorInput label="Color 1" value={config.gradient.color1} onChange={(v) => updateGradient('color1', v)} />
               <ColorInput label="Color 2" value={config.gradient.color2} onChange={(v) => updateGradient('color2', v)} />
               <ColorInput label="Color 3" value={config.gradient.color3} onChange={(v) => updateGradient('color3', v)} />
@@ -174,12 +171,12 @@ export function BgControls() {
                 return (
                   <div key={key} className="border border-gray-200 rounded-lg p-3 space-y-2 bg-white">
                     <h4 className="text-sm font-semibold">{label}</h4>
-                    <ColorInput label="Color" value={p.color} onChange={(v) => updatePattern(key, { color: v } as any)} />
-                    <RangeInput label="Opacity" value={p.opacity} min={0} max={1} step={0.01} onChange={(v) => updatePattern(key, { opacity: v } as any)} unit="" />
-                    <RangeInput label="Size" value={p.size} min={8} max={120} step={1} onChange={(v) => updatePattern(key, { size: v } as any)} unit="px" />
-                    <RangeInput label="Stroke" value={p.strokeWidth} min={0.1} max={3} step={0.1} onChange={(v) => updatePattern(key, { strokeWidth: v } as any)} unit="px" />
+                    <ColorInput label="Color" value={p.color} onChange={(v) => updatePattern(key, { color: v })} />
+                    <RangeInput label="Opacity" value={p.opacity} min={0} max={1} step={0.01} onChange={(v) => updatePattern(key, { opacity: v })} unit="" />
+                    <RangeInput label="Size" value={p.size} min={8} max={120} step={1} onChange={(v) => updatePattern(key, { size: v })} unit="px" />
+                    <RangeInput label="Stroke" value={p.strokeWidth} min={0.1} max={3} step={0.1} onChange={(v) => updatePattern(key, { strokeWidth: v })} unit="px" />
                     {'angle' in p && (
-                      <RangeInput label="Angle" value={(p as any).angle} min={0} max={360} step={1} onChange={(v) => updatePattern(key, { angle: v } as any)} unit="deg" />
+                      <RangeInput label="Angle" value={p.angle} min={0} max={360} step={1} onChange={(v) => updatePattern(key, { angle: v })} unit="deg" />
                     )}
                   </div>
                 );
@@ -207,8 +204,8 @@ export function BgControls() {
               <ColorInput label="Color 1" value={config.blobs.color1} onChange={(v) => updateBlobs('color1', v)} />
               <ColorInput label="Color 2" value={config.blobs.color2} onChange={(v) => updateBlobs('color2', v)} />
               <RangeInput label="Opacity" value={config.blobs.opacity} min={0} max={0.5} step={0.01} onChange={(v) => updateBlobs('opacity', v)} />
-              <RangeInput label="Count" value={config.blobs.count} min={2} max={4} step={1} onChange={(v) => updateBlobs('count', v as any)} />
-              <SelectInput label="Animation" value={config.blobs.animation} options={ANIM_OPTIONS} onChange={(v) => updateBlobs('animation', v as any)} />
+              <RangeInput label="Count" value={config.blobs.count} min={2} max={4} step={1} onChange={(v) => updateBlobs('count', v as BgConfig['blobs']['count'])} />
+              <SelectInput label="Animation" value={config.blobs.animation} options={ANIM_OPTIONS} onChange={(v) => updateBlobs('animation', v as BgConfig['blobs']['animation'])} />
               {config.blobs.animation !== 'none' && (
                 <>
                   <RangeInput label="Speed" value={config.blobs.speed} min={0.2} max={3} step={0.1} onChange={(v) => updateBlobs('speed', v)} unit="x" />

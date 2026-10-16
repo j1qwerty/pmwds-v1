@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import { useAppData } from "../../appData";
-import type { Department, OrganizationRecord, User, UserProfileRecord } from "../../types";
+import type { Department, User, UserProfileRecord } from "../../types";
 import { roleDisplayNames } from "../../permissions";
 import { Icon } from "../../components/ui/Icon";
 import {
@@ -382,7 +382,6 @@ export function ProfilesPage() {
                 <ProfileCard
                   user={user}
                   departments={departments}
-                  organizations={organizations}
                   selected={selectedUser?.id === user.id}
                   onSelect={openDetail}
                   canEdit={canManageProfiles}
@@ -482,7 +481,6 @@ export function ProfilesPage() {
 function ProfileCard({
   user,
   departments,
-  organizations,
   selected,
   onSelect,
   canEdit = false,
@@ -490,14 +488,11 @@ function ProfileCard({
 }: {
   user: User;
   departments: Department[];
-  organizations: OrganizationRecord[];
   selected: boolean;
   onSelect: (user: User) => void;
   canEdit?: boolean;
   onEdit?: (user: User) => void;
 }) {
-  const dept = departments.find((d) => d.id === user.departmentId);
-  const org = organizations.find((item) => item.id === (user.organizationId ?? dept?.organizationId));
   const deptLabel = profileDeptLabel(user, departments);
   const isActive = user.isActive !== false;
   const roleLabel = profileRoleLabel(user) || "—";

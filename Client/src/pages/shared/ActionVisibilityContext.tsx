@@ -104,8 +104,6 @@ export interface ActionVisibilityContextValue {
 
 // ─── Parsing / persistence ──────────────────────────────────────────
 
-const DEFAULT_SETTINGS: ActionVisibilitySettings = { global: "hover", entities: {} };
-
 function freshDefaults(): ActionVisibilitySettings {
   return { global: "hover", entities: {} };
 }

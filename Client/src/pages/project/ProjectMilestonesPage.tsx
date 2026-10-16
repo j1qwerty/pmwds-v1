@@ -44,7 +44,6 @@ export function ProjectMilestonesPage() {
   const canDeleteMilestones = perm.canModule("delete", "milestone");
   const canCreateTasks = perm.canModule("create", "task");
   const canEditTasks = perm.canModule("edit", "task");
-  const canDeleteTasks = perm.canModule("delete", "task");
   // Dependencies hang off POST|PUT|DELETE /milestones/dependencies, which the
   // server gates on Milestones.Edit / Milestones.Delete.
   const canEditDependencies = canEditMilestones;
@@ -365,12 +364,6 @@ export function ProjectMilestonesPage() {
 
   if (ws.loading) return <LoadingPage label="Loading milestones..." />;
   if (!ws.project) return <ProjectNotFound />;
-
-  const completedMilestones = ws.milestones.filter((m) => m.status === "Completed").length;
-  const criticalMilestones = ws.milestones.filter((m) => m.isCritical).length;
-  const averageProgress = ws.milestones.length
-    ? ws.milestones.reduce((sum, m) => sum + (m.progressPercentage || 0), 0) / ws.milestones.length
-    : 0;
 
   return (
     <div>

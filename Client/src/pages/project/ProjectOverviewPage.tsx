@@ -7,7 +7,6 @@ import { Permission } from "../../permissions";
 import type { Milestone, MilestoneDependency, ProjectDocument } from "../../types";
 import {
   SectionCard,
-  getStatusColor,
   LoadingPage,
   useNavHeader,
 
@@ -682,7 +681,7 @@ export function ProjectOverviewPage() {
                 milestones={sortedMilestones}
                 startDate={ws.project.plannedStartDate}
                 endDate={ws.project.plannedEndDate}
-                onNavigate={(id) => navigate(`/projects/${ws.project!.id}/milestones`)}
+                onNavigate={() => navigate(`/projects/${ws.project!.id}/milestones`)}
               />
             </SectionCard>
 

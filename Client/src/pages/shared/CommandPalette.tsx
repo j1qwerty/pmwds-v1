@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../../auth";
 import { useAppData } from "../../appData";
 import { PERMISSION_GROUPS, usePermission } from "./RoleGate";
 import { Icon } from "../../components/ui/Icon";
@@ -65,7 +64,6 @@ export function CommandPalette({
   /** Page-level extra actions injected by the current screen (optional) */
   actions?: CommandItem[];
 }) {
-  const { auth } = useAuth();
   const { data: appData } = useAppData();
   const perm = usePermission();
   const navigate = useNavigate();
