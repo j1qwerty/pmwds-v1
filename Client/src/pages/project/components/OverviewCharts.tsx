@@ -124,15 +124,14 @@ export function TaskStatusDonut({
 
   const radius = 65;
   const circ = 2 * Math.PI * radius;
-  let offset = 0;
-  const segments = data
-    .filter((d) => d.count > 0)
-    .map((d) => {
-      const len = (d.count / total) * circ;
-      const seg = { ...d, len, offset: -offset };
-      offset += len;
-      return seg;
-    });
+  const visibleData = data.filter((d) => d.count > 0);
+  const segments = visibleData.map((d, index, items) => {
+    const len = (d.count / total) * circ;
+    const offset = items
+      .slice(0, index)
+      .reduce((sum, previous) => sum + (previous.count / total) * circ, 0);
+    return { ...d, len, offset: -offset };
+  });
 
   return (
     <div className="flex flex-col items-center gap-4">

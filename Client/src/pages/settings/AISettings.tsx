@@ -91,7 +91,9 @@ export function AISettings({ auth, onSaveComplete }: AISettingsProps) {
   const [modelCache, setModelCache] = useState<ModelCache>(() => LS.get<ModelCache>(LS.CACHE, {}));
 
   const settingsRef = useRef(aiSettings);
-  settingsRef.current = aiSettings;
+  useEffect(() => {
+    settingsRef.current = aiSettings;
+  }, [aiSettings]);
 
   // ── Load on mount ──
   useEffect(() => {

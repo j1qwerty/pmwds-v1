@@ -58,11 +58,6 @@ export function ProjectBasicDetails({
     [users, project.projectManagerId]
   );
 
-  const progressPercentage = useMemo(
-    () => Math.min(Math.max(project.progressPercentage || 0, 0), 100),
-    [project.progressPercentage]
-  );
-
   // Close dropdown on outside click
   useEffect(() => {
     if (!showStatusDropdown) return;
