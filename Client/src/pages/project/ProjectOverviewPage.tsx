@@ -329,7 +329,7 @@ export function ProjectOverviewPage() {
         <KpiCard label="Overdue" value={overdueCount} color="red" icon="alert-circle" />
       </div>
 
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5">
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[clamp(14rem,24vw,17.5rem)_minmax(0,1fr)] gap-5">
         {/* ── Left Panel: Milestones rail ── */}
         <aside>
           <SectionCard

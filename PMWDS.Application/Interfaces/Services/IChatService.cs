@@ -11,5 +11,6 @@ public interface IChatService
         string contextDossier,
         string? provider = null,
         string? model = null,
+        string? sessionKey = null,
         CancellationToken ct = default);
 }

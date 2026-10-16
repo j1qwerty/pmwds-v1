@@ -85,7 +85,7 @@ export function MilestoneDepartmentsStep({
       {milestones.map((milestone) => (
         <div
           key={milestone.id}
-          className="grid grid-cols-1 md:grid-cols-[1fr_280px] gap-3 items-center p-3 rounded-xl border border-slate-200 bg-white"
+          className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_clamp(14rem,32vw,17.5rem)] gap-3 items-center p-3 rounded-xl border border-slate-200 bg-white"
         >
           <div className="min-w-0">
             <div className="flex items-center gap-2">

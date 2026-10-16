@@ -120,6 +120,12 @@ public record PermissionResponse(
     string Module,
     bool IsGlobal);
 
+/// <summary>
+/// The seeded permission set for a built-in role. HasDefaults is false for custom roles,
+/// which have nothing to restore.
+/// </summary>
+public record RoleDefaultsResponse(bool HasDefaults, List<Guid> PermissionIds);
+
 public record CreateRoleRequest(string Name, string Description, int PermissionLevel, List<Guid> PermissionIds, int? PaginationPageSize = null);
 public record UpdateRoleRequest(string Name, string Description, int PermissionLevel, List<Guid> PermissionIds, int? PaginationPageSize = null);
 public record CreatePermissionRequest(string Code, string Name, string Description, string Module, bool IsGlobal);
@@ -129,7 +135,8 @@ public record UpdatePermissionRequest(string Name, string Description, string Mo
 public record ChatRequest(
     string Message,
     string? Provider = null,
-    string? Model = null);
+    string? Model = null,
+    Guid? ProjectId = null);
 
 public record ProviderTestRequest(
     string? Model = null,

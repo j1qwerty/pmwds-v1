@@ -34,7 +34,7 @@ namespace PMWDS.API.Services;
 /// trips the provider's context limit - which surfaces as a confusing provider
 /// error rather than a clean "too much data" answer.
 /// </summary>
-public class ChatContextBuilder
+public partial class ChatContextBuilder
 {
     /// <summary>
     /// A task row as it appears in the dossier.

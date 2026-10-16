@@ -240,6 +240,7 @@ export const Permission = {
   IntegrationDelete: "INTEGRATION_DELETE",
 
   AiView: "AI_VIEW",
+  AiProjectView: "AI_PROJECT_VIEW",
   AiManage: "AI_MANAGE",
 
   UtilizationCertificateManage: "UTILIZATION_CERTIFICATE_MANAGE",
@@ -364,6 +365,9 @@ export const PERMISSION_GROUPS = {
   },
   ai: {
     view: Permission.AiView,
+    // The AI Insights tab inside a project. Independent of `view`, which is the
+    // portfolio-wide AI page.
+    projectView: Permission.AiProjectView,
     manage: Permission.AiManage,
   },
   utilizationCertificate: {
@@ -495,6 +499,7 @@ export const PERMISSION_COVERAGE: Record<string, readonly string[]> = {
   ],
   [Permission.AiManage]: [
     Permission.AiView,
+    Permission.AiProjectView,
   ],
   [Permission.UtilizationCertificateManage]: [
     Permission.UtilizationCertificateView,

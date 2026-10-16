@@ -93,6 +93,7 @@ internal static class RolesAndPermissionsSeeder
             (PermissionCodes.IntegrationEdit, "Edit Integrations", "Update integrations and webhooks.", "Integrations", true),
             (PermissionCodes.IntegrationDelete, "Delete Integrations", "Delete integrations and webhooks.", "Integrations", true),
             (PermissionCodes.AiView, "View AI", "View AI insights and predictions.", "AI", false),
+            (PermissionCodes.AiProjectView, "View Project AI Insights", "View the AI Insights tab inside a project. Limited to the tasks, milestones, documents and people this role can already see in that project.", "AI", false),
             (PermissionCodes.AiManage, "Manage AI", "Manage AI providers, models, and training data.", "AI", true),
             (PermissionCodes.UtilizationCertificateView, "View Utilization Certificates", "View utilization certificates proving funds were spent as intended.", "Utilization Certificates", false),
             (PermissionCodes.UtilizationCertificateCreate, "Submit Utilization Certificates", "Upload and submit a utilization certificate against a project milestone or task.", "Utilization Certificates", false),
@@ -300,128 +301,14 @@ internal static class RolesAndPermissionsSeeder
     {
         var permissions = await context.Permissions.ToDictionaryAsync(p => p.Code, ct);
         var allPermissionCodes = permissions.Keys.ToArray();
-        var directorPermissionCodes = new[]
-        {
-            PermissionCodes.DepartmentAllManage,
-            PermissionCodes.ProjectAllManage,
-            PermissionCodes.ProjectPrimaryDepartmentManage,
-            PermissionCodes.MilestoneAllManage,
-            PermissionCodes.TaskAllManage,
-            PermissionCodes.SubtaskAllManage,
-            PermissionCodes.UserAllManage,
-            PermissionCodes.NotificationAllManage,
-            PermissionCodes.ActivityLogAllManage,
-            PermissionCodes.ReportAllManage,
-            PermissionCodes.DocumentAllManage,
-            PermissionCodes.KnowledgeAllManage,
-            PermissionCodes.DocumentAllProjectUpload,
-            PermissionCodes.DocumentAllMilestoneUpload,
-            PermissionCodes.DocumentAllTaskUpload,
-            PermissionCodes.UtilizationCertificateAllManage,
-            PermissionCodes.UtilizationCertificateAllProjectUpload,
-            PermissionCodes.UtilizationCertificateAllMilestoneUpload,
-            PermissionCodes.UtilizationCertificateAllTaskUpload,
-            PermissionCodes.RoleManage,
-            PermissionCodes.PermissionManage,
-            PermissionCodes.AiView,
-            PermissionCodes.AiManage
-        };
-        var projectManagerPermissionCodes = new[]
-        {
-            PermissionCodes.DepartmentOwnView,
-            // All-department read so a project manager can pick the departments a
-            // project spans. Without it RoleScopeService.ScopeDepartmentsAsync falls
-            // back to DepartmentOwn* and offers only the manager's own department,
-            // which makes a cross-department project impossible to create.
-            PermissionCodes.DepartmentAllView,
-            PermissionCodes.ProjectAllManage,
-            PermissionCodes.ProjectPrimaryDepartmentManage,
-            PermissionCodes.MilestoneAllManage,
-            PermissionCodes.TaskAllManage,
-            PermissionCodes.SubtaskAllManage,
-            PermissionCodes.UserAllView,
-            PermissionCodes.NotificationOwnView,
-            PermissionCodes.ActivityLogOwnCreate,
-            PermissionCodes.DocumentAllManage,
-            PermissionCodes.DocumentAllProjectUpload,
-            PermissionCodes.DocumentAllMilestoneUpload,
-            PermissionCodes.DocumentAllTaskUpload,
-            PermissionCodes.UtilizationCertificateAllManage,
-            PermissionCodes.UtilizationCertificateAllProjectUpload,
-            PermissionCodes.UtilizationCertificateAllMilestoneUpload,
-            PermissionCodes.UtilizationCertificateAllTaskUpload
-        };
-        var departmentHeadPermissionCodes = new[]
-        {
-            PermissionCodes.DepartmentOwnManage,
-            PermissionCodes.ProjectOwnManage,
-            PermissionCodes.ProjectOwnCreate,
-            PermissionCodes.ProjectPrimaryDepartmentManage,
-            PermissionCodes.MilestoneOwnManage,
-            PermissionCodes.TaskOwnManage,
-            PermissionCodes.SubtaskOwnManage,
-            PermissionCodes.UserOwnManage,
-            PermissionCodes.NotificationOwnView,
-            PermissionCodes.ActivityLogOwnView,
-            PermissionCodes.ActivityLogOwnCreate,
-            PermissionCodes.DocumentOwnView,
-            PermissionCodes.KnowledgeOwnView,
-            PermissionCodes.KnowledgeOwnCreate,
-            PermissionCodes.KnowledgeOwnEdit,
-            PermissionCodes.DocumentOwnCreate,
-            PermissionCodes.DocumentOwnEdit,
-            PermissionCodes.DocumentOwnDelete,
-            PermissionCodes.DocumentOwnMilestoneUpload,
-            PermissionCodes.DocumentOwnTaskUpload,
-            PermissionCodes.UtilizationCertificateOwnView,
-            PermissionCodes.UtilizationCertificateOwnCreate,
-            PermissionCodes.UtilizationCertificateOwnEdit,
-            PermissionCodes.UtilizationCertificateOwnReview,
-            PermissionCodes.UtilizationCertificateOwnMilestoneUpload,
-            PermissionCodes.UtilizationCertificateOwnTaskUpload
-        };
-        var teamMemberPermissionCodes = new[]
-        {
-            PermissionCodes.ProjectOwnView,
-            PermissionCodes.MilestoneOwnView,
-            PermissionCodes.TaskOwnView,
-            PermissionCodes.TaskOwnEdit,
-            PermissionCodes.TaskOwnCommentCreate,
-            PermissionCodes.TaskOwnAttachmentCreate,
-            PermissionCodes.SubtaskOwnView,
-            PermissionCodes.SubtaskOwnCreate,
-            PermissionCodes.SubtaskOwnEdit,
-            PermissionCodes.NotificationOwnView,
-            PermissionCodes.ActivityLogOwnCreate,
-            PermissionCodes.DocumentOwnView,
-            PermissionCodes.KnowledgeOwnView,
-            PermissionCodes.DocumentOwnTaskUpload,
-            PermissionCodes.UtilizationCertificateOwnView,
-            PermissionCodes.UtilizationCertificateOwnCreate,
-            PermissionCodes.UtilizationCertificateOwnEdit,
-            PermissionCodes.UtilizationCertificateOwnTaskUpload
-        };
-        var viewerPermissionCodes = new[]
-        {
-            PermissionCodes.OrganizationView,
-            PermissionCodes.DepartmentOwnView,
-            PermissionCodes.ProjectOwnView,
-            PermissionCodes.MilestoneOwnView,
-            PermissionCodes.TaskOwnView,
-            PermissionCodes.SubtaskOwnView,
-            PermissionCodes.NotificationOwnView,
-            PermissionCodes.ActivityLogOwnView,
-            PermissionCodes.DocumentOwnView,
-            PermissionCodes.UtilizationCertificateOwnView
-        };
         var specs = new[]
         {
             new SeedConstants.RoleSpec(RoleKeys.SuperAdmin, "SuperAdmin", "Full administrative access.", 100, allPermissionCodes),
-            new SeedConstants.RoleSpec(RoleKeys.Director, "Director", "Organization administrator with full access inside one organization.", 90, directorPermissionCodes),
-            new SeedConstants.RoleSpec(RoleKeys.ProjectManager, "ProjectManager", "Manages assigned projects and project teams.", 80, projectManagerPermissionCodes),
-            new SeedConstants.RoleSpec(RoleKeys.DepartmentHead, "DepartmentHead", "Manages department capacity and planning.", 70, departmentHeadPermissionCodes),
-            new SeedConstants.RoleSpec(RoleKeys.TeamMember, "TeamMember", "Contributes to project execution.", 40, teamMemberPermissionCodes),
-            new SeedConstants.RoleSpec(RoleKeys.Viewer, "Viewer", "Read-only access.", 10, viewerPermissionCodes)
+            new SeedConstants.RoleSpec(RoleKeys.Director, "Director", "Organization administrator with full access inside one organization.", 90, RoleDefaults.Director),
+            new SeedConstants.RoleSpec(RoleKeys.ProjectManager, "ProjectManager", "Manages assigned projects and project teams.", 80, RoleDefaults.ProjectManager),
+            new SeedConstants.RoleSpec(RoleKeys.DepartmentHead, "DepartmentHead", "Manages department capacity and planning.", 70, RoleDefaults.DepartmentHead),
+            new SeedConstants.RoleSpec(RoleKeys.TeamMember, "TeamMember", "Contributes to project execution.", 40, RoleDefaults.TeamMember),
+            new SeedConstants.RoleSpec(RoleKeys.Viewer, "Viewer", "Read-only access.", 10, RoleDefaults.Viewer)
         };
 
         foreach (var spec in specs)

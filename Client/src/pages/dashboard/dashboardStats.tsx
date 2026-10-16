@@ -93,7 +93,7 @@ export default function DashboardStats({ projects = [], dashboard }: DashboardSt
   ];
 
   return (
-    <div className="grid grid-cols-5 gap-4">
+    <div className="fluid-grid [--fluid-min:9.5rem]">
       {stats.map((stat) => (
         <MetricStatCard
           key={stat.label}

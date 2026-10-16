@@ -35,10 +35,12 @@ import type {
   Project,
   ProjectDocument,
   ProjectDocumentCapabilities,
+  ProjectAiCapabilities,
   ProjectHealth,
   PredictionResultRecord,
   ReportScheduleRecord,
   ResourceOptimizationRecord,
+  RoleDefaultsRecord,
   RoleRecord,
   TaskAnalysisRecord,
   SkillRecord,
@@ -656,6 +658,9 @@ export const api = {
   updateRole(token: string, id: string, payload: Record<string, unknown>) {
     return request<RoleRecord>(`roles/${id}`, { token, method: "PUT", body: payload });
   },
+  getRoleDefaults(token: string, id: string) {
+    return request<RoleDefaultsRecord>(`roles/${id}/defaults`, { token });
+  },
   deleteRole(token: string, id: string) {
     return request<void>(`roles/${id}`, { token, method: "DELETE" });
   },
@@ -839,12 +844,17 @@ export const api = {
       body: { model, prompt },
     });
   },
-  chat(token: string, message: string, provider?: string, model?: string) {
+  chat(token: string, message: string, provider?: string, model?: string, projectId?: string) {
     return request<ChatResponse>("ai/chat", {
       token,
       method: "POST",
-      body: { message, provider, model },
+      // projectId limits the assistant to one project and to what this person's
+      // role may see of it; omitted for the portfolio-wide AI page.
+      body: { message, provider, model, projectId },
     });
+  },
+  getAiProjectCapabilities(token: string, projectId: string) {
+    return request<ProjectAiCapabilities>(`ai/project/${projectId}/capabilities`, { token });
   },
   getAiBurnoutRisk(token: string, departmentId?: string | null) {
     return request<BurnoutRiskRecord[]>("ai/burnout-risk", {

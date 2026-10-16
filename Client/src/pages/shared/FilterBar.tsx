@@ -60,7 +60,7 @@ export function FilterBar({
       className={`flex flex-wrap items-center gap-2.5 p-2.5 bg-white/97  rounded-xl border border-slate-200/70 shadow-sm ${className}`}
     >
       {onSearchChange && (
-        <div className="relative flex-1 min-w-[220px]">
+        <div className="relative flex-1 min-w-[min(100%,13.75rem)]">
           <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
             <Icon name="search" size={15} />
           </span>

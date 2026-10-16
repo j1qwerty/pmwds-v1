@@ -406,7 +406,7 @@ export function ProjectMilestonesPage() {
         </div>
       )}
 
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[280px_1fr_240px] gap-4">
+      <div className="relative z-10 grid grid-cols-1 xl:grid-cols-[clamp(13rem,18vw,17.5rem)_minmax(0,1fr)_clamp(12rem,16vw,15rem)] gap-4">
         {/* Left: Milestone list */}
         <MilestonesPanel
           milestones={sortedMilestones}

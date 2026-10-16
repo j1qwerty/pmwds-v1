@@ -5,9 +5,7 @@ import { useAuth } from "../../auth";
 import { onDataChanged } from "../../realtime";
 import { REALTIME_SCOPES } from "../../realtimeScopes";
 import type { BurnoutRiskRecord, Project, ProjectHealth, Task } from "../../types";
-import { formatDate, formatPercent } from "../../lib/formatters";
 import {
-  GlassCard,
   LoadingPage,
   OrganizationDepartmentFilter,
   PERMISSION_GROUPS,
@@ -15,7 +13,6 @@ import {
   usePermission,
   useToast,
 } from "../shared";
-import { Icon } from "../../components/ui/Icon";
 import { StatsCards } from "./StatsCards";
 import { ProjectList } from "./ProjectList";
 import { HealthCard } from "./HealthCard";
@@ -27,7 +24,7 @@ import { AIChatPanel } from "./AIChatPanel";
 import { NeuralHeatmap } from "./NeuralHeatmap";
 import { AnomalyFeed } from "./AnomalyFeed";
 import { calculateFallbackBurnout, calculateFallbackDelay, calculateFallbackProjectHealth } from "./aiCalculations";
-import { AIInfoHint } from "./AIInfoHint";
+import { DelayPredictionCard } from "./DelayPredictionCard";
 import type { ChatResponse } from "./chatTypes";
 
 export function AIPage() {
@@ -350,7 +347,7 @@ export function AIPage() {
         />
       </div>
 
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[280px_1fr_320px] gap-6">
+      <div className="relative z-10 grid grid-cols-1 xl:grid-cols-[clamp(12rem,17vw,17.5rem)_minmax(0,1fr)_clamp(14rem,19vw,20rem)] gap-6">
         <div className="flex flex-col gap-5 lg:max-h-150">
           <ProjectList
             projects={visibleProjects}
@@ -393,48 +390,7 @@ export function AIPage() {
         </div>
 
         <div className="flex flex-col gap-5">
-          <GlassCard className="p-5 border border-amber-100/50">
-            <div className="flex items-center justify-between gap-2 mb-4">
-              <div className="flex items-center gap-2">
-                <Icon name="speed" size={18} className="text-amber-500" />
-                <h4 className="text-sm font-bold text-slate-800">Delay Prediction</h4>
-              </div>
-              <AIInfoHint title="Task delay prediction">
-                Delay probability uses the selected task's progress, start date, due date, overdue state, and escalation state. The live-data fallback projects completion from the current delivery rate.
-              </AIInfoHint>
-            </div>
-            {effectiveDelay ? (
-              <div className="space-y-3">
-                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-slate-500">Probability</span>
-                    <span className="font-bold text-amber-600">{formatPercent(effectiveDelay.delayProbability * 100)}</span>
-                  </div>
-                  <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-amber-400 to-red-500 rounded-full" style={{ width: Math.min(effectiveDelay.delayProbability * 100, 100) + "%" }} />
-                  </div>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-500">Risk Level</span>
-                  <span className="font-semibold text-slate-700">{effectiveDelay.riskLevel || "Low"}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-500">Predicted Completion</span>
-                  <span className="font-semibold text-slate-700">{formatDate(effectiveDelay.predictedCompletionDate)}</span>
-                </div>
-                {effectiveDelay.contributingFactors?.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pt-2 border-t border-slate-100">
-                    {effectiveDelay.contributingFactors.map((factor: string) => (
-                      <span key={factor} className="px-2 py-1 rounded-full text-[10px] font-medium bg-amber-50 text-amber-600 border border-amber-100">{factor}</span>
-                    ))}
-                  </div>
-                )}
-                {!delay && <p className="text-[9px] text-amber-500">Calculated from current task data because AI prediction was unavailable.</p>}
-              </div>
-            ) : (
-              <div className="py-8 text-center text-xs text-slate-400">Select a task with delivery data.</div>
-            )}
-          </GlassCard>
+          <DelayPredictionCard delay={effectiveDelay} fromServer={!!delay} />
 
           <BurnoutPanel burnout={burnout} fallbackBurnout={fallbackBurnout} />
         </div>

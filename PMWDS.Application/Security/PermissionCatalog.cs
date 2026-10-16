@@ -93,7 +93,7 @@ public static class PermissionCatalog
             [PermissionCodes.NotificationManage] = new[] { PermissionCodes.NotificationView, PermissionCodes.NotificationBroadcast, PermissionCodes.NotificationTemplateManage, PermissionCodes.NotificationRuleManage },
             [PermissionCodes.ActivityLogManage] = new[] { PermissionCodes.ActivityLogView, PermissionCodes.ActivityLogCreate },
             [PermissionCodes.ReportManage] = new[] { PermissionCodes.ReportView, PermissionCodes.ReportCreate, PermissionCodes.ReportEdit, PermissionCodes.ReportDelete },
-            [PermissionCodes.AiManage] = new[] { PermissionCodes.AiView },
+            [PermissionCodes.AiManage] = new[] { PermissionCodes.AiView, PermissionCodes.AiProjectView },
             [PermissionCodes.UtilizationCertificateManage] = new[]
             {
                 PermissionCodes.UtilizationCertificateView,

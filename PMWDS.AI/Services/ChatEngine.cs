@@ -22,6 +22,7 @@ public interface IChatEngine
         string contextDossier,
         string? provider = null,
         string? model = null,
+        string? sessionKey = null,
         CancellationToken ct = default);
 
     Task<string> GenerateSummaryAsync(
@@ -269,9 +270,14 @@ public class OpenAICompatibleChatEngine : IChatEngine
         string contextDossier,
         string? provider = null,
         string? model = null,
+        string? sessionKey = null,
         CancellationToken ct = default)
     {
-        var session = Sessions.GetOrAdd(userId, _ =>
+        // A project-scoped chat passes its own key (user + project + permission set) so
+        // its history is never mixed with another project's, or with the same person's
+        // history from before their permissions changed. The general chat keeps keying
+        // on the user id alone.
+        var session = Sessions.GetOrAdd(string.IsNullOrWhiteSpace(sessionKey) ? userId : sessionKey, _ =>
             [
                 new ChatMessagePayload("system", BuildSystemPrompt())
             ]);
@@ -290,11 +296,13 @@ public class OpenAICompatibleChatEngine : IChatEngine
             // trim cut it, and every question in a session then saw the union of every
             // earlier question's data, which is both expensive and stale - the answer to
             // "what changed since yesterday" would be answered from yesterday's numbers.
-            session.Add(new ChatMessagePayload(
+            //
+            // The code below used to add the dossier to the session anyway, contradicting
+            // this comment. It is now appended to the request copy only.
+            requestMessages = session.ToList();
+            requestMessages.Add(new ChatMessagePayload(
                 "system",
                 $"DATA DOSSIER for this question (authoritative, already role-scoped):\n{contextDossier}"));
-
-            requestMessages = session.ToList();
         }
 
         var resolvedProvider = await ResolveProviderAsync(provider, ct);

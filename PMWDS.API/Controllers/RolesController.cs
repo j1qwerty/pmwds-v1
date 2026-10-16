@@ -82,7 +82,7 @@ public class RolesController : BaseApiController
         role.UpdatePaginationPageSize(req.PaginationPageSize ?? 10);
         role.SetCreatedBy("system");
 
-        var permissions = await LoadAssignablePermissionsAsync(req.PermissionIds, ct);
+        var permissions = await ResolvePermissionsForSaveAsync(req.PermissionIds, [], ct);
         foreach (var permission in permissions)
         {
             role.AddPermission(permission);
@@ -136,7 +136,7 @@ public class RolesController : BaseApiController
         role.Update(req.Name, req.Description, req.PermissionLevel);
         role.UpdatePaginationPageSize(req.PaginationPageSize ?? role.PaginationPageSize);
 
-        var permissions = await LoadAssignablePermissionsAsync(req.PermissionIds, ct);
+        var permissions = await ResolvePermissionsForSaveAsync(req.PermissionIds, role.Permissions.ToList(), ct);
         var selectedCodes = permissions.Select(permission => permission.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (role.Key == RoleKeys.SuperAdmin && !selectedCodes.Contains(PermissionCodes.SystemAdmin))
         {
@@ -169,6 +169,53 @@ public class RolesController : BaseApiController
 
         await _changes.NotifyAsync(DataChangeScopes.Roles, null, null, ct);
         return Ok(new RoleResponse(role.Id, role.Key, role.Name, role.Description, role.PermissionLevel, role.PaginationPageSize, permissions.Select(MapPermission).ToList()));
+    }
+
+    /// <summary>
+    /// The permissions a built-in role is seeded with, for the role editor's "Restore
+    /// defaults". Nothing is written: the editor loads these into its draft and the person
+    /// still presses Save, which goes through the normal update checks.
+    /// </summary>
+    [HttpGet("{id:guid}/defaults")]
+    [Authorize(Policy = AuthorizationPolicies.RolesEdit)]
+    public async Task<IActionResult> GetRoleDefaults(Guid id, CancellationToken ct)
+    {
+        var role = await _context.Roles.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id, ct);
+        if (role == null)
+        {
+            return NotFound();
+        }
+
+        if (!User.IsInRole(RoleKeys.SuperAdmin))
+        {
+            var userMaxLevel = await GetCurrentUserMaxLevelAsync(ct);
+            if (role.PermissionLevel >= userMaxLevel)
+            {
+                return Forbid();
+            }
+        }
+
+        if (!RoleDefaults.HasDefaults(role.Key))
+        {
+            return Ok(new RoleDefaultsResponse(false, new List<Guid>()));
+        }
+
+        var visible = VisiblePermissionQuery();
+        List<Guid> ids;
+        if (RoleKeys.Normalize(role.Key) == RoleKeys.SuperAdmin)
+        {
+            ids = await visible.Select(p => p.Id).ToListAsync(ct);
+        }
+        else
+        {
+            var defaultCodes = RoleDefaults.ForRole(role.Key)!.ToList();
+            ids = await visible
+                .Where(p => defaultCodes.Contains(p.Code))
+                .Select(p => p.Id)
+                .ToListAsync(ct);
+        }
+
+        return Ok(new RoleDefaultsResponse(true, ids));
     }
 
     [HttpDelete("{id:guid}")]
@@ -372,28 +419,58 @@ public class RolesController : BaseApiController
         return expanded;
     }
 
-    private async Task<List<Permission>> LoadAssignablePermissionsAsync(IReadOnlyCollection<Guid> permissionIds, CancellationToken ct)
+    private async Task<List<Permission>> ResolvePermissionsForSaveAsync(
+        IReadOnlyCollection<Guid> requestedIds,
+        IReadOnlyCollection<Permission> currentlyHeld,
+        CancellationToken ct)
     {
         var userPermissions = await GetCurrentUserPermissionCodesAsync(ct);
+        var isSuperAdmin = User.IsInRole(RoleKeys.SuperAdmin);
 
-        var selected = await VisiblePermissionQuery()
-            .Where(permission => permissionIds.Contains(permission.Id))
+        // Only permissions the editor can actually see are ever submitted: GET /roles and
+        // GET /roles/permissions both filter by module. Anything else is off-limits.
+        var requested = await VisiblePermissionQuery()
+            .Where(permission => requestedIds.Contains(permission.Id))
             .ToListAsync(ct);
 
-        var assignable = selected
-            .Where(p => userPermissions.Contains(p.Code))
-            .Where(p => User.IsInRole(RoleKeys.SuperAdmin) || !PermissionCatalog.AdminOnlyModules.Contains(p.Module))
-            .ToList();
+        var resolved = new List<Permission>();
+        var taken = new HashSet<Guid>();
 
-        var selectedCodes = assignable.Select(p => p.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var coveredCodes = PermissionCatalog.ManagePermissionCoverage
-            .Where(pair => selectedCodes.Contains(pair.Key))
-            .SelectMany(pair => pair.Value)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var permission in requested)
+        {
+            if (CanEdit(permission, userPermissions, isSuperAdmin) && taken.Add(permission.Id))
+            {
+                resolved.Add(permission);
+            }
+        }
 
-        return assignable
-            .Where(p => !coveredCodes.Contains(p.Code))
-            .ToList();
+        // Anything the role already holds that this editor may not touch stays put. It is
+        // never rendered in the editor (wrong module, or a permission the editor does not
+        // hold itself), so the editor cannot have meant to remove it - dropping it would
+        // quietly strip the role on every save by a lower-privileged administrator.
+        foreach (var permission in currentlyHeld)
+        {
+            if (taken.Contains(permission.Id)) continue;
+            if (CanEdit(permission, userPermissions, isSuperAdmin)) continue;
+            if (taken.Add(permission.Id)) resolved.Add(permission);
+        }
+
+        return resolved;
+    }
+
+    /// <summary>
+    /// Whether the current editor may add or remove this permission on a role. A
+    /// permission outside the visible modules is never editable, and outside SuperAdmin
+    /// only what the editor effectively holds - minus the admin-only modules - can be
+    /// handed out.
+    /// </summary>
+    private static bool CanEdit(Permission permission, HashSet<string> userPermissions, bool isSuperAdmin)
+    {
+        if (!PermissionCatalog.VisibleModules.Contains(permission.Module)) return false;
+
+        return isSuperAdmin
+            || (userPermissions.Contains(permission.Code)
+                && !PermissionCatalog.AdminOnlyModules.Contains(permission.Module));
     }
 
     private async Task<bool> WouldRemoveOwnSystemAdminAsync(

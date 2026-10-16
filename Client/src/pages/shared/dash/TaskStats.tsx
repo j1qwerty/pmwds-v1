@@ -69,7 +69,7 @@ export default function TaskStats({ stats }: TaskStatsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-5 gap-4">
+    <div className="fluid-grid [--fluid-min:9.5rem]">
       {cards.map((card) => (
         <MetricStatCard
           key={card.label}

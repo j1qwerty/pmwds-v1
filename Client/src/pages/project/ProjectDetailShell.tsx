@@ -3,7 +3,7 @@ import { lazyPage } from "../../lib/lazyPage";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
-import { useNavHeader } from "../shared";
+import { PERMISSION_GROUPS, useNavHeader, usePermission } from "../shared";
 import { useProjectWorkspace } from "./useProjectWorkspace";
 import { Icon } from "../../components/ui/Icon";
 import { ProjectNotFound } from "./ProjectNotFound";
@@ -13,12 +13,14 @@ const ProjectMilestonesPage = lazyPage(() => import("./ProjectMilestonesPage").t
 const ProjectTasksPage = lazyPage(() => import("./ProjectTasksPage").then((m) => ({ default: m.ProjectTasksPage })));
 const ProjectDocumentsPage = lazyPage(() => import("./ProjectDocumentsPage").then((m) => ({ default: m.ProjectDocumentsPage })));
 const ProjectDependenciesPage = lazyPage(() => import("./ProjectDependenciesPage").then((m) => ({ default: m.ProjectDependenciesPage })));
+const ProjectAIPage = lazyPage(() => import("./ProjectAIPage").then((m) => ({ default: m.ProjectAIPage })));
 const TABS = [
   { key: "overview", label: "Overview", icon: "home" },
   { key: "milestones", label: "Milestones", icon: "hi-flag" },
   { key: "tasks", label: "Tasks", icon: "hi-clipboard" },
   { key: "documents", label: "Documents", icon: "description" },
   { key: "dependencies", label: "Dependencies", icon: "account_tree" },
+  { key: "ai", label: "AI Insights", icon: "auto_awesome" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -31,7 +33,7 @@ function isTabKey(value: string | undefined): value is TabKey {
 
 /**
  * Shell for a single project. Mounts a floating white tab strip (Overview /
- * Milestones / Tasks / Documents / Dependencies, with live counts) directly
+ * Milestones / Tasks / Documents / Dependencies / AI Insights, with live counts) directly
  * under the topbar, then renders the existing project page component for the
  * active tab.
  *
@@ -48,6 +50,7 @@ const TAB_PRELOAD: Record<string, () => Promise<unknown>> = {
   tasks: ProjectTasksPage.preload,
   documents: ProjectDocumentsPage.preload,
   dependencies: ProjectDependenciesPage.preload,
+  ai: ProjectAIPage.preload,
 };
 
 const BACK_TO = "/projects";
@@ -58,7 +61,13 @@ export function ProjectDetailShell() {
   const { projectId, tab } = useParams<{ projectId: string; tab?: string }>();
   const { auth } = useAuth();
   const ws = useProjectWorkspace();
+  const perm = usePermission();
   const { backTo, setNavHeader } = useNavHeader();
+
+  // Its own permission (AI_PROJECT_VIEW), separate from the portfolio AI page's AI_VIEW.
+  // The server enforces it on chat; this only decides whether the tab is offered.
+  const canViewAi = perm.has(PERMISSION_GROUPS.ai.projectView);
+  const visibleTabs = useMemo(() => TABS.filter((t) => t.key !== "ai" || canViewAi), [canViewAi]);
 
   // Light document count for the Documents tab badge. The Documents tab itself
   // does its own scoped loading; this is only the number in the tab strip.
@@ -82,7 +91,8 @@ export function ProjectDetailShell() {
     };
   }, [auth, projectId]);
 
-  const activeTab: TabKey = isTabKey(tab) ? tab : "overview";
+  // A bookmarked /ai URL for someone without AI access falls back to the overview.
+  const activeTab: TabKey = isTabKey(tab) && (tab !== "ai" || canViewAi) ? tab : "overview";
 
   const tabCounts = useMemo<Partial<Record<TabKey, number>>>(
     () => ({
@@ -135,7 +145,7 @@ export function ProjectDetailShell() {
           aria-label="Project sections"
           className="inline-flex max-w-full items-stretch gap-1 overflow-x-auto rounded-xl border border-slate-200/60 bg-white/97 p-1 shadow-sm"
         >
-          {TABS.map((t) => {
+          {visibleTabs.map((t) => {
             const active = t.key === activeTab;
             const count = tabCounts[t.key];
             return (
@@ -182,6 +192,7 @@ export function ProjectDetailShell() {
       {activeTab === "tasks" && <ProjectTasksPage />}
       {activeTab === "documents" && <ProjectDocumentsPage />}
       {activeTab === "dependencies" && <ProjectDependenciesPage />}
+      {activeTab === "ai" && <ProjectAIPage />}
       </Suspense>
     </div>
   );

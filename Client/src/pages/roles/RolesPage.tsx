@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
 import { useAppData } from "../../appData";
@@ -28,7 +29,6 @@ import {
 import { Icon } from "../../components/ui/Icon";
 import { RolesTable } from "./RolesTable";
 import { PermissionsTable } from "./PermissionsTable";
-import { RoleFormModal } from "./RoleFormModal";
 import { PermissionFormModal } from "./PermissionFormModal";
 
 type RoleSortKey = "nameAsc" | "nameDesc" | "levelDesc" | "levelAsc";
@@ -65,7 +65,6 @@ export function RolesPage() {
   const [roleView, setRoleView] = useState<ViewMode>("card");
 
   // Modal states
-  const [roleModal, setRoleModal] = useState<{ open: boolean; editRole?: RoleRecord }>({ open: false });
   const [permissionModal, setPermissionModal] = useState<{ open: boolean; editPermission?: PermissionRecord }>({ open: false });
   const [deleteConfirm, setDeleteConfirm] = useState<{
     open: boolean;
@@ -75,13 +74,15 @@ export function RolesPage() {
   }>({ open: false, type: "role", id: "", name: "" });
 
   const { setNavHeader } = useNavHeader();
+  const navigate = useNavigate();
+  const openRoleEditor = (role?: RoleRecord) => navigate(role ? `/roles/${role.id}/edit` : "/roles/new");
 
   useEffect(() => {
     setNavHeader({
       title: "Roles & Permissions",
       description: "Manage role definitions, permission levels, and access control",
       ...(activeTab === "roles" && canManageRoles
-        ? { action: { label: "New role", icon: "add", onClick: () => setRoleModal({ open: true }) } }
+        ? { action: { label: "New role", icon: "add", onClick: () => openRoleEditor() } }
         : {}),
       ...(activeTab === "permissions" && canManagePermissions
         ? { action: { label: "New permission", icon: "add", onClick: () => setPermissionModal({ open: true }) } }
@@ -96,11 +97,8 @@ export function RolesPage() {
 
   const ADMIN_ONLY_MODULES = new Set(["Authorization", "Authentication", "System"]);
 
-  // A role may only be given a permission the editor effectively holds. An exact
-  // code match is not enough: an admin seeded with TASK_ALL_MANAGE holds
-  // TASK_OWN_VIEW too (ALL covers OWN, MANAGE covers CRUD), so coverage — the
-  // same semantics as perm.has() — decides what the matrix may offer. Otherwise
-  // every Own Department row renders as "—" for anyone but superadmin.
+  // The Permissions tab lists only what the signed-in person could themselves assign.
+  // Coverage, not exact code match, decides (ALL covers OWN, MANAGE covers CRUD).
   const assignablePermissions = useMemo(() => {
     if (!auth) return [];
     if (perm.isSuperAdmin) return permissions;
@@ -125,23 +123,6 @@ export function RolesPage() {
   };
 
   useEffect(() => { loadData(); }, [auth]);
-
-  const handleRoleSubmit = async (payload: Record<string, unknown>) => {
-    if (!auth) return;
-    try {
-      if (roleModal.editRole) {
-        await api.updateRole(auth.token, roleModal.editRole.id, payload);
-        addToast("Role updated successfully.");
-      } else {
-        await api.createRole(auth.token, payload);
-        addToast("Role created successfully.");
-      }
-      setRoleModal({ open: false });
-      loadData();
-    } catch (e) {
-      addToast(`Error: ${e instanceof Error ? e.message : "Save failed"}`, "error");
-    }
-  };
 
   const handlePermissionSubmit = async (payload: Record<string, unknown>) => {
     if (!auth) return;
@@ -328,7 +309,7 @@ export function RolesPage() {
                     canManageRoles && visibleRoles.length === 0 ? (
                       <button
                         type="button"
-                        onClick={() => setRoleModal({ open: true })}
+                        onClick={() => openRoleEditor()}
                         className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-sm shadow-indigo-500/20 transition-all"
                       >
                         <Icon name="add" size={14} />
@@ -349,7 +330,7 @@ export function RolesPage() {
                     <RoleCard
                       role={role}
                       userCount={roleUserCounts[role.id]}
-                      onEdit={() => setRoleModal({ open: true, editRole: role })}
+                      onEdit={() => openRoleEditor(role)}
                       onDelete={() =>
                         setDeleteConfirm({
                           open: true,
@@ -367,7 +348,7 @@ export function RolesPage() {
               <RolesTable
                 roles={filteredRoles}
                 userCounts={roleUserCounts}
-                onEdit={(role) => setRoleModal({ open: true, editRole: role })}
+                onEdit={(role) => openRoleEditor(role)}
                 onDelete={(role) =>
                   setDeleteConfirm({
                     open: true,
@@ -402,16 +383,7 @@ export function RolesPage() {
         )}
       </PageContainer>
 
-      {/* Form panels — render themselves as right-slide Sheets (shared <Sheet>) */}
-      {roleModal.open && (
-        <RoleFormModal
-          initialData={roleModal.editRole}
-          permissions={assignablePermissions}
-          onSubmit={handleRoleSubmit}
-          onCancel={() => setRoleModal({ open: false })}
-        />
-      )}
-
+      {/* Role create/edit is its own page (/roles/new, /roles/:id/edit). Permission records still use a panel. */}
       {permissionModal.open && (
         <PermissionFormModal
           initialData={permissionModal.editPermission}

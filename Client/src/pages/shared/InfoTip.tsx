@@ -76,7 +76,7 @@ export function InfoTip({
       {open && (
         <div
           role="tooltip"
-          className={`absolute top-[calc(100%+8px)] z-50 w-[280px] rounded-xl border border-slate-200 bg-white p-3.5 text-left shadow-xl shadow-slate-900/10 ${
+          className={`absolute top-[calc(100%+8px)] z-50 w-[min(17.5rem,calc(100vw-2rem))] rounded-xl border border-slate-200 bg-white p-3.5 text-left shadow-xl shadow-slate-900/10 ${
             align === "right" ? "right-0" : "left-0"
           }`}
           onMouseEnter={() => setOpen(true)}
@@ -155,7 +155,7 @@ export function InfoTipCard({
       </button>
 
       {open && (
-        <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-[320px] rounded-xl border border-slate-200 bg-white p-4 text-left shadow-xl shadow-slate-900/10">
+        <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-slate-200 bg-white p-4 text-left shadow-xl shadow-slate-900/10">
           <p className="text-sm font-bold text-slate-800">{title}</p>
           <p className="text-xs text-slate-500 leading-relaxed mt-1.5">{summary}</p>
 

@@ -41,6 +41,7 @@ const UsersPage = lazyPage(() => import("./pages/users/users").then((m) => ({ de
 const ProfilesPage = lazyPage(() => import("./pages/profiles/ProfilesPage").then((m) => ({ default: m.ProfilesPage })));
 const SkillsPage = lazyPage(() => import("./pages/skills/SkillsPage").then((m) => ({ default: m.SkillsPage })));
 const RolesPage = lazyPage(() => import("./pages/roles/RolesPage").then((m) => ({ default: m.RolesPage })));
+const RoleEditorPage = lazyPage(() => import("./pages/roles/RoleEditorPage").then((m) => ({ default: m.RoleEditorPage })));
 const ActivityLogsPage = lazyPage(() => import(".//pages/activity/ActivityLogsPage").then((m) => ({ default: m.ActivityLogsPage })));
 const SettingsPage = lazyPage(() => import("./pages/settings/settings").then((m) => ({ default: m.SettingsPage })));
 const LoginPage = lazyPage(() => import("./pages/login/login").then((m) => ({ default: m.LoginPage })));
@@ -183,6 +184,14 @@ function AppRoutes() {
                 <Route
                   path="/roles"
                   element={<Guarded permission={ROUTE_GUARDS.roles}><RolesPage /></Guarded>}
+                />
+                <Route
+                  path="/roles/new"
+                  element={<Guarded permission={ROUTE_GUARDS.roles}><RoleEditorPage /></Guarded>}
+                />
+                <Route
+                  path="/roles/:roleId/edit"
+                  element={<Guarded permission={ROUTE_GUARDS.roles}><RoleEditorPage /></Guarded>}
                 />
                 <Route
                   path="/activity-logs"

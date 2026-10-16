@@ -2,6 +2,15 @@ import { GlassCard, InfoTip } from "../shared";
 import { Icon } from "../../components/ui/Icon";
 import { chatContext, isChatError, type ChatResponse } from "./chatTypes";
 
+const DEFAULT_SUGGESTIONS = [
+  "Tell me about all the projects",
+  "Which projects are delayed?",
+  "Show my open tasks",
+  "List the milestones",
+  "Who is overloaded?",
+  "Show me the documents",
+];
+
 interface AIChatPanelProps {
   chatPrompt: string;
   setChatPrompt: (prompt: string) => void;
@@ -10,6 +19,11 @@ interface AIChatPanelProps {
   pending?: boolean;
   provider?: string;
   model?: string;
+  /** Quick-question chips. Defaults to the portfolio-wide set. */
+  suggestions?: string[];
+  placeholder?: string;
+  /** Replaces the tooltip bullet describing what data the assistant is given. */
+  dataScopeNote?: string;
 }
 
 export function AIChatPanel({
@@ -20,6 +34,9 @@ export function AIChatPanel({
   pending = false,
   provider,
   model,
+  suggestions = DEFAULT_SUGGESTIONS,
+  placeholder = "Ask about your projects, tasks, milestones or documents...",
+  dataScopeNote = "The assistant is given your projects, tasks, subtasks, milestones and document lists before it answers.",
 }: AIChatPanelProps) {
   const isError = isChatError(chatResult);
   const context = chatContext(chatResult);
@@ -34,9 +51,7 @@ export function AIChatPanel({
         <InfoTip
           title="AI Assistant"
           summary="Ask a plain-language question and get an answer based on your real project data."
-          points={[
-            "The assistant is given your projects, tasks, subtasks, milestones and document lists before it answers.",
-          ]}
+          points={[dataScopeNote]}
           note={provider ? `Answering with ${provider}${model ? ` using ${model}` : ""}.` : undefined}
         />
       </div>
@@ -47,18 +62,11 @@ export function AIChatPanel({
           onChange={(e) => setChatPrompt(e.target.value)}
           rows={3}
           className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all resize-none"
-          placeholder="Ask about your projects, tasks, milestones or documents..."
+          placeholder={placeholder}
         />
 
         <div className="flex flex-wrap gap-1.5">
-          {[
-            "Tell me about all the projects",
-            "Which projects are delayed?",
-            "Show my open tasks",
-            "List the milestones",
-            "Who is overloaded?",
-            "Show me the documents",
-          ].map((suggestion) => (
+          {suggestions.map((suggestion) => (
             <button
               key={suggestion}
               type="button"

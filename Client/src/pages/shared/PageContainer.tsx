@@ -36,7 +36,7 @@ export function PageContainer({
   return (
     <div className="relative">
       {stats && (
-        <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4 [&>*]:min-w-0">
+        <div className="relative z-10 fluid-grid [--fluid-min:clamp(8.5rem,5rem+8vw,13rem)] mb-4 [&>*]:min-w-0">
           {stats}
         </div>
       )}

@@ -249,7 +249,7 @@ export function MilestonesPanel({
   if (hideDetailPanel) return listPanel;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,320px)_1fr] gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,clamp(15rem,26vw,20rem))_minmax(0,1fr)] gap-6">
       {listPanel}
       {/* Milestone Detail */}
       <div className="max-h-[calc(100vh-20px)] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">

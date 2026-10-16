@@ -11,6 +11,7 @@ using PMWDS.Application.Features.AI.Commands;
 using PMWDS.Application.Features.AI.Queries;
 using PMWDS.Application.Features.Projects.Queries;
 using PMWDS.Application.Interfaces.Services;
+using PMWDS.Application.Security;
 using PMWDS.Domain.Entities;
 using PMWDS.Infrastructure.Settings;
 using PMWDS.Persistence.Context;
@@ -345,6 +346,19 @@ public class AIController : BaseApiController
             return Unauthorized();
         }
 
+        // Two separate permissions: AI_VIEW is the portfolio-wide AI page, AI_PROJECT_VIEW
+        // is the AI tab inside one project. Granting one never grants the other. The client
+        // route guards only decide what is shown; this is the check that actually protects
+        // the data, so it runs here for every request.
+        var wantsProject = req.ProjectId.HasValue;
+        var allowed = wantsProject
+            ? await _scope.HasAnyPermissionAsync(ct, PermissionCodes.AiProjectView, PermissionCodes.AiManage)
+            : await _scope.HasAnyPermissionAsync(ct, PermissionCodes.AiView, PermissionCodes.AiManage);
+        if (!allowed)
+        {
+            return Forbid();
+        }
+
         // Detect the intent and build the data here rather than inside the AI layer.
         //
         // Role scoping lives in RoleScopeService, which the AI project cannot reach -
@@ -352,6 +366,11 @@ public class AIController : BaseApiController
         // dossier at the edge keeps one implementation of "what may this user see"
         // instead of a second, subtly different one inside the assistant.
         var intent = ChatIntents.Detect(req.Message);
+
+        if (req.ProjectId is { } projectId)
+        {
+            return await ChatForProjectAsync(userId, projectId, req, intent, ct);
+        }
 
         var dossier = await _contextBuilder.BuildAsync(userId, intent, ct);
         if (dossier == null)
@@ -369,7 +388,57 @@ public class AIController : BaseApiController
             dossier.Length);
 
         return Ok(await _chat.ProcessChatMessageAsync(
-            userId, req.Message, dossier, req.Provider, req.Model, ct));
+            userId, req.Message, dossier, req.Provider, req.Model, ct: ct));
+    }
+
+    /// <summary>
+    /// Which parts of one project the signed-in person may see through the AI tab.
+    /// The client draws only these sections; the chat dossier is built from the same flags.
+    /// </summary>
+    [HttpGet("project/{projectId:guid}/capabilities")]
+    public async Task<IActionResult> ProjectCapabilities(Guid projectId, CancellationToken ct)
+    {
+        var capabilities = await _contextBuilder.GetProjectCapabilitiesAsync(projectId, ct);
+        return capabilities is null ? Forbid() : Ok(capabilities);
+    }
+
+    private async Task<IActionResult> ChatForProjectAsync(
+        string userId,
+        Guid projectId,
+        ChatRequest req,
+        string intent,
+        CancellationToken ct)
+    {
+        var context = await _contextBuilder.BuildForProjectAsync(userId, projectId, intent, ct);
+        if (context == null)
+        {
+            _logger.LogWarning("Project chat request rejected: user id could not be parsed.");
+            return BadRequest(new { message = "Could not identify your account for data scoping." });
+        }
+
+        switch (context.Outcome)
+        {
+            case ProjectChatOutcome.NoAccess:
+                return Forbid();
+
+            case ProjectChatOutcome.Refused:
+                // Answered here without calling the model: the question needs data this
+                // role cannot see, so there is nothing to send and nothing to coax out.
+                return Ok(new ChatResponseDto(
+                    Message: context.RefusalMessage ?? "That is not available to your role.",
+                    Intent: intent,
+                    SuggestedActions: new List<string>(),
+                    ContextData: new { scoped = true, refused = true, dossierCharacters = 0 },
+                    RequiresConfirmation: false));
+        }
+
+        _logger.LogInformation(
+            "Project chat intent {Intent} resolved to a {Characters}-character dossier.",
+            intent,
+            context.Dossier.Length);
+
+        return Ok(await _chat.ProcessChatMessageAsync(
+            userId, req.Message, context.Dossier, req.Provider, req.Model, context.SessionKey, ct));
     }
 
     [HttpGet("providers")]

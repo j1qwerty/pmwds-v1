@@ -95,7 +95,7 @@ export function SettingsPage() {
     <div className="relative">
       <AnimatedBackground />
 
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[230px_1fr] gap-5 items-start">
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[clamp(11rem,18vw,14.5rem)_minmax(0,1fr)] gap-5 items-start">
         {/* ── Section nav — vertical rail on desktop, chip scroller on mobile ── */}
         <nav
           aria-label="Settings sections"

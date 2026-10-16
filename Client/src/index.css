@@ -446,3 +446,62 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
   transition-duration: 0.01ms !important;
   scroll-behavior: auto !important;
 }
+
+
+/* ============================================================
+   FLUID SCALE
+   ------------------------------------------------------------
+   One place that decides how the UI scales between screens.
+   Tailwind sizes text, spacing and most widths in rem, so moving the
+   root font-size moves all of them together; layout rhythm uses the
+   custom properties below.
+
+   Anchor points (viewport width -> root font-size):
+     375px   mobile              14px
+     768px   tablet              14.5px
+     1280px  small laptop (MacBook Air M1 at 1280)   15.25px
+     1536px  laptop              16px   <- the reference size
+     1920px  wide                16px
+     2560px  ultra-wide          17.5px
+   Between anchors the size is interpolated, never stepped, and it is
+   clamped to the neighbouring anchors so it can never overshoot.
+   To retune a screen class, change its anchor value here and the slope
+   of the segment that starts at it: slope = (next - this) / (next width
+   - this width).
+   ============================================================ */
+html {
+  font-size: 14px;
+}
+
+@media (min-width: 375px) {
+  html { font-size: clamp(14px, calc(14px + (100vw - 375px) * 0.001272), 14.5px); }
+}
+@media (min-width: 768px) {
+  html { font-size: clamp(14.5px, calc(14.5px + (100vw - 768px) * 0.001465), 15.25px); }
+}
+@media (min-width: 1280px) {
+  html { font-size: clamp(15.25px, calc(15.25px + (100vw - 1280px) * 0.00293), 16px); }
+}
+@media (min-width: 1920px) {
+  html { font-size: clamp(16px, calc(16px + (100vw - 1920px) * 0.00234), 17.5px); }
+}
+
+:root {
+  /* Page edge padding, grid gaps and card padding follow the screen. */
+  --page-pad: clamp(0.5rem, 0.25rem + 1.6vw, 1.5rem);
+  --grid-gap: clamp(0.5rem, 0.3rem + 0.9vw, 1.25rem);
+  --card-pad: clamp(0.75rem, 0.5rem + 1vw, 1.25rem);
+}
+
+/* Equal-width tiles that wrap instead of squeezing: as many columns as fit
+   at --fluid-min each, never wider than the container. */
+.fluid-grid {
+  display: grid;
+  gap: var(--grid-gap);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--fluid-min, 10rem)), 1fr));
+}
+
+/* Text that must not force a horizontal scrollbar on narrow screens. */
+.fluid-wrap {
+  overflow-wrap: anywhere;
+}

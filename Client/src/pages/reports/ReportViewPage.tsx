@@ -290,7 +290,7 @@ export function ReportViewPage() {
 
       {/* Main content with sidebar */}
       <div className="relative z-10 mx-auto px-4 sm:px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8 items-start">
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_clamp(18rem,24vw,21.25rem)] gap-8 items-start">
           {/* Left: Report content */}
           <div className="space-y-10 min-w-0">
             {/* Executive Summary */}

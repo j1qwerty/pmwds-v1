@@ -351,7 +351,7 @@ export default function TaskPerformanceTable({
         </div>
       </div>
 
-      <div className="relative">
+      <div className="relative overflow-x-auto">
         {loading && (
           <div className="absolute inset-0 z-10 grid place-items-center bg-white/70 text-sm text-slate-500">
             Loading tasks...

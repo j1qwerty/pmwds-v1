@@ -85,6 +85,12 @@ export interface RoleRecord {
   permissions: PermissionRecord[];
 }
 
+/** The seeded permission set of a built-in role. `hasDefaults` is false for custom roles. */
+export interface RoleDefaultsRecord {
+  hasDefaults: boolean;
+  permissionIds: string[];
+}
+
 export interface UserProfileRecord {
   id: string;
   userId: string;
@@ -1286,4 +1292,20 @@ export interface PagesDataResponse {
   knowledgeArticles: PaginatedResponse<PageKnowledgeArticleDto>;
   lessonsLearned: PaginatedResponse<PageLessonLearnedDto>;
   activityLogs: PaginatedResponse<PageActivityLogDto>;
+}
+
+
+/**
+ * What the signed-in person may see of one project through its AI tab. Mirrors
+ * ProjectAiCapabilities on the server, which builds the chat data from the same flags.
+ */
+export interface ProjectAiCapabilities {
+  ai: boolean;
+  fullProjectDetails: boolean;
+  tasks: boolean;
+  subtasks: boolean;
+  milestones: boolean;
+  documents: boolean;
+  people: boolean;
+  budget: boolean;
 }
