@@ -11,7 +11,7 @@ import type { ActivityLogRecord, NotificationItem, Project, ProjectDashboardData
 import { NotificationList } from "../shared/NotificationList";
 import { PageSkeleton, useNavHeader, useToast } from "../shared";
 import { PERMISSION_GROUPS, usePermission } from "../shared";
-import { LazyNewProjectPage, WizardBoundary, useWarmWizard, preloadWizard } from "../NewProject/lazyWizard";
+import { LazyNewProjectPage, WizardBoundary, useWarmWizard } from "../NewProject/lazyWizard";
 import TaskStats from "../shared/dash/TaskStats";
 import TaskPerformanceTable, { type TaskPerformanceQuery } from "../shared/dash/TaskPerformanceTable";
 import { TaskEditModal } from "../shared/modals/TaskEditModal";

@@ -7,7 +7,6 @@ import { useAuth } from "../../auth";
 import type { Milestone, Task } from "../../types";
 import { formatDate } from "../../lib/formatters";
 import {
-  AnimatedBackground,
   GlassCard,
   LoadingPage,
   useNavHeader,
@@ -15,7 +14,6 @@ import {
   usePermission,
   useToast,
   getStatusColor,
-  BgRenderer,
 } from "../shared/index";
 import { useUserOrganization } from "../shared/useUserOrganization";
 import TaskSubtaskBoard, { allBoards } from "../shared/dash/TaskSubtaskBoard";
@@ -42,8 +40,6 @@ export function ProjectTasksPage() {
   const canDeleteMilestones = perm.canModule("delete", "milestone");
   const canCreateTasks = perm.canModule("create", "task");
   const canEditTasks = perm.canModule("edit", "task");
-  const canDeleteTasks = perm.canModule("delete", "task");
-  const canCreateSubtasks = perm.canModule("create", "subtask");
   const canEditProject = perm.canModule("edit", "project");
   const canDeleteProject = perm.canModule("delete", "project");
 
@@ -205,14 +201,6 @@ export function ProjectTasksPage() {
     }
   };
 
-  const getProgressColor = (progress: number): string => {
-    if (progress === 100) return "bg-emerald-500";
-    if (progress >= 75) return "bg-amber-400";
-    if (progress >= 50) return "bg-sky-400";
-    if (progress >= 25) return "bg-red-400";
-    return "bg-slate-300";
-  };
-
   const handleMilestoneSubmit = async (form: Record<string, unknown>) => {
     if (!auth || !ws.project) return;
     setMilestoneError("");
@@ -347,7 +335,7 @@ export function ProjectTasksPage() {
       </div>
 
       <div className="relative z-10 space-y-6">
-        {orderedMilestones.map((milestone, idx) => {
+        {orderedMilestones.map((milestone) => {
           const tasks = groupedTasks.get(milestone.id) ?? [];
           const colors = getStatusColor(milestone.status);
           return (

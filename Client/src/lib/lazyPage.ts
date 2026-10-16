@@ -1,8 +1,8 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from "react";
 
-type Loader<T extends ComponentType<any>> = () => Promise<{ default: T }>;
+type Loader<T extends ComponentType<never>> = () => Promise<{ default: T }>;
 
-export type PreloadableLazy<T extends ComponentType<any>> = LazyExoticComponent<T> & {
+export type PreloadableLazy<T extends ComponentType<never>> = LazyExoticComponent<T> & {
   preload: () => Promise<unknown>;
 };
 
@@ -10,7 +10,7 @@ export type PreloadableLazy<T extends ComponentType<any>> = LazyExoticComponent<
  * React.lazy + a preload handle. Call `Component.preload()` on hover/focus/idle
  * so the chunk is already in cache by the time the user clicks.
  */
-export function lazyPage<T extends ComponentType<any>>(loader: Loader<T>): PreloadableLazy<T> {
+export function lazyPage<T extends ComponentType<never>>(loader: Loader<T>): PreloadableLazy<T> {
   let cached: Promise<{ default: T }> | null = null;
   // Drop a failed import (e.g. stale chunk after a deploy) so the next try refetches.
   const load = () =>

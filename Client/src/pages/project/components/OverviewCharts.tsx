@@ -4,7 +4,6 @@ import { formatLakhs } from "../../../lib/formatters";
 import {
   formatDateShort,
   isCalendarDatePast,
-  toCalendarDayNumber,
 } from "../../../lib/datetime";
 
 const statusHexColors: Record<string, string> = {
@@ -189,14 +188,9 @@ export function MilestoneTimeline({
   // Timeline positions come from calendar day numbers, not instants. Comparing the stored
   // instants let the UTC/IST offset push a milestone due on the last day of the project
   // window past the end of the bar.
-  const start = toCalendarDayNumber(startDate);
-  const end = toCalendarDayNumber(endDate);
-  const range = (end ?? 0) - (start ?? 0) || 1;
-
   return (
     <div className="space-y-3">
       {milestones.map((m) => {
-        const due = toCalendarDayNumber(m.dueDate);
         const overdue = m.status !== "Completed" && isCalendarDatePast(m.dueDate);
         const color = getStatusColor(m.status);
 

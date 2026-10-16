@@ -497,7 +497,6 @@ function ProfileCard({
   onEdit?: (user: User) => void;
 }) {
   const dept = departments.find((d) => d.id === user.departmentId);
-  const org = organizations.find((item) => item.id === (user.organizationId ?? dept?.organizationId));
   const deptLabel = profileDeptLabel(user, departments);
   const isActive = user.isActive !== false;
   const roleLabel = profileRoleLabel(user) || "—";
